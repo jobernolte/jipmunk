@@ -1,0 +1,94 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  ~ Copyright (c) 2007 Scott Lembcke, (c) 2011 Jürgen Obernolte
+  ~
+  ~ Permission is hereby granted, free of charge, to any person obtaining a copy
+  ~ of this software and associated documentation files (the "Software"), to deal
+  ~ in the Software without restriction, including without limitation the rights
+  ~ to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+  ~ copies of the Software, and to permit persons to whom the Software is
+  ~ furnished to do so, subject to the following conditions:
+  ~
+  ~ The above copyright notice and this permission notice shall be included in
+  ~ all copies or substantial portions of the Software.
+  ~
+  ~ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+  ~ IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+  ~ FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+  ~ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+  ~ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+  ~ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+  ~ SOFTWARE.
+  -->
+
+<project name="module_jipmunk" default="compile.module.jipmunk">
+  <dirname property="module.jipmunk.basedir" file="${ant.file.module_jipmunk}"/>
+  
+  
+  <property name="compiler.args.jipmunk" value="${compiler.args}"/>
+  
+  <property name="jipmunk.output.dir" value="${module.jipmunk.basedir}/out/production/jipmunk"/>
+  <property name="jipmunk.testoutput.dir" value="${module.jipmunk.basedir}/out/test/jipmunk"/>
+  
+  <path id="jipmunk.module.bootclasspath">
+    <!-- Paths to be included in compilation bootclasspath -->
+  </path>
+  
+  <path id="jipmunk.module.production.classpath"/>
+  
+  <path id="jipmunk.runtime.production.module.classpath">
+    <pathelement location="${jipmunk.output.dir}"/>
+  </path>
+  
+  <path id="jipmunk.module.classpath">
+    <pathelement location="${jipmunk.output.dir}"/>
+  </path>
+  
+  <path id="jipmunk.runtime.module.classpath">
+    <pathelement location="${jipmunk.testoutput.dir}"/>
+    <pathelement location="${jipmunk.output.dir}"/>
+  </path>
+  
+  
+  <patternset id="excluded.from.module.jipmunk">
+    <patternset refid="ignored.files"/>
+  </patternset>
+  
+  <patternset id="excluded.from.compilation.jipmunk">
+    <patternset refid="excluded.from.module.jipmunk"/>
+  </patternset>
+  
+  <path id="jipmunk.module.sourcepath">
+    <dirset dir="${module.jipmunk.basedir}">
+      <include name="src"/>
+    </dirset>
+  </path>
+  
+  
+  <target name="compile.module.jipmunk" depends="compile.module.jipmunk.production,compile.module.jipmunk.tests" description="Compile module jipmunk"/>
+  
+  <target name="compile.module.jipmunk.production" description="Compile module jipmunk; production classes">
+    <mkdir dir="${jipmunk.output.dir}"/>
+    <javac destdir="${jipmunk.output.dir}" debug="${compiler.debug}" nowarn="${compiler.generate.no.warnings}" memorymaximumsize="${compiler.max.memory}" fork="true">
+      <compilerarg line="${compiler.args.jipmunk}"/>
+      <bootclasspath refid="jipmunk.module.bootclasspath"/>
+      <classpath refid="jipmunk.module.production.classpath"/>
+      <src refid="jipmunk.module.sourcepath"/>
+      <patternset refid="excluded.from.compilation.jipmunk"/>
+    </javac>
+    
+    <copy todir="${jipmunk.output.dir}">
+      <fileset dir="${module.jipmunk.basedir}/src">
+        <patternset refid="compiler.resources"/>
+        <type type="file"/>
+      </fileset>
+    </copy>
+  </target>
+  
+  <target name="compile.module.jipmunk.tests" depends="compile.module.jipmunk.production" description="compile module jipmunk; test classes" unless="skip.tests"/>
+  
+  <target name="clean.module.jipmunk" description="cleanup module">
+    <delete dir="${jipmunk.output.dir}"/>
+    <delete dir="${jipmunk.testoutput.dir}"/>
+  </target>
+</project>

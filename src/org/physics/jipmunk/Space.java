@@ -1,3 +1,25 @@
+/*
+ * Copyright (c) 2007 Scott Lembcke, (c) 2011 Jürgen Obernolte
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
+ */
+
 package org.physics.jipmunk;
 
 import java.util.ArrayList;
@@ -30,7 +52,32 @@ import static org.physics.jipmunk.SpatialIndex.cpSpatialIndexRemove;
 import static org.physics.jipmunk.Util.cpBBIntersects;
 import static org.physics.jipmunk.Util.cpfpow;
 
-/** @author jobernolte */
+/**
+ * Spaces in Chipmunk are the basic unit of simulation. You add rigid bodies, shapes and constraints to it and then step
+ * them all forward through time together.
+ * <p/>
+ * <b>What Are Iterations, and Why Should I care?</b>
+ * <p/>
+ * Chipmunk uses an iterative solver to figure out the forces between objects in the space. What this means is that it
+ * builds a big list of all of the collisions, joints, and other constraints between the bodies and makes several passes
+ * over the list considering each one individually. The number of passes it makes is the iteration count, and each
+ * iteration makes the solution more accurate. If you use too many iterations, the physics should look nice and solid,
+ * but may use up too much CPU time. If you use too few iterations, the simulation may seem mushy or bouncy when the
+ * objects should be solid. Setting the number of iterations lets you balance between CPU usage and the accuracy of the
+ * physics. Chipmunk’s default of 10 iterations is sufficient for most simple games.
+ * <p/>
+ * <p/>
+ * <b>Sleeping</b>
+ * <p/>
+ * New in Chipmunk is the ability of spaces to disable entire groups of objects that have stopped moving to save CPU
+ * time as well as battery life. In order to use this feature you must do 2 things. The first is that you must attach
+ * all your static geometry to static bodies. Objects cannot fall asleep if they are touching a non-static rogue body
+ * even if it’s shapes were added as static shapes. The second is that you must enable sleeping explicitly by choosing a
+ * time threshold value for cpSpace.sleepTimeThreshold. If you do not set {@link Space#idleSpeedThreshold} explicitly, a
+ * value will be chosen automatically based on the current amount of gravity.
+ *
+ * @author jobernolte
+ */
 public class Space {
 	/// Number of iterations to use in the impulse solver to solve contacts.
 	int iterations = 10;
@@ -48,7 +95,7 @@ public class Space {
 	 * Speed threshold for a body to be considered idle. The default value of 0 means to let the space guess a good
 	 * threshold based on gravity.
 	 */
-	float idleSpeedThreshold = 0;
+	private float idleSpeedThreshold = 0;
 
 	/**
 	 * Time a group of bodies must remain idle in order to fall asleep. Enabling sleeping also implicitly enables the the
@@ -115,12 +162,37 @@ public class Space {
 		this.staticBody = Body.createStatic();
 	}
 
+	/**
+	 * Iterations allow you to control the accuracy of the solver.
+	 *
+	 * @param iterations the number of iterations to be used by the solver
+	 */
 	public void setIterations(int iterations) {
 		this.iterations = iterations;
 	}
 
+	/**
+	 * Iterations allow you to control the accuracy of the solver. Defaults to 10.
+	 *
+	 * @return the number of iterations used by the solver
+	 */
 	public int getIterations() {
 		return iterations;
+	}
+
+	/** @return the idle speed threshold being used */
+	public float getIdleSpeedThreshold() {
+		return idleSpeedThreshold;
+	}
+
+	/**
+	 * Speed threshold for a body to be considered idle. The default value of 0 means to let the space guess a good
+	 * threshold based on gravity.
+	 *
+	 * @param idleSpeedThreshold the idle speed threshold to be used
+	 */
+	public void setIdleSpeedThreshold(float idleSpeedThreshold) {
+		this.idleSpeedThreshold = idleSpeedThreshold;
 	}
 
 	/**
@@ -149,10 +221,17 @@ public class Space {
 		return sleepTimeThreshold;
 	}
 
+	/** @return the damping being used */
 	public float getDamping() {
 		return damping;
 	}
 
+	/**
+	 * Amount of simple damping to apply to the space. A value of 0.9 means that each body will lose 10% of it’s velocity
+	 * per second. Defaults to 1. Like gravity can be overridden on a per body basis.
+	 *
+	 * @param damping the damping to be used
+	 */
 	public void setDamping(float damping) {
 		this.damping = damping;
 	}
@@ -165,20 +244,42 @@ public class Space {
 		this.collisionSlop = collisionSlop;
 	}
 
-	public void addCollisionHandler(int a, int b, CollisionHandler handler) {
+	/**
+	 * Set a collision handler to handle specific collision types.
+	 * <p/>
+	 * The methods are called only when shapes with the specified collision types collide.
+	 * <p/>
+	 * <code>typeA</code> and <code>typeB</code> should be the same references set to {@link Shape#getCollisionType()}. Add
+	 * a collision handler for given collision type pair.
+	 * <p/>
+	 * Whenever a shapes with collision type <code>typeA</code> and collision type <code>typeB</code> collide, these
+	 * callbacks will be used to process the collision. If you need to fall back on the space’s default callbacks, you’ll
+	 * have to provide them individually to each handler definition.
+	 *
+	 * @param typeA   collision type a
+	 * @param typeB   collision type b
+	 * @param handler {@link CollisionHandler} to be used as callback
+	 */
+	public void addCollisionHandler(int typeA, int typeB, CollisionHandler handler) {
 		assertSpaceUnlocked();
 
-		long key = (((long) a) << 32) | b;
+		long key = (((long) typeA) << 32) | typeB;
 
 		// Remove any old function so the new one will get added.
-		removeCollisionHandler(a, b);
+		removeCollisionHandler(typeA, typeB);
 		if (handler != null) {
-			final CollisionHandlerEntry handlerEntry = new CollisionHandlerEntry(handler, a, b);
+			final CollisionHandlerEntry handlerEntry = new CollisionHandlerEntry(handler, typeA, typeB);
 			collisionHandlers.put(key, handlerEntry);
-			collisionHandlers.put((((long) b) << 32) | a, handlerEntry);
+			collisionHandlers.put((((long) typeB) << 32) | typeA, handlerEntry);
 		}
 	}
 
+	/**
+	 * Removes a {@link CollisionHandler} for a given collision type pair.
+	 *
+	 * @param a collision type a
+	 * @param b collision type b
+	 */
 	public void removeCollisionHandler(int a, int b) {
 		long key = (((long) a) << 32) | b;
 		collisionHandlers.remove(key);
