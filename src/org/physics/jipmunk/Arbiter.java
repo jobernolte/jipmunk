@@ -2,24 +2,6 @@ package org.physics.jipmunk;
 
 import java.util.Iterator;
 
-import static org.physics.jipmunk.Util.apply_bias_impulses;
-import static org.physics.jipmunk.Util.apply_impulses;
-import static org.physics.jipmunk.Util.cpfclamp;
-import static org.physics.jipmunk.Util.cpfmax;
-import static org.physics.jipmunk.Util.cpfmin;
-import static org.physics.jipmunk.Util.cpv;
-import static org.physics.jipmunk.Util.cpvadd;
-import static org.physics.jipmunk.Util.cpvdot;
-import static org.physics.jipmunk.Util.cpvmult;
-import static org.physics.jipmunk.Util.cpvneg;
-import static org.physics.jipmunk.Util.cpvperp;
-import static org.physics.jipmunk.Util.cpvrotate;
-import static org.physics.jipmunk.Util.cpvsub;
-import static org.physics.jipmunk.Util.cpvzero;
-import static org.physics.jipmunk.Util.k_scalar;
-import static org.physics.jipmunk.Util.normal_relative_velocity;
-import static org.physics.jipmunk.Util.relative_velocity;
-
 /** @author jobernolte */
 public class Arbiter {
 	/// Calculated value to use for the elasticity coefficient.
@@ -209,7 +191,7 @@ public class Arbiter {
 		assert 0 <= i && i < this.numContacts : "Index error: The specified contact index is invalid for this arbiter";
 
 		Vector2f n = this.contacts[i].n;
-		return this.swappedColl ? cpvneg(n) : n;
+		return this.swappedColl ? Util.cpvneg(n) : n;
 	}
 
 	public Vector2f getPoint(int i) {
@@ -240,22 +222,22 @@ public class Arbiter {
 	}
 
 	public Vector2f totalImpulse() {
-		Vector2f sum = cpvzero();
+		Vector2f sum = Util.cpvzero();
 
 		for (int i = 0, count = this.numContacts; i < count; i++) {
 			Contact con = contacts[i];
-			sum = cpvadd(sum, cpvmult(con.n, con.jnAcc));
+			sum = Util.cpvadd(sum, Util.cpvmult(con.n, con.jnAcc));
 		}
 
 		return swappedColl ? sum : Util.cpvneg(sum);
 	}
 
 	public Vector2f totalImpulseWithFriction() {
-		Vector2f sum = cpvzero();
+		Vector2f sum = Util.cpvzero();
 
 		for (int i = 0, count = this.numContacts; i < count; i++) {
 			Contact con = contacts[i];
-			sum = cpvadd(sum, cpvrotate(con.n, cpv(con.jnAcc, con.jtAcc)));
+			sum = Util.cpvadd(sum, Util.cpvrotate(con.n, Util.cpv(con.jnAcc, con.jtAcc)));
 		}
 
 		return swappedColl ? sum : Util.cpvneg(sum);
@@ -305,7 +287,7 @@ public class Arbiter {
 
 		this.e = a.e * b.e;
 		this.u = a.u * b.u;
-		this.surface_vr = cpvsub(a.surface_v, b.surface_v);
+		this.surface_vr = Util.cpvsub(a.surface_v, b.surface_v);
 
 		// For collisions between two similar primitive types, the order could have been swapped.
 		this.a = a;
@@ -327,19 +309,19 @@ public class Arbiter {
 			Contact con = this.contacts[i];
 
 			// Calculate the offsets.
-			con.r1 = cpvsub(con.p, a.p);
-			con.r2 = cpvsub(con.p, b.p);
+			con.r1 = Util.cpvsub(con.p, a.p);
+			con.r2 = Util.cpvsub(con.p, b.p);
 
 			// Calculate the mass normal and mass tangent.
-			con.nMass = 1.0f / k_scalar(a, b, con.r1, con.r2, con.n);
-			con.tMass = 1.0f / k_scalar(a, b, con.r1, con.r2, cpvperp(con.n));
+			con.nMass = 1.0f / Util.k_scalar(a, b, con.r1, con.r2, con.n);
+			con.tMass = 1.0f / Util.k_scalar(a, b, con.r1, con.r2, Util.cpvperp(con.n));
 
 			// Calculate the target bias velocity.
-			con.bias = -bias * cpfmin(0.0f, con.dist + slop) / dt;
+			con.bias = -bias * Util.cpfmin(0.0f, con.dist + slop) / dt;
 			con.jBias = 0.0f;
 
 			// Calculate the target bounce velocity.
-			con.bounce = normal_relative_velocity(a, b, con.r1, con.r2, con.n) * this.e;
+			con.bounce = Util.normal_relative_velocity(a, b, con.r1, con.r2, con.n) * this.e;
 		}
 	}
 
@@ -351,8 +333,8 @@ public class Arbiter {
 
 		for (int i = 0; i < this.numContacts; i++) {
 			Contact con = this.contacts[i];
-			Vector2f j = cpvrotate(con.n, cpv(con.jnAcc, con.jtAcc));
-			apply_impulses(a, b, con.r1, con.r2, cpvmult(j, dt_coef));
+			Vector2f j = Util.cpvrotate(con.n, Util.cpv(con.jnAcc, con.jtAcc));
+			Util.apply_impulses(a, b, con.r1, con.r2, Util.cpvmult(j, dt_coef));
 		}
 	}
 
@@ -369,41 +351,41 @@ public class Arbiter {
 			Vector2f r2 = con.r2;
 
 			// Calculate the relative bias velocities.
-			Vector2f vb1 = cpvadd(a.v_bias, cpvmult(cpvperp(r1), a.w_bias));
-			Vector2f vb2 = cpvadd(b.v_bias, cpvmult(cpvperp(r2), b.w_bias));
-			float vbn = cpvdot(cpvsub(vb2, vb1), n);
+			Vector2f vb1 = Util.cpvadd(a.v_bias, Util.cpvmult(Util.cpvperp(r1), a.w_bias));
+			Vector2f vb2 = Util.cpvadd(b.v_bias, Util.cpvmult(Util.cpvperp(r2), b.w_bias));
+			float vbn = Util.cpvdot(Util.cpvsub(vb2, vb1), n);
 
 			// Calculate and clamp the bias impulse.
 			float jbn = (con.bias - vbn) * con.nMass;
 			float jbnOld = con.jBias;
-			con.jBias = cpfmax(jbnOld + jbn, 0.0f);
+			con.jBias = Util.cpfmax(jbnOld + jbn, 0.0f);
 			jbn = con.jBias - jbnOld;
 
 			// Apply the bias impulse.
-			apply_bias_impulses(a, b, r1, r2, cpvmult(n, jbn));
+			Util.apply_bias_impulses(a, b, r1, r2, Util.cpvmult(n, jbn));
 
 			// Calculate the relative velocity.
-			Vector2f vr = relative_velocity(a, b, r1, r2);
-			float vrn = cpvdot(vr, n);
+			Vector2f vr = Util.relative_velocity(a, b, r1, r2);
+			float vrn = Util.cpvdot(vr, n);
 
 			// Calculate and clamp the normal impulse.
 			float jn = -(con.bounce + vrn) * con.nMass;
 			float jnOld = con.jnAcc;
-			con.jnAcc = cpfmax(jnOld + jn, 0.0f);
+			con.jnAcc = Util.cpfmax(jnOld + jn, 0.0f);
 			jn = con.jnAcc - jnOld;
 
 			// Calculate the relative tangent velocity.
-			float vrt = cpvdot(cpvadd(vr, this.surface_vr), cpvperp(n));
+			float vrt = Util.cpvdot(Util.cpvadd(vr, this.surface_vr), Util.cpvperp(n));
 
 			// Calculate and clamp the friction impulse.
 			float jtMax = this.u * con.jnAcc;
 			float jt = -vrt * con.tMass;
 			float jtOld = con.jtAcc;
-			con.jtAcc = cpfclamp(jtOld + jt, -jtMax, jtMax);
+			con.jtAcc = Util.cpfclamp(jtOld + jt, -jtMax, jtMax);
 			jt = con.jtAcc - jtOld;
 
 			// Apply the final impulse.
-			apply_impulses(a, b, r1, r2, cpvrotate(n, cpv(jn, jt)));
+			Util.apply_impulses(a, b, r1, r2, Util.cpvrotate(n, Util.cpv(jn, jt)));
 		}
 	}
 
