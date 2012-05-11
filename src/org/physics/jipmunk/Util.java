@@ -27,7 +27,50 @@ import static org.physics.jipmunk.Assert.cpAssertSoft;
 /** @author jobernolte */
 public class Util {
 
-	public static Vector2fFactory vector2fFactory;
+	public static Vector2fFactory vector2fFactory = new Vector2fFactory() {
+		@Override
+		public Vector2f create(final float x, final float y) {
+			Vector2f vector2f = new Vector2f() {
+
+				private float x;
+				private float y;
+
+				@Override
+				public float getX() {
+					return x;
+				}
+
+				@Override
+				public void setX(float x) {
+					this.x = x;
+				}
+
+				@Override
+				public float getY() {
+					return y;
+				}
+
+				@Override
+				public void setY(float y) {
+					this.y = y;
+				}
+
+				@Override
+				public void set(Vector2f vector2f) {
+					this.x = vector2f.getX();
+					this.y = vector2f.getY();
+				}
+
+				@Override
+				public void set(float x, float y) {
+					this.x = x;
+					this.y = y;
+				}
+			};
+			vector2f.set(x, y);
+			return vector2f;
+		}
+	};
 
 	/// Clamp @c f to be between @c min and @c max.
 	public static float cpfclamp(float f, float min, float max) {
