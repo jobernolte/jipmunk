@@ -25,7 +25,7 @@ package org.physics.jipmunk;
 import java.util.ArrayList;
 
 /** @author jobernolte */
-public class ContactList extends ArrayList<Contact> {
+class ContactList extends ArrayList<Contact> {
 
 	private Pool<Contact> contactPool = new Pool<Contact>() {
 		@Override

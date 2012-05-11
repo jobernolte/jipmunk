@@ -103,23 +103,29 @@ public class Space {
 	 */
 	float sleepTimeThreshold = Float.POSITIVE_INFINITY;
 
-	/// Amount of encouraged penetration between colliding shapes..
-	/// Used to reduce oscillating contacts and keep the collision cache warm.
-	/// Defaults to 0.1. If you have poor simulation quality,
-	/// increase this number as much as possible without allowing visible amounts of overlap.
+	/**
+	 * Amount of encouraged penetration between colliding shapes.. Used to reduce oscillating contacts and keep the
+	 * collision cache warm. Defaults to 0.1. If you have poor simulation quality, increase this number as much as possible
+	 * without allowing visible amounts of overlap.
+	 */
 	private float collisionSlop = 0.1f;
 
-	/// Determines how fast overlapping shapes are pushed apart.
-	/// Expressed as a fraction of the error remaining after each second.
-	/// Defaults to pow(1.0 - 0.1, 60.0) meaning that Chipmunk fixes 10% of overlap each frame at 60Hz.
+	/**
+	 * Determines how fast overlapping shapes are pushed apart. Expressed as a fraction of the error remaining after each
+	 * second. Defaults to pow(1.0 - 0.1, 60.0) meaning that Chipmunk fixes 10% of overlap each frame at 60Hz.
+	 */
 	private float collisionBias = (float) Math.pow(1.0 - 0.1, 60);
 
-	/// Number of frames that contact information should persist.
-	/// Defaults to 3. There is probably never a reason to change this value.
+	/**
+	 * Number of frames that contact information should persist. Defaults to 3. There is probably never a reason to change
+	 * this value.
+	 */
 	private int collisionPersistence = 3;
 
-	/// Rebuild the contact graph during each step. Must be enabled to use the cpBodyEachArbiter() function.
-	/// Disabled by default for a small performance boost. Enabled implicitly when the sleeping feature is enabled.
+	/**
+	 * Rebuild the contact graph during each step. Must be enabled to use the cpBodyEachArbiter() function. Disabled by
+	 * default for a small performance boost. Enabled implicitly when the sleeping feature is enabled.
+	 */
 	private boolean enableContactGraph = false;
 
 	private int stamp;
@@ -209,14 +215,28 @@ public class Space {
 		return gravity;
 	}
 
+	/**
+	 * A dedicated static body for the space. You don’t have to use it, but because it’s memory is managed automatically
+	 * with the space it’s very convenient. You can set its user data pointer to something helpful if you want for
+	 * callbacks.
+	 *
+	 * @return the dedicated static body for the space
+	 */
 	public Body getStaticBody() {
 		return staticBody;
 	}
 
+	/**
+	 * Time a group of bodies must remain idle in order to fall asleep. The default value of {@link
+	 * Float#POSITIVE_INFINITY} disables the sleeping feature.
+	 *
+	 * @param sleepTimeThreshold the sleep time threshold
+	 */
 	public void setSleepTimeThreshold(float sleepTimeThreshold) {
 		this.sleepTimeThreshold = sleepTimeThreshold;
 	}
 
+	/** @return the current sleep time threshold */
 	public float getSleepTimeThreshold() {
 		return sleepTimeThreshold;
 	}
@@ -236,12 +256,88 @@ public class Space {
 		this.damping = damping;
 	}
 
+	/** @return the amount of overlap that is allowed for collisions */
 	public float getCollisionSlop() {
 		return collisionSlop;
 	}
 
+	/**
+	 * Amount of overlap between shapes that is allowed. It’s encouraged to set this as high as you can without noticable
+	 * overlapping as it improves the stability. It defaults to 0.1.
+	 *
+	 * @param collisionSlop the amount of overlap that is allowed for collisions
+	 */
 	public void setCollisionSlop(float collisionSlop) {
 		this.collisionSlop = collisionSlop;
+	}
+
+	/** @return the current collision bias */
+	public float getCollisionBias() {
+		return collisionBias;
+	}
+
+	/**
+	 * Chipmunk allows fast moving objects to overlap, then fixes the overlap over time. Overlapping objects are
+	 * unavoidable even if swept collisions are supported, and this is an efficient and stable way to deal with overlapping
+	 * objects. The bias value controls what percentage of overlap remains unfixed after a second and defaults to ~0.2%.
+	 * Valid values are in the range from 0 to 1, but using 0 is not recommended for stability reasons. The default value
+	 * is calculated as cpfpow(1.0f - 0.1f, 60.0f) meaning that Chipmunk attempts to correct 10% of error ever 1/60th of a
+	 * second. Note: Very very few games will need to change this value.
+	 *
+	 * @param collisionBias the collision bias
+	 */
+	public void setCollisionBias(float collisionBias) {
+		this.collisionBias = collisionBias;
+	}
+
+	/** @return the current collision persistence (default is 3) */
+	public int getCollisionPersistence() {
+		return collisionPersistence;
+	}
+
+	/**
+	 * The number of frames the space keeps collision solutions around for. Helps prevent jittering contacts from getting
+	 * worse. This defaults to 3 and very very very few games will need to change this value.
+	 *
+	 * @param collisionPersistence the new collision persistence
+	 */
+	public void setCollisionPersistence(int collisionPersistence) {
+		this.collisionPersistence = collisionPersistence;
+	}
+
+	/** @return <code>true</code> if the contact graph is enabled */
+	public boolean isEnableContactGraph() {
+		return enableContactGraph;
+	}
+
+	/**
+	 * In order to use the {@link Body#arbiters()} function, you must tell Chipmunk to generate the contact graph. Disabled
+	 * by default as it incurrs a small 5-10% overhead. Enabling the sleeping feature also enables the contact graph.
+	 *
+	 * @param enableContactGraph <code>true</code> to enable the contact graph
+	 */
+	public void setEnableContactGraph(boolean enableContactGraph) {
+		this.enableContactGraph = enableContactGraph;
+	}
+
+	/**
+	 * Retrieves the current (if you are in a callback from {@link Space#step(float)}) or most recent (outside of a {@link
+	 * Space#step(float)} call) timestep.
+	 *
+	 * @return the current timestep
+	 */
+	public float getCurrentTimeStep() {
+		return curr_dt;
+	}
+
+	/**
+	 * Returns <code>true</code> when in a callback meaning that you cannot add/remove objects from the space. Can be used
+	 * to choose to create a post-step callback instead.
+	 *
+	 * @return <code>true</code> if the space is locked
+	 */
+	public boolean isLocked() {
+		return locked > 0;
 	}
 
 	/**
@@ -305,6 +401,14 @@ public class Space {
 		shape.hashid = -1;
 	}
 
+	/**
+	 * Adds the given shape to this space. Cannot be called from within a callback other than a {@link PostStepFunc}
+	 * callback (which is different than a {@link CollisionHandler#postSolve(Arbiter, Space)} callback!). Attempting to add
+	 * or remove objects from the space while {@link Space#step(float)} is still executing will throw an assertion.
+	 *
+	 * @param shape the {@link Shape} to add to this space
+	 * @return the added shape
+	 */
 	public Shape addShape(Shape shape) {
 		Body body = shape.body;
 		if (body.isStatic()) {
@@ -327,7 +431,7 @@ public class Space {
 		return shape;
 	}
 
-	public Shape addStaticShape(Shape shape) {
+	private Shape addStaticShape(Shape shape) {
 		assert shape.space == null : "This shape is already added to a space and cannot be added to another.";
 		assertSpaceUnlocked();
 
@@ -342,6 +446,14 @@ public class Space {
 		return shape;
 	}
 
+	/**
+	 * Adds the given body to this space. Cannot be called from within a callback other than a {@link PostStepFunc}
+	 * callback (which is different than a {@link CollisionHandler#postSolve(Arbiter, Space)} callback!). Attempting to add
+	 * or remove objects from the space while {@link Space#step(float)} is still executing will throw an assertion.
+	 *
+	 * @param body the {@link Body} to add to this space
+	 * @return the added body
+	 */
 	public Body addBody(Body body) {
 		assert !body.isStatic() : "Static bodies cannot be added to a space as they are not meant to be simulated.";
 		assert body.space == null : "This body is already added to a space and cannot be added to another.";
@@ -353,6 +465,14 @@ public class Space {
 		return body;
 	}
 
+	/**
+	 * Adds the given constraint to this space. Cannot be called from within a callback other than a {@link PostStepFunc}
+	 * callback (which is different than a {@link CollisionHandler#postSolve(Arbiter, Space)} callback!). Attempting to add
+	 * or remove objects from the space while {@link Space#step(float)} is still executing will throw an assertion.
+	 *
+	 * @param constraint the {@link Constraint} to add to this space
+	 * @return the added constraint
+	 */
 	public Constraint addConstraint(Constraint constraint) {
 		cpAssertSoft(constraint.space == null, "This shape is already added to a space and cannot be added to " +
 				"another.");
@@ -373,6 +493,13 @@ public class Space {
 		return constraint;
 	}
 
+	/**
+	 * Removes the given shape from this space. Cannot be called from within a callback other than a {@link PostStepFunc}
+	 * callback (which is different than a {@link CollisionHandler#postSolve(Arbiter, Space)} callback!). Attempting to add
+	 * or remove objects from the space while {@link Space#step(float)} is still executing will throw an assertion.
+	 *
+	 * @param shape the {@link Shape} to be removed to this space
+	 */
 	public void removeShape(Shape shape) {
 		if (shape.space != this) {
 			throw new IllegalArgumentException("Cannot remove a shape that was not added to the space. (Removed " +
@@ -395,7 +522,7 @@ public class Space {
 		}
 	}
 
-	public void removeStaticShape(Shape shape) {
+	private void removeStaticShape(Shape shape) {
 		cpAssertSoft(containsShape(shape),
 				"Cannot remove a static or sleeping shape that was not added to the space. (Removed twice maybe?)");
 		assertSpaceUnlocked();
@@ -415,6 +542,13 @@ public class Space {
 		revokeShapeId(shape);
 	}
 
+	/**
+	 * Removes the given body from this space. Cannot be called from within a callback other than a {@link PostStepFunc}
+	 * callback (which is different than a {@link CollisionHandler#postSolve(Arbiter, Space)} callback!). Attempting to add
+	 * or remove objects from the space while {@link Space#step(float)} is still executing will throw an assertion.
+	 *
+	 * @param body the {@link Body} to be removed to this space
+	 */
 	public void removeBody(Body body) {
 		cpAssertWarn(containsBody(body),
 				"Cannot remove a body that was not added to the space. (Removed twice maybe?)");
@@ -430,6 +564,14 @@ public class Space {
 		body.space = null;
 	}
 
+	/**
+	 * Removes the given constraint from this space. Cannot be called from within a callback other than a {@link
+	 * PostStepFunc} callback (which is different than a {@link CollisionHandler#postSolve(Arbiter, Space)} callback!).
+	 * Attempting to add or remove objects from the space while {@link Space#step(float)} is still executing will throw an
+	 * assertion.
+	 *
+	 * @param constraint the {@link Constraint} to be removed to this space
+	 */
 	public void removeConstraint(Constraint constraint) {
 		cpAssertWarn(containsConstraint(constraint),
 				"Cannot remove a constraint that was not added to the space. (Removed twice maybe?)");
@@ -444,18 +586,37 @@ public class Space {
 		constraint.space = null;
 	}
 
+	/**
+	 * Checks if this space contains the given shape.
+	 *
+	 * @param shape the {@link Shape} to check
+	 * @return <code>true</code> if this space contains the shape
+	 */
 	public boolean containsShape(Shape shape) {
 		return (shape.space == this);
 	}
 
+	/**
+	 * Checks if this space contains the given body.
+	 *
+	 * @param body the {@link Body} to check
+	 * @return <code>true</code> if this space contains the body
+	 */
 	public boolean containsBody(Body body) {
 		return (body.space == this);
 	}
 
+	/**
+	 * Checks if this space contains the given constraint.
+	 *
+	 * @param constraint the {@link Constraint} to check
+	 * @return <code>true</code> if this space contains the constraint
+	 */
 	public boolean containsConstraint(Constraint constraint) {
 		return (constraint.space == this);
 	}
 
+	/** Reindex all static shapes. Generally updating only the shapes that changed is faster. */
 	public void reindexStatic() {
 		staticShapes.each(new SpatialIndexIteratorFunc<Shape>() {
 			@Override
@@ -481,12 +642,23 @@ public class Space {
 		staticShapes.reindexObject(shape, shape.hashid);
 	}
 
+	/**
+	 * Reindex all the shapes for a certain body.
+	 *
+	 * @param body the body for which to reindex the shapes
+	 */
 	public void reindexShapesForBody(Body body) {
 		for (Shape shape : body.shapes()) {
 			reindexShape(shape);
 		}
 	}
 
+	/**
+	 * Call {@link SpaceBodyIteratorFunc#visit(Body)} for each body in the space. Sleeping bodies are included, but static
+	 * and rogue bodies are not as they aren’t added to the space.
+	 *
+	 * @param func {@link SpaceBodyIteratorFunc} callback
+	 */
 	public void eachBody(final SpaceBodyIteratorFunc func) {
 		cpSpaceLock(this);
 		{
@@ -502,6 +674,12 @@ public class Space {
 		cpSpaceUnlock(this, true);
 	}
 
+	/**
+	 * Call {@link SpaceShapeIteratorFunc#visit(Shape)} for each shape in the space. Sleeping and static shapes are
+	 * included.
+	 *
+	 * @param func {@link SpaceShapeIteratorFunc} callback
+	 */
 	public void eachShape(final SpaceShapeIteratorFunc func) {
 		cpSpaceLock(this);
 		{
@@ -521,6 +699,11 @@ public class Space {
 		cpSpaceUnlock(this, true);
 	}
 
+	/**
+	 * Call {@link SpaceConstraintIteratorFunc#visit(Constraint)} for each constraint in the space.
+	 *
+	 * @param func {@link SpaceConstraintIteratorFunc} callback
+	 */
 	public void eachConstraint(final SpaceConstraintIteratorFunc func) {
 		cpSpaceLock(this);
 		{
@@ -798,6 +981,15 @@ public class Space {
 		return true;
 	}
 
+	/**
+	 * Update the space for the given time step. Using a fixed time step is highly recommended. Doing so can greatly
+	 * increase the quality of the simulation. The easiest way to do constant timesteps is to simple step forward by 1/60th
+	 * of a second (or whatever your target framerate is) for each frame regardless of how long it took to render. This
+	 * works fine for many games, but a better way to do it is to separate your physics timestep and rendering. This is a
+	 * good article on how to do that.
+	 *
+	 * @param dt the time step to be used for updating the space
+	 */
 	public void step(float dt) {
 		if (dt == 0.0f) return; // don't step if the timestep is 0!
 

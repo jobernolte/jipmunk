@@ -45,9 +45,14 @@ import static org.physics.jipmunk.Util.k_tensor;
 import static org.physics.jipmunk.Util.mult_k;
 import static org.physics.jipmunk.Util.relative_velocity;
 
-/** @author jobernolte */
+/**
+ * The groove goes from {@link GrooveJoint#grooveA} to {@link GrooveJoint#grooveB} on body <b>a</b>, and the pivot is
+ * attached to {@link GrooveJoint#anchr2} on body <b>b</b>. All coordinates are body local.
+ *
+ * @author jobernolte
+ */
 public class GrooveJoint extends Constraint {
-	Vector2f grv_n, grv_a, grv_b;
+	Vector2f grv_n, grooveA, grooveB;
 	Vector2f anchr2;
 
 	Vector2f grv_tn;
@@ -60,8 +65,8 @@ public class GrooveJoint extends Constraint {
 	Vector2f bias;
 
 	void init(Vector2f groove_a, Vector2f groove_b, Vector2f anchr2) {
-		this.grv_a = Util.cpv(groove_a);
-		this.grv_b = Util.cpv(groove_b);
+		this.grooveA = Util.cpv(groove_a);
+		this.grooveB = Util.cpv(groove_b);
 		this.grv_n = cpvperp(cpvnormalize(cpvsub(groove_b, groove_a)));
 		this.anchr2 = anchr2;
 
@@ -74,23 +79,23 @@ public class GrooveJoint extends Constraint {
 	}
 
 	public Vector2f getGrooveA() {
-		return grv_a;
+		return grooveA;
 	}
 
 	public void setGrooveA(Vector2f value) {
-		this.grv_a = value;
-		this.grv_n = cpvperp(cpvnormalize(cpvsub(this.grv_b, value)));
+		this.grooveA = value;
+		this.grv_n = cpvperp(cpvnormalize(cpvsub(this.grooveB, value)));
 
 		activateBodies();
 	}
 
 	public Vector2f getGrooveB() {
-		return grv_b;
+		return grooveB;
 	}
 
 	public void setGrooveB(Vector2f value) {
-		this.grv_b = value;
-		this.grv_n = cpvperp(cpvnormalize(cpvsub(value, this.grv_a)));
+		this.grooveB = value;
+		this.grv_n = cpvperp(cpvnormalize(cpvsub(value, this.grooveA)));
 
 		activateBodies();
 	}
@@ -106,8 +111,8 @@ public class GrooveJoint extends Constraint {
 	@Override
 	protected void preStep(float dt) {
 		// calculate endpoints in worldspace
-		Vector2f ta = a.local2World(this.grv_a);
-		Vector2f tb = a.local2World(this.grv_b);
+		Vector2f ta = a.local2World(this.grooveA);
+		Vector2f tb = a.local2World(this.grooveB);
 
 		// calculate axis
 		Vector2f n = cpvrotate(this.grv_n, a.getRotation());

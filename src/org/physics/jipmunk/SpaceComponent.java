@@ -175,7 +175,7 @@ class SpaceComponent {
 	}
 
 	static void cpSpaceProcessComponents(Space space, float dt) {
-		float dv = space.idleSpeedThreshold;
+		float dv = space.getIdleSpeedThreshold();
 		float dvsq = (dv != 0 ? dv * dv : cpvlengthsq(space.gravity) * dt * dt);
 
 		// update idling and reset component nodes

@@ -26,14 +26,20 @@ import java.util.Iterator;
 
 /** @author jobernolte */
 public class Arbiter {
-	/// Calculated value to use for the elasticity coefficient.
-	/// Override in a pre-solve collision handler for custom behavior.
+	/**
+	 * Calculated value to use for the elasticity coefficient. Override in a pre-solve collision handler for custom
+	 * behavior.
+	 */
 	float e = 0;
-	/// Calculated value to use for the friction coefficient.
-	/// Override in a pre-solve collision handler for custom behavior.
+	/**
+	 * Calculated value to use for the friction coefficient. Override in a pre-solve collision handler for custom
+	 * behavior.
+	 */
 	float u = 0;
-	/// Calculated value to use for applying surface velocities.
-	/// Override in a pre-solve collision handler for custom behavior.
+	/**
+	 * Calculated value to use for applying surface velocities. Override in a pre-solve collision handler for custom
+	 * behavior.
+	 */
 	Vector2f surface_vr = Util.cpvzero();
 
 	Shape a;

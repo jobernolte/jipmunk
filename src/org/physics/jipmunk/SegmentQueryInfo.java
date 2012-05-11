@@ -24,9 +24,16 @@ package org.physics.jipmunk;
 
 import static org.physics.jipmunk.Util.cpvzero;
 
-/** @author jobernolte */
+/**
+ * Segment queries return more information than just a simple yes or no, they also return where a shape was hit and it’s
+ * surface normal at the hit point. {@link SegmentQueryInfo#t} is the percentage between the query start and end points.
+ * If you need the hit point in world space or the absolute distance from start, see the segment query helper functions
+ * farther down.
+ *
+ * @author jobernolte
+ */
 public class SegmentQueryInfo {
-	/** The shape that was hit, NULL if no collision occured. */
+	/** The shape that was hit, <code>null</code> if no collision occured. */
 	public Shape shape;
 	/** The normalized distance along the query segment in the range [0, 1]. */
 	public float t = 1.0f;

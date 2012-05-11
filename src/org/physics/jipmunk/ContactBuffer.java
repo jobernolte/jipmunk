@@ -23,7 +23,7 @@
 package org.physics.jipmunk;
 
 /** @author jobernolte */
-public class ContactBuffer {
+class ContactBuffer {
 	int stamp;
 	int numContacts;
 	Contact[] contacts;

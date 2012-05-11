@@ -1,4 +1,4 @@
 jipmunk
 =======
 
-Java port of Chipmunk physics engine
+Java port of the Chipmunk physics engine
