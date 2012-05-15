@@ -52,4 +52,16 @@ class Contact {
 	static void cpContactInit(Contact con, Vector2f p, Vector2f n, float dist, long hash) {
 		con.init(p, n, dist, hash);
 	}
+
+	public Vector2f getPoint() {
+		return p;
+	}
+
+	public Vector2f getNormal() {
+		return n;
+	}
+
+	public float getDistance() {
+		return dist;
+	}
 }

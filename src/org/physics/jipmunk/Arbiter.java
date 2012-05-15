@@ -249,6 +249,14 @@ public class Arbiter {
 		return set;
 	}
 
+	public Contact[] getContacts() {
+		return contacts;
+	}
+
+	public int getNumContacts() {
+		return numContacts;
+	}
+
 	public Vector2f totalImpulse() {
 		Vector2f sum = Util.cpvzero();
 

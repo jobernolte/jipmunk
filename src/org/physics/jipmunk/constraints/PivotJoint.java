@@ -41,7 +41,7 @@ import static org.physics.jipmunk.Util.mult_k;
 import static org.physics.jipmunk.Util.relative_velocity;
 
 /** @author jobernolte */
-public class PivotJoin extends Constraint {
+public class PivotJoint extends Constraint {
 	Vector2f anchr1, anchr2;
 
 	Vector2f r1, r2;
@@ -52,7 +52,7 @@ public class PivotJoin extends Constraint {
 	float jMaxLen;
 	Vector2f bias;
 
-	public PivotJoin(Body a, Body b, Vector2f anchr1, Vector2f anchr2) {
+	public PivotJoint(Body a, Body b, Vector2f anchr1, Vector2f anchr2) {
 		super(a, b);
 		init(a, b, anchr1, anchr2);
 	}
@@ -66,7 +66,7 @@ public class PivotJoin extends Constraint {
 	 * @param b     the second body to connect
 	 * @param pivot the pivot location
 	 */
-	public PivotJoin(Body a, Body b, Vector2f pivot) {
+	public PivotJoint(Body a, Body b, Vector2f pivot) {
 		super(a, b);
 		Vector2f anchr1 = (a != null ? a.world2Local(pivot) : Util.cpv(pivot));
 		Vector2f anchr2 = (b != null ? b.world2Local(pivot) : Util.cpv(pivot));

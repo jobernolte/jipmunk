@@ -393,9 +393,12 @@ public class Body {
 		Body body = root;
 		while (body != null) {
 			Body next = body.node.next;
+
+			body.node.idleTime = 0;
 			body.node.root = null;
 			body.node.next = null;
 			space.activateBody(body);
+
 			body = next;
 		}
 		cpArrayDeleteObj(space.sleepingComponents, root);
@@ -404,7 +407,7 @@ public class Body {
 	void activate() {
 		if (!isRogue()) {
 			node.idleTime = 0;
-			componentActivate(node.root);
+			componentActivate(SpaceComponent.ComponentRoot(this));
 		}
 	}
 

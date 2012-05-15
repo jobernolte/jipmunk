@@ -20,38 +20,21 @@
  * SOFTWARE.
  */
 
-package org.physics.jipmunk;
+package org.physics.jipmunk.examples;
 
-import java.util.logging.Logger;
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
+import java.nio.FloatBuffer;
+import java.nio.IntBuffer;
 
 /** @author jobernolte */
-class Assert {
-	final static Logger logger = Logger.getLogger(Assert.class.getName());
+public class BufferUtils {
 
-	public static void cpAssertSoft(boolean condition, String message) {
-		if (!condition) {
-			logger.info("failed assertion: " + message);
-		}
-		if (!condition) {
-			throw new AssertionError(message);
-		}
+	public static FloatBuffer createFloatBuffer(int size) {
+		return ByteBuffer.allocateDirect(size << 2).order(ByteOrder.nativeOrder()).asFloatBuffer();
 	}
 
-	public static void cpAssertWarn(boolean condition, String message) {
-		if (!condition) {
-			throw new AssertionError(message);
-		}
-	}
-
-	public static void cpAssertHard(boolean condition, String message) {
-		if (!condition) {
-			throw new AssertionError(message);
-		}
-	}
-
-	public static void cpAssertSpaceUnlocked(Space space) {
-		if (space.locked != 0) {
-			throw new AssertionError("space is not unlocked");
-		}
+	public static IntBuffer createIntBuffer(int size) {
+		return ByteBuffer.allocateDirect(size << 2).order(ByteOrder.nativeOrder()).asIntBuffer();
 	}
 }

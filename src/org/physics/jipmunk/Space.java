@@ -23,6 +23,7 @@
 package org.physics.jipmunk;
 
 import java.util.ArrayList;
+import java.util.LinkedList;
 import java.util.List;
 
 import static org.physics.jipmunk.Arbiter.cpArbiterApplyCachedImpulse;
@@ -130,8 +131,8 @@ public class Space {
 
 	private int stamp;
 	List<Body> bodies = new ArrayList<Body>();
-	private List<Body> rousedBodies = new ArrayList<Body>();
-	List<Body> sleepingComponents = new ArrayList<Body>();
+	private List<Body> rousedBodies = new LinkedList<Body>();
+	List<Body> sleepingComponents = new LinkedList<>();
 	int locked = 0;
 	private LongHashMap<CollisionHandlerEntry> collisionHandlers = new LongHashMap<CollisionHandlerEntry>();
 	private final static SpatialIndexBBFunc<Shape> shapeGetBBFunc = new SpatialIndexBBFunc<Shape>() {
@@ -798,10 +799,10 @@ public class Space {
 		if (locked != 0) {
 			// cpSpaceActivateBody() is called again once the space is unlocked
 			if (!rousedBodies.contains(body)) {
-				cpArrayPush(rousedBodies, body);
+				rousedBodies.add(body);
 			}
 		} else {
-			cpArrayPush(bodies, body);
+			bodies.add(body);
 
 			for (Shape shape : body.shapes()) {
 				cpSpatialIndexRemove(this.staticShapes, shape, shape.hashid);
@@ -828,7 +829,7 @@ public class Space {
 					// Update the arbiter's state
 					arb.stamp = this.stamp;
 					arb.handler = lookupHandlerEntry(a.collision_type, b.collision_type);
-					cpArrayPush(this.arbiters, arb);
+					this.arbiters.add(arb);
 				}
 			}
 
@@ -1010,14 +1011,14 @@ public class Space {
 		}
 		arbiters.clear();
 
-		// Integrate positions
-		for (Body body : bodies) {
-			body.positionFunc.position(body, dt);
-		}
-
-		// Find colliding pairs.
 		cpSpaceLock(this);
 		{
+			// Integrate positions
+			for (Body body : bodies) {
+				body.positionFunc.position(body, dt);
+			}
+
+			// Find colliding pairs.
 			// cpSpacePushFreshContactBuffer(space);
 			cpSpatialIndexEach(this.activeShapes, new SpatialIndexIteratorFunc<Shape>() {
 				@Override
@@ -1036,9 +1037,7 @@ public class Space {
 		cpSpaceUnlock(this, false);
 
 		// If body sleeping is enabled, do that now.
-		if (this.sleepTimeThreshold != Float.POSITIVE_INFINITY || this.enableContactGraph) {
-			cpSpaceProcessComponents(this, dt);
-		}
+		cpSpaceProcessComponents(this, dt);
 
 		// Clear out old cached arbiters and call separate callbacks
 		cpHashSetFilter(this.cachedArbiters, new HashSetFilterFunc<Arbiter>() {
@@ -1229,5 +1228,60 @@ public class Space {
 	public void segmentQuery(Vector2f start, Vector2f end, int layers, int group,
 			SpaceSegmentQueryFunc func) {
 		cpSpaceSegmentQuery(this, start, end, layers, group, func);
+	}
+
+	public List<Shape> getShapes() {
+		final List<Shape> shapes = new ArrayList<>();
+		activeShapes.each(new SpatialIndexIteratorFunc<Shape>() {
+			@Override
+			public void visit(Shape obj) {
+				shapes.add(obj);
+			}
+		});
+		return shapes;
+	}
+
+	public List<Shape> getStaticShapes() {
+		final List<Shape> shapes = new ArrayList<>();
+		staticShapes.each(new SpatialIndexIteratorFunc<Shape>() {
+			@Override
+			public void visit(Shape obj) {
+				shapes.add(obj);
+			}
+		});
+		return shapes;
+	}
+
+	public List<Constraint> getConstraints() {
+		return constraints;
+	}
+
+	public List<Body> getBodies() {
+		return bodies;
+	}
+
+	public List<Arbiter> getArbiters() {
+		return arbiters;
+	}
+
+	public void useSpatialHash(float dim, int count) {
+		final SpatialIndex<Shape> staticShapes = new SpaceHash<>(dim, count, shapeGetBBFunc, null);
+		final SpatialIndex<Shape> activeShapes = new SpaceHash<>(dim, count, shapeGetBBFunc, staticShapes);
+
+		cpSpatialIndexEach(this.staticShapes, new SpatialIndexIteratorFunc<Shape>() {
+			@Override
+			public void visit(Shape obj) {
+				staticShapes.insert(obj, obj.hashid);
+			}
+		});
+		cpSpatialIndexEach(this.activeShapes, new SpatialIndexIteratorFunc<Shape>() {
+			@Override
+			public void visit(Shape obj) {
+				activeShapes.insert(obj, obj.hashid);
+			}
+		});
+
+		this.staticShapes = staticShapes;
+		this.activeShapes = activeShapes;
 	}
 }

@@ -84,11 +84,23 @@ public class CircleShape extends Shape {
 		segmentQueryImpl(this, tc, r, a, b, info);
 	}
 
+	public float getRadius() {
+		return r;
+	}
+
 	public void setRadius(float r) {
 		this.r = r;
 	}
 
+	public Vector2f getOffset() {
+		return c;
+	}
+
 	public void setOffset(final Vector2f offset) {
 		this.c.set(offset);
+	}
+
+	public Vector2f getTransformedCenter() {
+		return tc;
 	}
 }

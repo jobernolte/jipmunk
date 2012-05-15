@@ -60,6 +60,14 @@ public class PolyShape extends Shape {
 		setUpVerts(verts, vertOffset, vertLength, offset);
 	}
 
+	public int getNumVertices() {
+		return verts.length;
+	}
+
+	public Vector2f[] getVertices() {
+		return verts;
+	}
+
 	void setUpVerts(Vector2f[] verts, int vertOffset, int vertLength, Vector2f offset) {
 		if (!validate(verts, vertOffset, vertLength)) {
 			throw new IllegalArgumentException("Polygon is concave or has a reversed winding.");

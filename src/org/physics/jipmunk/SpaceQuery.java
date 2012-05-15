@@ -28,7 +28,6 @@ import static org.physics.jipmunk.Shape.cpShapeSegmentQuery;
 import static org.physics.jipmunk.Shape.cpShapeUpdate;
 import static org.physics.jipmunk.Space.cpSpaceLock;
 import static org.physics.jipmunk.Space.cpSpaceUnlock;
-import static org.physics.jipmunk.SpatialIndex.cpSpatialIndexPointQuery;
 import static org.physics.jipmunk.SpatialIndex.cpSpatialIndexQuery;
 import static org.physics.jipmunk.SpatialIndex.cpSpatialIndexSegmentQuery;
 import static org.physics.jipmunk.Util.cpBBIntersects;
@@ -67,12 +66,13 @@ class SpaceQuery {
 
 	static void cpSpacePointQuery(Space space, Vector2f point, int layers, int group, SpacePointQueryFunc func) {
 		pointQueryHelper.init(point, layers, group, func);
+		BB bb = BB.forCircle(point, 0.0f);
 
 		cpSpaceLock(space);
 		{
 			pointQueryHelper.point = point;
-			cpSpatialIndexPointQuery(space.activeShapes, point, pointQueryHelper);
-			cpSpatialIndexPointQuery(space.staticShapes, point, pointQueryHelper);
+			cpSpatialIndexQuery(space.activeShapes, bb, pointQueryHelper);
+			cpSpatialIndexQuery(space.staticShapes, bb, pointQueryHelper);
 		}
 		cpSpaceUnlock(space, true);
 

@@ -482,4 +482,8 @@ public class Util {
 	public static Vector2f cpv(Vector2f a) {
 		return vector2fFactory.create(a.getX(), a.getY());
 	}
+
+	public static float cpffloor(float v) {
+		return (float) Math.floor(v);
+	}
 }

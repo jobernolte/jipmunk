@@ -53,8 +53,6 @@ abstract class SpatialIndex<T> {
 
 	public abstract void reindexQuery(SpatialReIndexQueryFunc<T> func);
 
-	public abstract void pointQuery(final Vector2f point, SpatialIndexQueryFunc<T> func);
-
 	public abstract void segmentQuery(final Vector2f a, final Vector2f b, float exit,
 			SpatialIndexSegmentQueryFunc<T> func);
 
@@ -115,13 +113,6 @@ abstract class SpatialIndex<T> {
 	 */
 	static <T> void cpSpatialIndexReindexQuery(SpatialIndex<T> index, SpatialReIndexQueryFunc<T> func) {
 		index.reindexQuery(func);
-	}
-
-	/// Perform a point query against the spatial index, calling @c func for each potential match.
-/// A pointer to the point will be passed as @c obj1 of @c func.
-	static <T> void cpSpatialIndexPointQuery(SpatialIndex<T> index, final Vector2f point,
-			SpatialIndexQueryFunc<T> func) {
-		index.pointQuery(point, func);
 	}
 
 	/// Perform a segment query against the spatial index, calling @c func for each potential match.

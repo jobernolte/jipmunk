@@ -68,8 +68,16 @@ public class SegmentShape extends Shape {
 		return n;
 	}
 
-	public float getR() {
+	public float getRadius() {
 		return r;
+	}
+
+	public Vector2f getTa() {
+		return ta;
+	}
+
+	public Vector2f getTb() {
+		return tb;
 	}
 
 	@Override

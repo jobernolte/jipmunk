@@ -175,20 +175,27 @@ class SpaceComponent {
 	}
 
 	static void cpSpaceProcessComponents(Space space, float dt) {
-		float dv = space.getIdleSpeedThreshold();
-		float dvsq = (dv != 0 ? dv * dv : cpvlengthsq(space.gravity) * dt * dt);
-
-		// update idling and reset component nodes
+		boolean sleep = (space.sleepTimeThreshold != Float.POSITIVE_INFINITY);
 		List<Body> bodies = space.bodies;
-		for (int i = 0; i < bodies.size(); i++) {
-			Body body = bodies.get(i);
 
-			// Need to deal with infinite mass objects
-			float keThreshold = (dvsq != 0 ? body.m * dvsq : 0.0f);
-			body.node.idleTime = (cpBodyKineticEnergy(body) > keThreshold ? 0.0f : body.node.idleTime + dt);
+		// Calculate the kinetic energy of all the bodies.
+		if (sleep) {
+			float dv = space.getIdleSpeedThreshold();
+			float dvsq = (dv != 0 ? dv * dv : cpvlengthsq(space.gravity) * dt * dt);
 
-			cpAssertSoft(body.node.next == null, "Internal Error: Dangling next pointer detected in contact graph.");
-			cpAssertSoft(body.node.root == null, "Internal Error: Dangling root pointer detected in contact graph.");
+			// update idling and reset component nodes
+			for (int i = 0; i < bodies.size(); i++) {
+				Body body = bodies.get(i);
+
+				// Need to deal with infinite mass objects
+				float keThreshold = (dvsq != 0 ? body.m * dvsq : 0.0f);
+				body.node.idleTime = (cpBodyKineticEnergy(body) > keThreshold ? 0.0f : body.node.idleTime + dt);
+
+				cpAssertSoft(body.node.next == null,
+						"Internal Error: Dangling next pointer detected in contact graph.");
+				cpAssertSoft(body.node.root == null,
+						"Internal Error: Dangling root pointer detected in contact graph.");
+			}
 		}
 
 		// Awaken any sleeping bodies found and then push arbiters to the bodies' lists.
@@ -205,44 +212,46 @@ class SpaceComponent {
 			cpBodyPushArbiter(b, arb);
 		}
 
-		// Bodies should be held active if connected by a joint to a non-static rouge body.
-		List<Constraint> constraints = space.constraints;
-		for (int i = 0; i < constraints.size(); i++) {
-			Constraint constraint = constraints.get(i);
-			Body a = constraint.a, b = constraint.b;
+		if (sleep) {
+			// Bodies should be held active if connected by a joint to a non-static rouge body.
+			List<Constraint> constraints = space.constraints;
+			for (int i = 0; i < constraints.size(); i++) {
+				Constraint constraint = constraints.get(i);
+				Body a = constraint.a, b = constraint.b;
 
-			if (cpBodyIsRogue(b) && !cpBodyIsStatic(b)) cpBodyActivate(a);
-			if (cpBodyIsRogue(a) && !cpBodyIsStatic(a)) cpBodyActivate(b);
-		}
-
-		// Generate components and deactivate sleeping ones
-		for (int i = 0; i < bodies.size(); ) {
-			Body body = bodies.get(i);
-
-			if (ComponentRoot(body) == null) {
-				// Body not in a component yet. Perform a DFS to flood fill mark
-				// the component in the contact graph using this body as the root.
-				FloodFillComponent(body, body);
-
-				// Check if the component should be putSingle to sleep.
-				if (!ComponentActive(body, space.sleepTimeThreshold)) {
-					cpArrayPush(space.sleepingComponents, body);
-					//CP_BODY_FOREACH_COMPONENT(body, other)
-					for (Body other : body.components()) {
-						cpSpaceDeactivateBody(space, other);
-					}
-
-					// cpSpaceDeactivateBody() removed the current body from the list.
-					// Skip incrementing the index counter.
-					continue;
-				}
+				if (cpBodyIsRogue(b) && !cpBodyIsStatic(b)) cpBodyActivate(a);
+				if (cpBodyIsRogue(a) && !cpBodyIsStatic(a)) cpBodyActivate(b);
 			}
 
-			i++;
+			// Generate components and deactivate sleeping ones
+			for (int i = 0; i < bodies.size(); ) {
+				Body body = bodies.get(i);
 
-			// Only sleeping bodies retain their component node pointers.
-			body.node.root = null;
-			body.node.next = null;
+				if (ComponentRoot(body) == null) {
+					// Body not in a component yet. Perform a DFS to flood fill mark
+					// the component in the contact graph using this body as the root.
+					FloodFillComponent(body, body);
+
+					// Check if the component should be putSingle to sleep.
+					if (!ComponentActive(body, space.sleepTimeThreshold)) {
+						cpArrayPush(space.sleepingComponents, body);
+						//CP_BODY_FOREACH_COMPONENT(body, other)
+						for (Body other : body.components()) {
+							cpSpaceDeactivateBody(space, other);
+						}
+
+						// cpSpaceDeactivateBody() removed the current body from the list.
+						// Skip incrementing the index counter.
+						continue;
+					}
+				}
+
+				i++;
+
+				// Only sleeping bodies retain their component node pointers.
+				body.node.root = null;
+				body.node.next = null;
+			}
 		}
 	}
 

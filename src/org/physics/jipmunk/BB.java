@@ -122,4 +122,9 @@ public class BB {
 
 		return Util.cpv(x + bb.l, y + bb.b);
 	}
+
+	/// Constructs a cpBB for a circle with the given position and radius.
+	public static BB forCircle(final Vector2f p, float r) {
+		return new BB(p.getX() - r, p.getY() - r, p.getX() + r, p.getY() + r);
+	}
 }

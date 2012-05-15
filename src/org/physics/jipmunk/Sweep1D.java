@@ -139,12 +139,6 @@ class Sweep1D<T> extends SpatialIndex<T> {
 	}
 
 	@Override
-	public void pointQuery(final Vector2f point, SpatialIndexQueryFunc<T> func) {
-		//cpSweep1DQuery(sweep, & point, cpBBNew(point.getX(), point.getY(), point.getX(), point.getY()), func, data);
-		query(/*point,*/ new BB(point.getX(), point.getY(), point.getX(), point.getY()), func);
-	}
-
-	@Override
 	public void segmentQuery(Vector2f a, Vector2f b, float exit, SpatialIndexSegmentQueryFunc<T> func) {
 		BB bb = BB.expand(new BB(a.getX(), a.getY(), a.getX(), a.getY()), b);
 		Bounds bounds = new Bounds(bb);

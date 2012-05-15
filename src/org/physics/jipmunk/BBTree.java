@@ -802,11 +802,6 @@ cpBBTreeDestroy(BBTree tree)
 	}
 
 	@Override
-	public void pointQuery(Vector2f point, SpatialIndexQueryFunc<T> func) {
-		cpBBTreePointQuery(this, point, func);
-	}
-
-	@Override
 	public void segmentQuery(Vector2f a, Vector2f b, float exit, SpatialIndexSegmentQueryFunc<T> func) {
 		cpBBTreeSegmentQuery(this, a, b, exit, func);
 	}
