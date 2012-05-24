@@ -45,6 +45,16 @@ public class BB {
 		return (a.l <= b.r && b.l <= a.r && a.b <= b.t && b.b <= a.t);
 	}
 
+	/**
+	 * Returns true if <code>this</code> and <code>bb</code> intersect.
+	 *
+	 * @param bb the other BB to intersect with
+	 * @return <code>true</code> if <code>this</code> intersects <code>bb</code>
+	 */
+	public boolean intersects(final BB bb) {
+		return (this.l <= bb.r && bb.l <= this.r && this.b <= bb.t && bb.b <= this.t);
+	}
+
 	/// Returns true if @c other lies completely within @c bb.
 	public static boolean contains(final BB bb, final BB other) {
 		return (bb.l <= other.l && bb.r >= other.r && bb.b <= other.b && bb.t >= other.t);
@@ -55,6 +65,16 @@ public class BB {
 		return (bb.l <= v.getX() && bb.r >= v.getX() && bb.b <= v.getY() && bb.t >= v.getY());
 	}
 
+	/// Returns true if @c other lies completely within @c bb.
+	public boolean contains(final BB other) {
+		return (this.l <= other.l && this.r >= other.r && this.b <= other.b && this.t >= other.t);
+	}
+
+	public boolean contains(final Vector2f v) {
+		return (this.l <= v.getX() && this.r >= v.getX() && this.b <= v.getY() && this.t >= v.getY());
+	}
+
+
 	/// Returns a bounding box that holds both bounding boxes.
 	public static BB merge(final BB a, final BB b) {
 		return new BB(
@@ -64,6 +84,17 @@ public class BB {
 				Math.max(a.t, b.t)
 		);
 	}
+
+	/// Returns a bounding box that holds both bounding boxes.
+	public BB merge(final BB b) {
+		return new BB(
+				Math.min(this.l, b.l),
+				Math.min(this.b, b.b),
+				Math.max(this.r, b.r),
+				Math.max(this.t, b.t)
+		);
+	}
+
 
 	/// Returns a bounding box that holds both @c bb and @c v.
 	public static BB expand(final BB bb, final Vector2f v) {

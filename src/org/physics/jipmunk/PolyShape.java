@@ -22,7 +22,6 @@
 
 package org.physics.jipmunk;
 
-import static org.physics.jipmunk.Util.cpBBContainsVect;
 import static org.physics.jipmunk.Util.cpBBNew;
 import static org.physics.jipmunk.Util.cpfmax;
 import static org.physics.jipmunk.Util.cpfmin;
@@ -103,7 +102,7 @@ public class PolyShape extends Shape {
 
 	@Override
 	public boolean pointQuery(Vector2f p) {
-		return cpBBContainsVect(this.bb, p) && cpPolyShapeContainsVert(this, p);
+		return this.bb.contains(p) && cpPolyShapeContainsVert(this, p);
 	}
 
 	@Override

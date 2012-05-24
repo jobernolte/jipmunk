@@ -30,7 +30,6 @@ import static org.physics.jipmunk.Util.CP_HASH_PAIR;
 import static org.physics.jipmunk.Util.cpfabs;
 import static org.physics.jipmunk.Util.cpfmin;
 import static org.physics.jipmunk.Util.cpfsqrt;
-import static org.physics.jipmunk.Util.cpv;
 import static org.physics.jipmunk.Util.cpvadd;
 import static org.physics.jipmunk.Util.cpvcross;
 import static org.physics.jipmunk.Util.cpvdot;
@@ -41,12 +40,15 @@ import static org.physics.jipmunk.Util.cpvsub;
 
 /** @author jobernolte */
 class Collision {
+
+	private final static DefaultVector2f ZERO_ONE = new DefaultVector2f(1, 0);
+
 	// Add contact points for circle to circle collisions.
 	// Used by several collision tests.
 	static int circle2circleQuery(final Vector2f p1, final Vector2f p2, final float r1, final float r2,
 			ContactList arr) {
 		float mindist = r1 + r2;
-		Vector2f delta = cpvsub(p2, p1);
+		DefaultVector2f delta = new DefaultVector2f(p2).sub(p1);
 		float distsq = cpvlengthsq(delta);
 		if (distsq >= mindist * mindist) return 0;
 
@@ -54,13 +56,11 @@ class Collision {
 
 		Contact con = nextContactPoint(arr);
 		// Allocate and initialize the contact.
-		con.init(
-				cpvadd(p1, cpvmult(delta, 0.5f + (r1 - 0.5f * mindist) / (dist != 0 ? dist : Float.POSITIVE_INFINITY)
-				)),
-				(dist != 0 ? cpvmult(delta, 1.0f / dist) : cpv(1.0f, 0.0f)),
-				dist - mindist,
-				0
-		);
+		final DefaultVector2f cpvmult = new DefaultVector2f(delta).mult(
+				0.5f + (r1 - 0.5f * mindist) / (dist != 0 ? dist : Float.POSITIVE_INFINITY));
+		final DefaultVector2f p = new DefaultVector2f(p1).add(cpvmult);
+		final DefaultVector2f n = dist != 0 ? new DefaultVector2f(delta).mult(1.0f / dist) : ZERO_ONE;
+		con.init(p, n, dist - mindist, 0);
 
 		return 1;
 	}

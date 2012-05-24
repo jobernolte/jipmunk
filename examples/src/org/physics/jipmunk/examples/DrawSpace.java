@@ -224,7 +224,7 @@ public class DrawSpace {
 		g = (g * mult) / max + add;
 		b = (b * mult) / max + add;
 
-		gl.glColor3ui(r, g, b);
+		gl.glColor3f(r / 255.0f, g / 255.0f, b / 255.0f);
 	}
 
 	void drawCircleShape(Body body, CircleShape circle, Space space) {

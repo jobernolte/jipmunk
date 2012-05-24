@@ -37,4 +37,9 @@ class Array {
 	public static <T> void cpArrayFree(List<T> array) {
 		array.clear();
 	}
+
+	@SuppressWarnings("unchecked")
+	public static <T> T[] newInstance(Class<?> clazz, int capacity) {
+		return (T[]) java.lang.reflect.Array.newInstance(clazz, capacity);
+	}
 }

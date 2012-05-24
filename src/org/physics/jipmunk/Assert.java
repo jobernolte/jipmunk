@@ -32,19 +32,18 @@ class Assert {
 		if (!condition) {
 			logger.info("failed assertion: " + message);
 		}
-		if (!condition) {
-			throw new AssertionError(message);
-		}
 	}
 
 	public static void cpAssertWarn(boolean condition, String message) {
 		if (!condition) {
+			logger.info("failed assertion: " + message);
 			throw new AssertionError(message);
 		}
 	}
 
 	public static void cpAssertHard(boolean condition, String message) {
 		if (!condition) {
+			logger.info("failed assertion: " + message);
 			throw new AssertionError(message);
 		}
 	}

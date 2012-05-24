@@ -50,7 +50,6 @@ import static org.physics.jipmunk.SpaceQuery.cpSpaceSegmentQueryFirst;
 import static org.physics.jipmunk.SpatialIndex.cpSpatialIndexEach;
 import static org.physics.jipmunk.SpatialIndex.cpSpatialIndexInsert;
 import static org.physics.jipmunk.SpatialIndex.cpSpatialIndexRemove;
-import static org.physics.jipmunk.Util.cpBBIntersects;
 import static org.physics.jipmunk.Util.cpfpow;
 
 /**
@@ -130,7 +129,7 @@ public class Space {
 	private boolean enableContactGraph = false;
 
 	private int stamp;
-	List<Body> bodies = new ArrayList<Body>();
+	List<Body> bodies = new LinkedList<Body>();
 	private List<Body> rousedBodies = new LinkedList<Body>();
 	List<Body> sleepingComponents = new LinkedList<>();
 	int locked = 0;
@@ -151,13 +150,25 @@ public class Space {
 			return new Arbiter();
 		}
 	};
-	private float prev_dt;
 	private List<PostStepFunc> postStepCallbacks;
 	private Body staticBody;
 	List<Constraint> constraints = new ArrayList<Constraint>();
 	private IntHashMap<Shape> shapeIds = new IntHashMap<Shape>();
 	private int lastShapeId = 0;
 	private float curr_dt;
+	private SpatialReIndexQueryFunc<Shape> activeShapesSpatialReIndexQueryFunc = new SpatialReIndexQueryFunc<Shape>() {
+		@Override
+		public void apply(Shape obj1, Shape obj2) {
+			collideShapes(obj1, obj2);
+		}
+	};
+	private SpatialIndexIteratorFunc activeShapeSpatialIndexIteratorFunc = new SpatialIndexIteratorFunc<Shape>() {
+		@Override
+		public void visit(Shape shape) {
+			Body body = shape.body;
+			shape.update(body.p, body.rot);
+		}
+	};
 
 	public Space() {
 		cpBBTreeSetVelocityFunc(activeShapes, new BBTreeVelocityFunc<Shape>() {
@@ -841,16 +852,16 @@ public class Space {
 		}
 	}
 
-	static boolean queryReject(Shape a, Shape b) {
+	private boolean queryReject(Shape a, Shape b) {
 		return (
-				// BBoxes must overlap
-				!cpBBIntersects(a.bb, b.bb)
-						// Don't collide shapes attached to the same body.
-						|| a.body == b.body
+				// Don't collide shapes attached to the same body.
+				a.body == b.body
 						// Don't collide objects in the same non-zero group
 						|| (a.group != 0 && a.group == b.group)
 						// Don't collide objects that don't share at least on layer.
 						|| (a.layers & b.layers) == 0
+						// BBoxes must overlap
+						|| !a.bb.intersects(b.bb)
 		);
 	}
 
@@ -1020,19 +1031,8 @@ public class Space {
 
 			// Find colliding pairs.
 			// cpSpacePushFreshContactBuffer(space);
-			cpSpatialIndexEach(this.activeShapes, new SpatialIndexIteratorFunc<Shape>() {
-				@Override
-				public void visit(Shape shape) {
-					Body body = shape.body;
-					shape.update(body.p, body.rot);
-				}
-			});
-			this.activeShapes.reindexQuery(new SpatialReIndexQueryFunc<Shape>() {
-				@Override
-				public void apply(Shape obj1, Shape obj2) {
-					collideShapes(obj1, obj2);
-				}
-			});
+			cpSpatialIndexEach(this.activeShapes, activeShapeSpatialIndexIteratorFunc);
+			this.activeShapes.reindexQuery(activeShapesSpatialReIndexQueryFunc);
 		}
 		cpSpaceUnlock(this, false);
 
@@ -1050,8 +1050,8 @@ public class Space {
 		// Prestep the arbiters and constraints.
 		float slop = this.collisionSlop;
 		float biasCoef = 1.0f - cpfpow(this.collisionBias, dt);
-		for (int i = 0; i < arbiters.size(); i++) {
-			cpArbiterPreStep(arbiters.get(i), dt, slop, biasCoef);
+		for (Arbiter arbiter : arbiters) {
+			cpArbiterPreStep(arbiter, dt, slop, biasCoef);
 		}
 
 		for (Constraint constraint : constraints) {
@@ -1064,16 +1064,14 @@ public class Space {
 
 		// Integrate velocities.
 		float damping = cpfpow(this.damping, dt);
-		//cpVect gravity = this.gravity;
-		for (int i = 0; i < bodies.size(); i++) {
-			Body body = bodies.get(i);
+		for (Body body : bodies) {
 			body.velocityFunc.velocity(body, gravity, damping, dt);
 		}
 
 		// Apply cached impulses
 		float dt_coef = (prev_dt == 0.0f ? 0.0f : dt / prev_dt);
-		for (int i = 0; i < arbiters.size(); i++) {
-			cpArbiterApplyCachedImpulse(arbiters.get(i), dt_coef);
+		for (Arbiter arbiter : arbiters) {
+			cpArbiterApplyCachedImpulse(arbiter, dt_coef);
 		}
 
 		for (Constraint constraint : constraints) {
@@ -1082,8 +1080,8 @@ public class Space {
 
 		// Run the impulse solver.
 		for (int i = 0; i < this.iterations; i++) {
-			for (int j = 0; j < arbiters.size(); j++) {
-				cpArbiterApplyImpulse(arbiters.get(j));
+			for (Arbiter arbiter : arbiters) {
+				cpArbiterApplyImpulse(arbiter);
 			}
 			for (Constraint constraint : constraints) {
 				constraint.applyImpulse();
@@ -1101,11 +1099,9 @@ public class Space {
 
 		// run the post-solve callbacks
 		cpSpaceLock(this);
-		for (int i = 0; i < arbiters.size(); i++) {
-			Arbiter arb = arbiters.get(i);
-
-			CollisionHandlerEntry handler = arb.handler;
-			handler.postSolve(arb, this);
+		for (Arbiter arbiter : arbiters) {
+			CollisionHandlerEntry handler = arbiter.handler;
+			handler.postSolve(arbiter, this);
 		}
 		cpSpaceUnlock(this, false);
 
@@ -1122,10 +1118,9 @@ public class Space {
 
 		if (space.locked == 0) {
 			List<Body> waking = space.rousedBodies;
-			for (int i = 0, count = waking.size(); i < count; i++) {
-				space.activateBody(waking.get(i));
+			for (Body aWaking : waking) {
+				space.activateBody(aWaking);
 			}
-
 			waking.clear();
 			if (runPostStep) {
 				cpSpaceRunPostStepCallbacks(space);

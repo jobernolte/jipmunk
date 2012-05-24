@@ -22,7 +22,6 @@
 
 package org.physics.jipmunk;
 
-import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
 
@@ -49,11 +48,12 @@ public class SpaceHash<T> extends SpatialIndex<T> {
 	private int numcells;
 	private float celldim;
 
-	private List<HashBin<T>> table;
+	//private List<HashBin<T>> table;
+	private HashBin<T>[] table;
 	private IntHashMap<Handle<T>> handleSet;
 
 	private HashBin<T> pooledBins;
-	private List<Handle<T>> pooledHandles = new LinkedList<>();
+	private LinkedList<Handle<T>> pooledHandles = new LinkedList<>();
 
 	private long stamp;
 
@@ -74,7 +74,7 @@ public class SpaceHash<T> extends SpatialIndex<T> {
 	}
 
 	private void clearTableCell(int idx) {
-		HashBin<T> bin = this.table.get(idx);
+		HashBin<T> bin = this.table[idx]; // this.table.get(idx);
 		while (bin != null) {
 			HashBin<T> next = bin.next;
 
@@ -84,13 +84,24 @@ public class SpaceHash<T> extends SpatialIndex<T> {
 			bin = next;
 		}
 
-		table.set(idx, null);
+		//table.set(idx, null);
+		table[idx] = null;
 	}
 
 	private void clearTable() {
 		for (int i = 0; i < numcells; i++) {
 			clearTableCell(i);
 		}
+	}
+
+	// Frees the old table, and allocate a new one.
+	private void allocTable(int numcells) {
+		this.numcells = numcells;
+		/*this.table = new ArrayList<>(numcells);
+		for (int i = 0; i < numcells; i++) {
+			table.add(null);
+		}*/
+		this.table = Array.newInstance(HashBin.class, numcells);
 	}
 
 	// Get a recycled or new bin.
@@ -112,15 +123,6 @@ public class SpaceHash<T> extends SpatialIndex<T> {
 			for (int i = 1; i < count; i++) recycleBin(hash, buffer + i);
 			return buffer;*/
 			return new HashBin<T>();
-		}
-	}
-
-	// Frees the old table, and allocate a new one.
-	private void allocTable(int numcells) {
-		this.numcells = numcells;
-		this.table = new ArrayList<>(numcells);
-		for (int i = 0; i < numcells; i++) {
-			table.add(null);
 		}
 	}
 
@@ -169,7 +171,7 @@ public class SpaceHash<T> extends SpatialIndex<T> {
 		for (int i = l; i <= r; i++) {
 			for (int j = b; j <= t; j++) {
 				int idx = hash_func(i, j, n);
-				HashBin<T> bin = this.table.get(idx);
+				HashBin<T> bin = this.table[idx]; // this.table.get(idx);
 
 				// Don't add an object twice to the same cell.
 				if (containsHandle(bin, hand)) {
@@ -181,7 +183,7 @@ public class SpaceHash<T> extends SpatialIndex<T> {
 				HashBin<T> newBin = getEmptyBin();
 				newBin.handle = hand;
 				newBin.next = bin;
-				this.table.set(idx, newBin);
+				this.table[idx] = newBin; // this.table.set(idx, newBin);
 			}
 		}
 	}
@@ -208,7 +210,7 @@ public class SpaceHash<T> extends SpatialIndex<T> {
 		if (this.pooledHandles.isEmpty()) {
 			hand = new Handle<T>();
 		} else {
-			hand = this.pooledHandles.remove(0);
+			hand = this.pooledHandles.removeFirst();
 		}
 
 		hand.init(obj);
@@ -267,8 +269,8 @@ public class SpaceHash<T> extends SpatialIndex<T> {
 			if (hand.obj == null) {
 				// orphaned handle, unlink and recycle the bin
 				// ( * bin_ptr)=bin - > next;
-				if (table.get(idx) == bin_ptr) {
-					table.set(idx, bin.next);
+				if (this.table[idx] == bin_ptr /*table.get(idx) == bin_ptr*/) {
+					this.table[idx] = bin.next; // table.set(idx, bin.next);
 				} else {
 					bin_ptr.next = bin.next;
 				}
@@ -286,7 +288,7 @@ public class SpaceHash<T> extends SpatialIndex<T> {
 	}
 
 	private void query_helper(int idx, SpatialIndexQueryFunc<T> func) {
-		HashBin<T> bin_ptr = table.get(idx);
+		HashBin<T> bin_ptr = this.table[idx]; // table.get(idx);
 		HashBin<T> bin = bin_ptr;
 		//for (HashBin<T> bin = bin_ptr; bin != null; bin = bin.next) {
 		while (bin != null) {
@@ -308,7 +310,7 @@ public class SpaceHash<T> extends SpatialIndex<T> {
 	}
 
 	private void query_helper(int idx, SpatialReIndexQueryFunc<T> func, T obj) {
-		HashBin<T> bin_ptr = table.get(idx);
+		HashBin<T> bin_ptr = this.table[idx]; // table.get(idx);
 		HashBin<T> bin = bin_ptr;
 		//for (HashBin<T> bin = bin_ptr; bin != null; bin = bin.next) {
 		while (bin != null) {
@@ -347,7 +349,7 @@ public class SpaceHash<T> extends SpatialIndex<T> {
 		for (int i = l; i <= r; i++) {
 			for (int j = b; j <= t; j++) {
 				int idx = hash_func(i, j, n);
-				HashBin<T> bin = table.get(idx);
+				HashBin<T> bin = this.table[idx]; // table.get(idx);
 
 				if (containsHandle(bin, hand)) {
 					continue;
@@ -359,7 +361,7 @@ public class SpaceHash<T> extends SpatialIndex<T> {
 				HashBin<T> newBin = getEmptyBin();
 				newBin.handle = hand;
 				newBin.next = bin;
-				table.set(idx, newBin);
+				this.table[idx] = newBin; // table.set(idx, newBin);
 			}
 		}
 
@@ -381,7 +383,7 @@ public class SpaceHash<T> extends SpatialIndex<T> {
 	}
 
 	private float segmentQuery_helper(int idx, SpatialIndexSegmentQueryFunc<T> func) {
-		HashBin<T> bin_ptr = table.get(idx);
+		HashBin<T> bin_ptr = this.table[idx]; // table.get(idx);
 		float t = 1.0f;
 
 		for (HashBin<T> bin = bin_ptr; bin != null; bin = bin.next) {

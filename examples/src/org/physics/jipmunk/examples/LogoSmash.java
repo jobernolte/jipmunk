@@ -32,6 +32,7 @@ import org.physics.jipmunk.Util;
 public class LogoSmash extends ExampleBase {
 
 	private Space space;
+    private int allSteps = 0;
 	static final int image_width = 188;
 	static final int image_height = 35;
 	static final int image_row_length = 24;
@@ -103,6 +104,7 @@ public class LogoSmash extends ExampleBase {
 			63, 15, -61, -16, 0, 31, -127, -127, -8, 31, -1, -127, -8, 31, -128, 7,
 			-128, 0, 0
 	};
+	private long running = 0L;
 
 	int getPixel(int x, int y) {
 		return (image_bitmap[(x >> 3) + y * image_row_length] >> (~x & 0x7)) & 1;
@@ -169,6 +171,11 @@ public class LogoSmash extends ExampleBase {
 		while (steps > 0) {
 			space.step(dt);
 			steps -= (int) (1000.0f / 60.0f);
+            allSteps++;
+            if (allSteps >= 100) {
+                //System.exit(0);
+                return;
+            }
 		}
 	}
 
@@ -185,6 +192,11 @@ public class LogoSmash extends ExampleBase {
 					java.util.logging.Logger.getLogger(LogoSmash.class.getName()).log(
 							Level.SEVERE, null, ex);
 				}*/
+		/*try {                 
+			System.in.read();
+		} catch (IOException e) {
+			e.printStackTrace();
+		}*/
 		new LogoSmash().start(640, 480);
 	}
 }

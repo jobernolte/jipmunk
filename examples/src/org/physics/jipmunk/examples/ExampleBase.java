@@ -118,6 +118,10 @@ public abstract class ExampleBase implements GLEventListener {
 		glCanvas.addGLEventListener(this);
 	}
 
+	public void exit() {
+		frame.dispose();
+	}
+
 	@Override
 	public void init(GLAutoDrawable glAutoDrawable) {
 		glAutoDrawable.getGL().setSwapInterval(1);
@@ -148,10 +152,31 @@ public abstract class ExampleBase implements GLEventListener {
 					mouseEvents.add(e);
 				}
 			}
+
+			@Override
+			public void mouseMoved(MouseEvent e) {
+				synchronized (mouseEvents) {
+					mouseEvents.add(e);
+				}
+			}
+
+			@Override
+			public void mouseDragged(MouseEvent e) {
+				synchronized (mouseEvents) {
+					mouseEvents.add(e);
+				}
+			}
 		});
 		glCanvas.addMouseMotionListener(new MouseAdapter() {
 			@Override
 			public void mouseMoved(MouseEvent e) {
+				synchronized (mouseEvents) {
+					mouseEvents.add(e);
+				}
+			}
+
+			@Override
+			public void mouseDragged(MouseEvent e) {
 				synchronized (mouseEvents) {
 					mouseEvents.add(e);
 				}
@@ -180,6 +205,7 @@ public abstract class ExampleBase implements GLEventListener {
 								mouseJoint.setErrorBias(Util.cpfpow(1.0f - 0.15f, 60.0f));
 								space.addConstraint(mouseJoint);
 							}
+							mousePoint.set(point);
 						}
 						break;
 					}
@@ -190,7 +216,8 @@ public abstract class ExampleBase implements GLEventListener {
 						}
 						break;
 					}
-					case MouseEvent.MOUSE_MOVED: {
+					case MouseEvent.MOUSE_MOVED:
+					case MouseEvent.MOUSE_DRAGGED: {
 						Vector2f p = mouseToSpace(e.getX(), e.getY());
 						mousePoint.set(p);
 						break;
@@ -205,11 +232,9 @@ public abstract class ExampleBase implements GLEventListener {
 	public void display(GLAutoDrawable glAutoDrawable) {
 		pollEvents();
 
-		Vector2f newPoint = Util.cpvlerp(mousePoint_last, mousePoint, 0.25f);
+		Vector2f newPoint = Util.cpvlerp(mouseBody.getPosition(), mousePoint, 0.25f);
+		mouseBody.setVelocity(Util.cpvmult(Util.cpvsub(newPoint, mouseBody.getPosition()), 60.0f));
 		mouseBody.setPosition(newPoint);
-		// cpvmult(cpvsub(newPoint, mousePoint_last), 60.0f);
-		mouseBody.setVelocity(Util.cpvsub(newPoint, Util.cpvmult(mousePoint_last, 60.0f)));
-		mousePoint_last.set(mousePoint);
 
 		long now = System.currentTimeMillis();
 		if (lastUpdate != 0) {

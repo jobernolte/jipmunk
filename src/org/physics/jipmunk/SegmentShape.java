@@ -22,7 +22,6 @@
 
 package org.physics.jipmunk;
 
-import static org.physics.jipmunk.Util.cpBBContainsVect;
 import static org.physics.jipmunk.Util.cpBBNew;
 import static org.physics.jipmunk.Util.cpfabs;
 import static org.physics.jipmunk.Util.cpvadd;
@@ -115,7 +114,7 @@ public class SegmentShape extends Shape {
 
 	@Override
 	public boolean pointQuery(Vector2f p) {
-		if (!cpBBContainsVect(this.bb, p)) return false;
+		if (!this.bb.contains(p)) return false;
 
 		// Calculate normal distance from segment.
 		float dn = cpvdot(this.tn, p) - cpvdot(this.ta, this.tn);

@@ -26,12 +26,8 @@ import java.util.Arrays;
 
 import static org.physics.jipmunk.Assert.cpAssertSoft;
 import static org.physics.jipmunk.Util.cpBBArea;
-import static org.physics.jipmunk.Util.cpBBContainsBB;
-import static org.physics.jipmunk.Util.cpBBIntersects;
 import static org.physics.jipmunk.Util.cpBBIntersectsSegment;
-import static org.physics.jipmunk.Util.cpBBMerge;
 import static org.physics.jipmunk.Util.cpBBMergedArea;
-import static org.physics.jipmunk.Util.cpBBNew;
 import static org.physics.jipmunk.Util.cpfmax;
 import static org.physics.jipmunk.Util.cpfmin;
 import static org.physics.jipmunk.Util.cpvmult;
@@ -89,13 +85,13 @@ class BBTree<T> extends SpatialIndex<T> {
 	IntHashMap<Node<T>> leaves = new IntHashMap<Node<T>>();
 	Node<T> root;
 
-	Pool<Node<T>> pooledNodes = new Pool<Node<T>>() {
+	Pool<Node<T>> pooledNodes = new Pool<Node<T>>(10000) {
 		@Override
 		protected Node<T> create() {
 			return new Node<T>();
 		}
 	};
-	Pool<Pair<T>> pooledPairs = new Pool<Pair<T>>() {
+	Pool<Pair<T>> pooledPairs = new Pool<Pair<T>>(10000) {
 		@Override
 		protected Pair<T> create() {
 			return new Pair<T>();
@@ -269,7 +265,7 @@ class BBTree<T> extends SpatialIndex<T> {
 		Node<T> node = NodeFromPool(tree);
 
 		node.obj = null;
-		node.bb = cpBBMerge(a.bb, b.bb);
+		node.bb = a.bb.merge(b.bb);
 		node.parent = null;
 
 		NodeSetA(node, a);
@@ -299,7 +295,7 @@ class BBTree<T> extends SpatialIndex<T> {
 		}
 
 		for (Node<T> node = parent; node != null; node = node.parent) {
-			node.bb = cpBBMerge(node.a.bb, node.b.bb);
+			node.bb = node.a.bb.merge(node.b.bb);
 		}
 	}
 
@@ -321,13 +317,13 @@ class BBTree<T> extends SpatialIndex<T> {
 				NodeSetA(subtree, SubtreeInsert(subtree.a, leaf, tree));
 			}
 
-			subtree.bb = cpBBMerge(subtree.bb, leaf.bb);
+			subtree.bb = subtree.bb.merge(leaf.bb);
 			return subtree;
 		}
 	}
 
 	static <T> void SubtreeQuery(Node<T> subtree, BB bb, SpatialIndexQueryFunc<T> func) {
-		if (cpBBIntersects(subtree.bb, bb)) {
+		if (subtree.bb.intersects(bb)) {
 			if (NodeIsLeaf(subtree)) {
 				func.apply(subtree.obj);
 			} else {
@@ -388,7 +384,7 @@ class BBTree<T> extends SpatialIndex<T> {
 	}
 
 	static <T> void MarkLeafQuery(Node<T> subtree, Node<T> leaf, boolean left, MarkContext<T> context) {
-		if (cpBBIntersects(leaf.bb, subtree.bb)) {
+		if (leaf.bb.intersects(subtree.bb)) {
 			if (NodeIsLeaf(subtree)) {
 				if (left) {
 					PairInsert(leaf, subtree, context.tree);
@@ -454,7 +450,7 @@ class BBTree<T> extends SpatialIndex<T> {
 		Node<T> root = tree.root;
 		BB bb = tree.bbfunc.apply(leaf.obj);
 
-		if (!cpBBContainsBB(leaf.bb, bb)) {
+		if (!leaf.bb.contains(bb)) {
 			leaf.bb = GetBB(tree, leaf.obj);
 
 			root = SubtreeRemove(root, leaf, tree);
@@ -626,7 +622,7 @@ cpBBTreeDestroy(BBTree tree)
 
 	static <T> void cpBBTreePointQuery(BBTree<T> tree, Vector2f point, SpatialIndexQueryFunc<T> func) {
 		Node<T> root = tree.root;
-		if (root != null) SubtreeQuery(root, cpBBNew(point.getX(), point.getY(), point.getX(), point.getY()), func);
+		if (root != null) SubtreeQuery(root, new BB(point.getX(), point.getY(), point.getX(), point.getY()), func);
 	}
 
 	static <T> void cpBBTreeSegmentQuery(BBTree<T> tree, Vector2f a, Vector2f b, float t_exit,
@@ -668,7 +664,7 @@ cpBBTreeDestroy(BBTree tree)
 
 		// Find the AABB for these nodes
 		BB bb = nodes[index + 0].bb;
-		for (int i = 1; i < count; i++) bb = cpBBMerge(bb, nodes[index + i].bb);
+		for (int i = 1; i < count; i++) bb = bb.merge(nodes[index + i].bb);
 
 		// Split it on it's longest axis
 		boolean splitWidth = (bb.r - bb.l > bb.t - bb.b);

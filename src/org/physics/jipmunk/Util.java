@@ -27,51 +27,6 @@ import static org.physics.jipmunk.Assert.cpAssertSoft;
 /** @author jobernolte */
 public class Util {
 
-	public static Vector2fFactory vector2fFactory = new Vector2fFactory() {
-		@Override
-		public Vector2f create(final float x, final float y) {
-			Vector2f vector2f = new Vector2f() {
-
-				private float x;
-				private float y;
-
-				@Override
-				public float getX() {
-					return x;
-				}
-
-				@Override
-				public void setX(float x) {
-					this.x = x;
-				}
-
-				@Override
-				public float getY() {
-					return y;
-				}
-
-				@Override
-				public void setY(float y) {
-					this.y = y;
-				}
-
-				@Override
-				public void set(Vector2f vector2f) {
-					this.x = vector2f.getX();
-					this.y = vector2f.getY();
-				}
-
-				@Override
-				public void set(float x, float y) {
-					this.x = x;
-					this.y = y;
-				}
-			};
-			vector2f.set(x, y);
-			return vector2f;
-		}
-	};
-
 	/// Clamp @c f to be between @c min and @c max.
 	public static float cpfclamp(float f, float min, float max) {
 		return Math.min(Math.max(f, min), max);
@@ -92,31 +47,31 @@ public class Util {
 	}
 
 	public static Vector2f cpvforangle(float a) {
-		return vector2fFactory.create((float) Math.cos(a), (float) Math.sin(a));
+		return new DefaultVector2f((float) Math.cos(a), (float) Math.sin(a));
 	}
 
 	public static Vector2f cpv(float x, float y) {
-		return vector2fFactory.create(x, y);
+		return new DefaultVector2f(x, y);
 	}
 
 	/// Add two vectors
 	public static Vector2f cpvadd(final Vector2f v1, final Vector2f v2) {
-		return cpv(v1.getX() + v2.getX(), v1.getY() + v2.getY());
+		return new DefaultVector2f(v1.getX() + v2.getX(), v1.getY() + v2.getY());
 	}
 
 	/// Subtract two vectors.
 	public static Vector2f cpvsub(final Vector2f v1, final Vector2f v2) {
-		return cpv(v1.getX() - v2.getX(), v1.getY() - v2.getY());
+		return new DefaultVector2f(v1.getX() - v2.getX(), v1.getY() - v2.getY());
 	}
 
 	/// Negate a vector.
 	public static Vector2f cpvneg(final Vector2f v) {
-		return cpv(-v.getX(), -v.getY());
+		return new DefaultVector2f(-v.getX(), -v.getY());
 	}
 
 	/// Scalar multiplication.
 	public static Vector2f cpvmult(final Vector2f v, final float s) {
-		return cpv(v.getX() * s, v.getY() * s);
+		return new DefaultVector2f(v.getX() * s, v.getY() * s);
 	}
 
 	/// Vector dot product.
@@ -133,12 +88,12 @@ public class Util {
 
 	/// Returns a perpendicular vector. (90 degree rotation)
 	public static Vector2f cpvperp(final Vector2f v) {
-		return cpv(-v.getY(), v.getX());
+		return new DefaultVector2f(-v.getY(), v.getX());
 	}
 
 	/// Returns a perpendicular vector. (-90 degree rotation)
 	public static Vector2f cpvrperp(final Vector2f v) {
-		return cpv(v.getY(), -v.getX());
+		return new DefaultVector2f(v.getY(), -v.getX());
 	}
 
 	/// Returns the vector projection of v1 onto v2.
@@ -148,12 +103,12 @@ public class Util {
 
 	/// Uses complex number multiplication to rotate v1 by v2. Scaling will occur if v1 is not a unit vector.
 	public static Vector2f cpvrotate(final Vector2f v1, final Vector2f v2) {
-		return cpv(v1.getX() * v2.getX() - v1.getY() * v2.getY(), v1.getX() * v2.getY() + v1.getY() * v2.getX());
+		return new DefaultVector2f(v1.getX() * v2.getX() - v1.getY() * v2.getY(), v1.getX() * v2.getY() + v1.getY() * v2.getX());
 	}
 
 	/// Inverse of cpvrotate().
 	public static Vector2f cpvunrotate(final Vector2f v1, final Vector2f v2) {
-		return cpv(v1.getX() * v2.getX() + v1.getY() * v2.getY(), v1.getY() * v2.getX() - v1.getX() * v2.getY());
+		return new DefaultVector2f(v1.getX() * v2.getX() + v1.getY() * v2.getY(), v1.getY() * v2.getX() - v1.getX() * v2.getY());
 	}
 
 	/// Returns the squared length of v. Faster than cpvlength() when you only need to compare lengths.
@@ -173,7 +128,7 @@ public class Util {
 
 	/// Returns a normalized copy of v or cpvzero if v was already cpvzero. Protects against divide by zero errors.
 	public static Vector2f cpvnormalize_safe(final Vector2f v) {
-		return (v.getX() == 0.0f && v.getY() == 0.0f ? vector2fFactory.create(0, 0) : cpvnormalize(v));
+		return (v.getX() == 0.0f && v.getY() == 0.0f ? new DefaultVector2f(0, 0) : cpvnormalize(v));
 	}
 
 	/// Clamp v to length len.
@@ -227,7 +182,7 @@ public class Util {
 	}
 
 	public static Vector2f cpvzero() {
-		return vector2fFactory.create(0, 0);
+		return new DefaultVector2f(0, 0);
 	}
 
 	public static float cpfsqrt(float value) {
@@ -254,30 +209,6 @@ public class Util {
 		return new BB(l, b, r, t);
 	}
 
-	public static boolean cpBBContainsVect(final BB bb, final Vector2f v) {
-		return (bb.l <= v.getX() && bb.r >= v.getX() && bb.b <= v.getY() && bb.t >= v.getY());
-	}
-
-	/// Returns true if @c other lies completely within @c bb.
-	static boolean cpBBContainsBB(final BB bb, final BB other) {
-		return (bb.l <= other.l && bb.r >= other.r && bb.b <= other.b && bb.t >= other.t);
-	}
-
-	/// Returns true if @c a and @c b intersect.
-	public static boolean cpBBIntersects(final BB a, final BB b) {
-		return (a.l <= b.r && b.l <= a.r && a.b <= b.t && b.b <= a.t);
-	}
-
-	/// Returns a bounding box that holds both bounding boxes.
-	static BB cpBBMerge(final BB a, final BB b) {
-		return cpBBNew(
-				cpfmin(a.l, b.l),
-				cpfmin(a.b, b.b),
-				cpfmax(a.r, b.r),
-				cpfmax(a.t, b.t)
-		);
-	}
-
 	/// Returns the area of the bounding box.
 	static float cpBBArea(BB bb) {
 		return (bb.r - bb.l) * (bb.t - bb.b);
@@ -290,9 +221,9 @@ public class Util {
 
 	/// Return true if the bounding box intersects the line segment with ends @c a and @c b.
 	static boolean cpBBIntersectsSegment(BB bb, Vector2f a, Vector2f b) {
-		BB seg_bb = cpBBNew(cpfmin(a.getX(), b.getX()), cpfmin(a.getY(), b.getY()), cpfmax(a.getX(), b.getX()), cpfmax(
+		BB seg_bb = new BB(cpfmin(a.getX(), b.getX()), cpfmin(a.getY(), b.getY()), cpfmax(a.getX(), b.getX()), cpfmax(
 				a.getY(), b.getY()));
-		if (cpBBIntersects(bb, seg_bb)) {
+		if (bb.intersects(seg_bb)) {
 			Vector2f axis = cpv(b.getY() - a.getY(), a.getX() - b.getX());
 			Vector2f offset = cpv((a.getX() + b.getX() - bb.r - bb.l), (a.getY() + b.getY() - bb.t - bb.b));
 			Vector2f extents = cpv(bb.r - bb.l, bb.t - bb.b);
@@ -357,7 +288,7 @@ public class Util {
 	}
 
 	public static Vector2f mult_k(Vector2f vr, Vector2f k1, Vector2f k2) {
-		return cpv(cpvdot(vr, k1), cpvdot(vr, k2));
+		return new DefaultVector2f(cpvdot(vr, k1), cpvdot(vr, k2));
 	}
 
 	public static float bias_coef(float errorBias, float dt) {
@@ -480,7 +411,7 @@ public class Util {
 	}
 
 	public static Vector2f cpv(Vector2f a) {
-		return vector2fFactory.create(a.getX(), a.getY());
+		return new DefaultVector2f(a.getX(), a.getY());
 	}
 
 	public static float cpffloor(float v) {

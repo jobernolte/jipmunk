@@ -270,7 +270,7 @@ public class Body {
 	 */
 	public void setVelocity(Vector2f v) {
 		activate();
-		this.v = v;
+		this.v.set(v);
 	}
 
 	/**
@@ -314,7 +314,7 @@ public class Body {
 	 * @param f the force applied to the center of gravity of the body
 	 */
 	public void setForce(Vector2f f) {
-		this.f = f;
+		this.f.set(f);
 	}
 
 	/** @return The angular velocity of the body in radians per second. */

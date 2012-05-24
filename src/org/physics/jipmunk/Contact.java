@@ -24,10 +24,10 @@ package org.physics.jipmunk;
 
 /** @author jobernolte */
 class Contact {
-	Vector2f p, n;
+	Vector2f p = Util.cpvzero(), n = Util.cpvzero();
 	float dist;
 
-	Vector2f r1, r2;
+	Vector2f r1 = Util.cpvzero(), r2 = Util.cpvzero();
 	float nMass, tMass, bounce;
 
 	float jnAcc, jtAcc, jBias;
@@ -36,8 +36,8 @@ class Contact {
 	long hash;
 
 	Contact init(Vector2f p, Vector2f n, float dist, long hash) {
-		this.p = p;
-		this.n = n;
+		this.p.set(p);
+		this.n.set(n);
 		this.dist = dist;
 
 		this.jnAcc = 0.0f;

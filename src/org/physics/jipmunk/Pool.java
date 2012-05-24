@@ -23,13 +23,14 @@
 package org.physics.jipmunk;
 
 import java.util.ArrayList;
+import java.util.LinkedList;
 import java.util.List;
 
 /** @author jobernolte */
 public abstract class Pool<T> {
 
-	private final List<T> objects;
-	private int maxCapacity;
+	protected final LinkedList<T> objects;
+	protected int maxCapacity;
 
 	public Pool() {
 		this(1000);
@@ -37,7 +38,7 @@ public abstract class Pool<T> {
 
 	public Pool(int maxCapacity) {
 		this.maxCapacity = maxCapacity;
-		this.objects = new ArrayList<T>(maxCapacity);
+		this.objects = new LinkedList<T>();
 	}
 
 	protected abstract T create();
@@ -46,7 +47,7 @@ public abstract class Pool<T> {
 		if (objects.size() == 0) {
 			return create();
 		} else {
-			return objects.remove(objects.size() - 1);
+			return objects.removeFirst();
 		}
 	}
 

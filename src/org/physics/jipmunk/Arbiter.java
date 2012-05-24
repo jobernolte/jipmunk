@@ -315,7 +315,11 @@ public class Arbiter {
 			}
 		}
 
-		this.contacts = contacts.toArray(new Contact[contacts.size()]);
+        if (this.contacts == null) {
+            this.contacts = contacts.toArray(new Contact[contacts.size()]);
+        } else {
+            this.contacts = contacts.toArray(this.contacts);
+        }
 		this.numContacts = numContacts;
 
 		this.handler = handler;
@@ -345,8 +349,10 @@ public class Arbiter {
 			Contact con = this.contacts[i];
 
 			// Calculate the offsets.
-			con.r1 = Util.cpvsub(con.p, a.p);
-			con.r2 = Util.cpvsub(con.p, b.p);
+			/*con.r1 = Util.cpvsub(con.p, a.p);
+			con.r2 = Util.cpvsub(con.p, b.p);*/
+			con.r1.set(con.p.getX() - a.p.getX(), con.p.getY() - a.p.getY());
+			con.r2.set(con.p.getX() - b.p.getX(), con.p.getY() - b.p.getY());
 
 			// Calculate the mass normal and mass tangent.
 			con.nMass = 1.0f / Util.k_scalar(a, b, con.r1, con.r2, con.n);

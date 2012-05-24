@@ -30,7 +30,6 @@ import static org.physics.jipmunk.Space.cpSpaceLock;
 import static org.physics.jipmunk.Space.cpSpaceUnlock;
 import static org.physics.jipmunk.SpatialIndex.cpSpatialIndexQuery;
 import static org.physics.jipmunk.SpatialIndex.cpSpatialIndexSegmentQuery;
-import static org.physics.jipmunk.Util.cpBBIntersects;
 import static org.physics.jipmunk.Util.cpvneg;
 import static org.physics.jipmunk.Util.cpvzero;
 
@@ -224,8 +223,8 @@ class SpaceQuery {
 
 		@Override
 		public void apply(Shape shape) {
-			if (!(shape.group != 0 && group == shape.group) && (layers & shape.layers) != 0 && cpBBIntersects(bb,
-					shape.bb)) {
+			if (!(shape.group != 0 && group == shape.group) && (layers & shape.layers) != 0
+					&& bb.intersects(shape.bb)) {
 				func.apply(shape);
 			}
 		}
