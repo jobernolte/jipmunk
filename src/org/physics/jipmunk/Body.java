@@ -581,6 +581,10 @@ public class Body {
 		return (vsq != 0 ? vsq * body.m : 0.0f) + (wsq != 0 ? wsq * body.i : 0.0f);
 	}
 
+	public float getKineticEnergy() {
+		return cpBodyKineticEnergy(this);
+	}
+
 	private static void cpBodySanityCheck(Body body) {
 		body.sanityCheck();
 	}
