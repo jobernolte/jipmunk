@@ -108,16 +108,18 @@
 
 	<target name="all" depends="build.modules, build.all.artifacts" description="build all"/>
 
-	<target name="example.LogoSmash" depends="build.modules, build.all.artifacts" description="runs example 'LogoSmash'">
-		  <java fork="true" classname="org.physics.jipmunk.examples.LogoSmash">
-			  <classpath refid="jipmunk.runtime.production.module.classpath" />
-			  <classpath refid="examples.runtime.production.module.classpath" />
-		  </java>
+	<target name="example.LogoSmash" depends="build.all.artifacts,compile.module.examples"
+			description="runs example 'LogoSmash'">
+		<java fork="true" classname="org.physics.jipmunk.examples.LogoSmash">
+			<classpath refid="jipmunk.runtime.production.module.classpath"/>
+			<classpath refid="examples.runtime.production.module.classpath"/>
+		</java>
 	</target>
-	<target name="example.PyramidStack" depends="all">
-		  <java fork="true" classname="org.physics.jipmunk.examples.PyramidStack">
-			  <classpath refid="jipmunk.runtime.production.module.classpath" />
-			  <classpath refid="examples.runtime.production.module.classpath" />
-		  </java>
+	<target name="example.PyramidStack" depends="build.all.artifacts,compile.module.examples"
+			description="runs example 'PyramidStack'">
+		<java fork="true" classname="org.physics.jipmunk.examples.PyramidStack">
+			<classpath refid="jipmunk.runtime.production.module.classpath"/>
+			<classpath refid="examples.runtime.production.module.classpath"/>
+		</java>
 	</target>
 </project>
