@@ -404,11 +404,40 @@ public class Body {
 		cpArrayDeleteObj(space.sleepingComponents, root);
 	}
 
+	/** Reset the idle timer on a body. If it was sleeping, wake it and any other bodies it was touching. */
 	public void activate() {
 		if (!isRogue()) {
 			node.idleTime = 0;
 			componentActivate(SpaceComponent.ComponentRoot(this));
 		}
+	}
+
+	/**
+	 * Similar in function to {@link #activate()}. Activates all bodies touching body. If filter is not <code>null</code>,
+	 * then only bodies touching through filter will be awoken.
+	 *
+	 * @param filter if not <code>null</code> only bodies touching through filter will be awoken
+	 */
+	public void activateStatic(final Shape filter) {
+		SpaceComponent.cpBodyActivateStatic(this, filter);
+	}
+
+	/** Forces a body to fall asleep immediately even if it’s in midair. Cannot be called from a callback. */
+	public void sleep() {
+		SpaceComponent.cpBodySleep(this);
+	}
+
+	/**
+	 * When objects in Chipmunk sleep, they sleep as a group of all objects that are touching or jointed together. When an
+	 * object is woken up, all of the objects in it’s group are woken up. sleepWithGroup() allows you group sleeping
+	 * objects together. It acts identically to {@link #sleep()} if you pass <code>null</code> as group by starting a new
+	 * group. If you pass a sleeping body for group, body will be awoken when group is awoken. You can use this to
+	 * initialize levels and start stacks of objects in a pre-sleeping state.
+	 *
+	 * @param group the group to sleep with
+	 */
+	public void sleepWithGroup(final Body group) {
+		SpaceComponent.cpBodySleepWithGroup(this, group);
 	}
 
 	/**
