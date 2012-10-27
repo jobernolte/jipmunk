@@ -48,7 +48,7 @@ public class PinJoint extends Constraint {
 	Vector2f n;
 	float nMass;
 
-	float jnAcc, jnMax;
+	float jnAcc;
 	float bias;
 
 	/**
@@ -110,8 +110,8 @@ public class PinJoint extends Constraint {
 	}
 
 	@Override
-	protected void applyImpulse() {
-		applyImpulse(this);
+	protected void applyImpulse(float dt) {
+		applyImpulse(this, dt);
 	}
 
 	@Override
@@ -142,9 +142,6 @@ public class PinJoint extends Constraint {
 		// calculate bias velocity
 		float maxBias = joint.maxBias;
 		joint.bias = cpfclamp(-bias_coef(joint.errorBias, dt) * (dist - joint.dist) / dt, -maxBias, maxBias);
-
-		// compute max impulse
-		joint.jnMax = J_MAX(joint, dt);
 	}
 
 	static void applyCachedImpulse(PinJoint joint, float dt_coef) {
@@ -155,7 +152,7 @@ public class PinJoint extends Constraint {
 		apply_impulses(a, b, joint.r1, joint.r2, j);
 	}
 
-	static void applyImpulse(PinJoint joint) {
+	static void applyImpulse(PinJoint joint, float dt) {
 		Body a = joint.a;
 		Body b = joint.b;
 		Vector2f n = joint.n;
@@ -163,10 +160,12 @@ public class PinJoint extends Constraint {
 		// compute relative velocity
 		float vrn = normal_relative_velocity(a, b, joint.r1, joint.r2, n);
 
+		float jnMax = joint.maxForce * dt;
+
 		// compute normal impulse
 		float jn = (joint.bias - vrn) * joint.nMass;
 		float jnOld = joint.jnAcc;
-		joint.jnAcc = cpfclamp(jnOld + jn, -joint.jnMax, joint.jnMax);
+		joint.jnAcc = cpfclamp(jnOld + jn, -jnMax, jnMax);
 		jn = joint.jnAcc - jnOld;
 
 		// apply impulse

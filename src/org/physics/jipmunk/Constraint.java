@@ -37,7 +37,7 @@ public abstract class Constraint {
 	Constraint next_b;
 
 	/** The maximum force that this constraint is allowed to use. Defaults to infinity. */
-	float maxForce;
+	protected float maxForce;
 	/**
 	 * The rate at which joint error is corrected. Defaults to pow(1.0 - 0.1, 60.0) meaning that it will correct 10% of the
 	 * error every 1/60th of a second.
@@ -45,7 +45,9 @@ public abstract class Constraint {
 	protected float errorBias;
 	/** The maximum rate at which joint error is corrected. Defaults to infinity. */
 	protected float maxBias;
+	/** Function called before the solver runs. Animate your joint anchors, update your motor torque, etc. */
 	ConstraintPreSolveFunc preSolveFunc;
+	/** Function called after the solver runs. Use the applied impulse to perform effects like breakable joints. */
 	ConstraintPostSolveFunc postSolveFunc;
 
 	protected Constraint(Body a, Body b) {
@@ -89,21 +91,9 @@ public abstract class Constraint {
 
 	protected abstract void applyCachedImpulse(float dt_coef);
 
-	protected abstract void applyImpulse();
+	protected abstract void applyImpulse(float dt);
 
 	protected abstract float getImpulse();
-
-	/// @private
-	static void cpConstraintActivateBodies(Constraint constraint) {
-		Body a = constraint.a;
-		if (a != null) cpBodyActivate(a);
-		Body b = constraint.b;
-		if (b != null) cpBodyActivate(b);
-	}
-
-	protected static float J_MAX(Constraint constraint, float dt) {
-		return constraint.maxForce * dt;
-	}
 
 	protected void activateBodies() {
 		if (a != null) cpBodyActivate(a);

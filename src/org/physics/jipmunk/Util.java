@@ -287,6 +287,49 @@ public class Util {
 		k2.set(cpv(-k21 * det_inv, k11 * det_inv));
 	}
 
+	public static Mat2x2 k_tensor(Body a, Body b, Vector2f r1, Vector2f r2) {
+		// calculate mass matrix
+		// If I wasn't lazy and wrote a proper matrix class, this wouldn't be so gross...
+		float k11, k12, k21, k22;
+		float m_sum = a.m_inv + b.m_inv;
+
+		// start with I*m_sum
+		k11 = m_sum;
+		k12 = 0.0f;
+		k21 = 0.0f;
+		k22 = m_sum;
+
+		// add the influence from r1
+		float a_i_inv = a.i_inv;
+		float r1xsq = r1.getX() * r1.getX() * a_i_inv;
+		float r1ysq = r1.getY() * r1.getY() * a_i_inv;
+		float r1nxy = -r1.getX() * r1.getY() * a_i_inv;
+		k11 += r1ysq;
+		k12 += r1nxy;
+		k21 += r1nxy;
+		k22 += r1xsq;
+
+		// add the influnce from r2
+		float b_i_inv = b.i_inv;
+		float r2xsq = r2.getX() * r2.getX() * b_i_inv;
+		float r2ysq = r2.getY() * r2.getY() * b_i_inv;
+		float r2nxy = -r2.getX() * r2.getY() * b_i_inv;
+		k11 += r2ysq;
+		k12 += r2nxy;
+		k21 += r2nxy;
+		k22 += r2xsq;
+
+		// invert
+		float determinant = k11 * k22 - k12 * k21;
+		cpAssertSoft(determinant != 0.0, "Unsolvable constraint.");
+
+		float det_inv = 1.0f / determinant;
+		return new Mat2x2(
+			 k22*det_inv, -k12*det_inv,
+			-k21*det_inv,  k11*det_inv
+	 	);
+	}
+
 	public static Vector2f mult_k(Vector2f vr, Vector2f k1, Vector2f k2) {
 		return new DefaultVector2f(cpvdot(vr, k1), cpvdot(vr, k2));
 	}

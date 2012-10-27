@@ -36,7 +36,7 @@ public class RatchetJoint extends Constraint {
 	float iSum;
 
 	float bias;
-	float jAcc, jMax;
+	float jAcc;
 
 	public RatchetJoint(Body a, Body b, float phase, float ratchet) {
 		super(a, b);
@@ -96,9 +96,6 @@ public class RatchetJoint extends Constraint {
 		float maxBias = this.maxBias;
 		this.bias = cpfclamp(-bias_coef(this.errorBias, dt) * pdist / dt, -maxBias, maxBias);
 
-		// compute max impulse
-		this.jMax = J_MAX(this, dt);
-
 		// If the bias is 0, the joint is not at a limit. Reset the impulse.
 		if (this.bias == 0) {
 			this.jAcc = 0.0f;
@@ -113,7 +110,7 @@ public class RatchetJoint extends Constraint {
 	}
 
 	@Override
-	protected void applyImpulse() {
+	protected void applyImpulse(float dt) {
 		if (this.bias == 0) {
 			return; // early exit
 		}
@@ -122,10 +119,12 @@ public class RatchetJoint extends Constraint {
 		float wr = b.getAngVel() - a.getAngVel();
 		float ratchet = this.ratchet;
 
+		float jMax = this.maxForce * dt;
+
 		// compute normal impulse
 		float j = -(this.bias + wr) * this.iSum;
 		float jOld = this.jAcc;
-		this.jAcc = cpfclamp((jOld + j) * ratchet, 0.0f, this.jMax * cpfabs(ratchet)) / ratchet;
+		this.jAcc = cpfclamp((jOld + j) * ratchet, 0.0f, jMax * cpfabs(ratchet)) / ratchet;
 		j = this.jAcc - jOld;
 
 		// apply impulse

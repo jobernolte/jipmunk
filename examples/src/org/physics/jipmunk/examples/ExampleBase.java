@@ -29,7 +29,7 @@ import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 import java.nio.FloatBuffer;
 import java.nio.IntBuffer;
-import java.util.ArrayList;
+import java.util.LinkedList;
 import java.util.List;
 import javax.media.opengl.GL2;
 import javax.media.opengl.GLAutoDrawable;
@@ -81,7 +81,7 @@ public abstract class ExampleBase implements GLEventListener {
 	private FloatBuffer model = BufferUtils.createFloatBuffer(16);
 	private FloatBuffer proj = BufferUtils.createFloatBuffer(16);
 	private FloatBuffer m = BufferUtils.createFloatBuffer(3);
-	private final List<MouseEvent> mouseEvents = new ArrayList<>();
+	private final List<MouseEvent> mouseEvents = new LinkedList<>();
 
 	public abstract Space init();
 
@@ -188,44 +188,52 @@ public abstract class ExampleBase implements GLEventListener {
 	public void dispose(GLAutoDrawable glAutoDrawable) {
 	}
 
-	private void pollEvents() {
+	private MouseEvent pollNextMouseEvent() {
+		MouseEvent mouseEvent = null;
 		synchronized (mouseEvents) {
-			for (MouseEvent e : mouseEvents) {
-				switch (e.getID()) {
-					case MouseEvent.MOUSE_PRESSED: {
-						if (e.getButton() == MouseEvent.BUTTON1) {
-							Vector2f point = mouseToSpace(e.getX(), e.getY());
+			if (mouseEvents.size() > 0) {
+				mouseEvent = mouseEvents.remove(0);
+			}
+		}
+		return mouseEvent;
+	}
 
-							org.physics.jipmunk.Shape shape = space.pointQueryFirst(point, GRABABLE_MASK_BIT,
-									Constants.NO_GROUP);
-							if (shape != null) {
-								Body body = shape.getBody();
-								mouseJoint = new PivotJoint(mouseBody, body, Util.cpvzero(), body.world2Local(point));
-								mouseJoint.setMaxForce(50000.0f);
-								mouseJoint.setErrorBias(Util.cpfpow(1.0f - 0.15f, 60.0f));
-								space.addConstraint(mouseJoint);
-							}
-							mousePoint.set(point);
+	private void pollEvents() {
+		for (MouseEvent e = pollNextMouseEvent(); e != null; e = pollNextMouseEvent()) {
+			switch (e.getID()) {
+				case MouseEvent.MOUSE_PRESSED: {
+					if (e.getButton() == MouseEvent.BUTTON1) {
+						Vector2f point = mouseToSpace(e.getX(), e.getY());
+
+						org.physics.jipmunk.Shape shape = space.pointQueryFirst(point, GRABABLE_MASK_BIT,
+								Constants.NO_GROUP);
+						if (shape != null) {
+							Body body = shape.getBody();
+							mouseJoint = new PivotJoint(mouseBody, body, Util.cpvzero(), body.world2Local(point));
+							mouseJoint.setMaxForce(50000.0f);
+							mouseJoint.setErrorBias(Util.cpfpow(1.0f - 0.15f, 60.0f));
+							space.addConstraint(mouseJoint);
 						}
-						break;
+						mousePoint.set(point);
 					}
-					case MouseEvent.MOUSE_RELEASED: {
-						if (mouseJoint != null) {
-							space.removeConstraint(mouseJoint);
-							mouseJoint = null;
-						}
-						break;
+					break;
+				}
+				case MouseEvent.MOUSE_RELEASED: {
+					if (mouseJoint != null) {
+						space.removeConstraint(mouseJoint);
+						mouseJoint = null;
 					}
-					case MouseEvent.MOUSE_MOVED:
-					case MouseEvent.MOUSE_DRAGGED: {
-						Vector2f p = mouseToSpace(e.getX(), e.getY());
-						mousePoint.set(p);
-						break;
-					}
+					break;
+				}
+				case MouseEvent.MOUSE_MOVED:
+				case MouseEvent.MOUSE_DRAGGED: {
+					Vector2f p = mouseToSpace(e.getX(), e.getY());
+					mousePoint.set(p);
+					break;
 				}
 			}
-			mouseEvents.clear();
 		}
+		mouseEvents.clear();
 	}
 
 	@Override

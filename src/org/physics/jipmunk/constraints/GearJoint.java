@@ -37,7 +37,7 @@ public class GearJoint extends Constraint {
 	float iSum;
 
 	float bias;
-	float jAcc, jMax;
+	float jAcc;
 
 	public GearJoint(Body a, Body b, float phase, float ratio) {
 		super(a, b);
@@ -74,9 +74,6 @@ public class GearJoint extends Constraint {
 		float maxBias = this.maxBias;
 		this.bias = cpfclamp(-bias_coef(this.errorBias, dt) * (b.getAngleInRadians() * this.ratio - a
 				.getAngleInRadians() - this.phase) / dt, -maxBias, maxBias);
-
-		// compute max impulse
-		this.jMax = J_MAX(this, dt);
 	}
 
 	@Override
@@ -87,14 +84,16 @@ public class GearJoint extends Constraint {
 	}
 
 	@Override
-	protected void applyImpulse() {
+	protected void applyImpulse(float dt) {
 		// compute relative rotational velocity
 		float wr = b.getAngVel() * this.ratio - a.getAngVel();
+
+		float jMax = this.maxForce*dt;
 
 		// compute normal impulse
 		float j = (this.bias - wr) * this.iSum;
 		float jOld = this.jAcc;
-		this.jAcc = cpfclamp(jOld + j, -this.jMax, this.jMax);
+		this.jAcc = cpfclamp(jOld + j, -jMax, jMax);
 		j = this.jAcc - jOld;
 
 		// apply impulse

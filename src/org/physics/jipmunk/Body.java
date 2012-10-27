@@ -404,7 +404,7 @@ public class Body {
 		cpArrayDeleteObj(space.sleepingComponents, root);
 	}
 
-	void activate() {
+	public void activate() {
 		if (!isRogue()) {
 			node.idleTime = 0;
 			componentActivate(SpaceComponent.ComponentRoot(this));

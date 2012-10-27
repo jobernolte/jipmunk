@@ -36,7 +36,7 @@ public class RotaryLimitJoint extends Constraint {
 	float iSum;
 
 	float bias;
-	float jAcc, jMax;
+	float jAcc;
 
 	public RotaryLimitJoint(Body a, Body b, float min, float max) {
 		super(a, b);
@@ -80,9 +80,6 @@ public class RotaryLimitJoint extends Constraint {
 		float maxBias = this.maxBias;
 		this.bias = cpfclamp(-bias_coef(this.errorBias, dt) * pdist / dt, -maxBias, maxBias);
 
-		// compute max impulse
-		this.jMax = J_MAX(this, dt);
-
 		// If the bias is 0, the joint is not at a limit. Reset the impulse.
 		if (this.bias == 0) {
 			this.jAcc = 0.0f;
@@ -97,7 +94,7 @@ public class RotaryLimitJoint extends Constraint {
 	}
 
 	@Override
-	protected void applyImpulse() {
+	protected void applyImpulse(float dt) {
 		if (this.bias == 0) {
 			return; // early exit
 		}
@@ -105,13 +102,15 @@ public class RotaryLimitJoint extends Constraint {
 		// compute relative rotational velocity
 		float wr = b.getAngVel() - a.getAngVel();
 
+		float jMax = this.maxForce * dt;
+
 		// compute normal impulse
 		float j = -(this.bias + wr) * this.iSum;
 		float jOld = this.jAcc;
 		if (this.bias < 0.0f) {
-			this.jAcc = cpfclamp(jOld + j, 0.0f, this.jMax);
+			this.jAcc = cpfclamp(jOld + j, 0.0f, jMax);
 		} else {
-			this.jAcc = cpfclamp(jOld + j, -this.jMax, 0.0f);
+			this.jAcc = cpfclamp(jOld + j, -jMax, 0.0f);
 		}
 		j = this.jAcc - jOld;
 
