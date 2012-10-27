@@ -102,6 +102,8 @@ public abstract class ExampleBase implements GLEventListener {
 	public void start(int width, int height) {
 		GLProfile glProfile = GLProfile.getDefault();
 		glCapabilities = new GLCapabilities(glProfile);
+		glCapabilities.setPBuffer(true);
+		glCapabilities.setOnscreen(true);
 		glCanvas = new GLCanvas(glCapabilities);
 		//glCanvas.setContextCreationFlags(GLContext.CTX_OPTION_DEBUG);
 		frame = new Frame("AWT");
