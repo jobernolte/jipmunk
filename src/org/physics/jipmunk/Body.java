@@ -160,6 +160,11 @@ public class Body {
 	private Shape shapeList;
 	Arbiter arbiterList;
 	Constraint constraintList;
+	/**
+	 * User definable data. Generally this points to your the game object class so you can access it when given a Body
+	 * reference in a callback.
+	 */
+	private Object data;
 
 	/**
 	 * Creates a new body with the given mass and moment.
@@ -738,5 +743,28 @@ public class Body {
 	 */
 	public Vector2f world2Local(final Vector2f v) {
 		return cpvunrotate(cpvsub(v, this.p), this.rot);
+	}
+
+	/** @return the user data */
+	public Object getData() {
+		return data;
+	}
+
+	/**
+	 * @param clazz the {@link Class} of the user data
+	 * @param <T>   the type of the data
+	 * @return the user data
+	 */
+	public <T> T getData(Class<T> clazz) {
+		return clazz.cast(data);
+	}
+
+	/**
+	 * Sets user data. Use this data to get a reference to the game object that owns this body from callbacks.
+	 *
+	 * @param data the user data to set
+	 */
+	public void setData(Object data) {
+		this.data = data;
 	}
 }

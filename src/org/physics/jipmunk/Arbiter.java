@@ -57,6 +57,11 @@ public class Arbiter {
 	CollisionHandlerEntry handler;
 	boolean swappedColl = false;
 	ArbiterState state = ArbiterState.cpArbiterStateFirstColl;
+	/**
+	 * User definable data. Generally this points to your the game object class so you can access it when given a Body
+	 * reference in a callback.
+	 */
+	private Object data;
 
 	/** @return Calculated value to use for the elasticity coefficient. */
 	public float getElasticity() {
@@ -455,5 +460,28 @@ public class Arbiter {
 
 	static void cpArbiterPreStep(Arbiter arb, float dt, float slop, float bias) {
 		arb.preStep(dt, slop, bias);
+	}
+
+	/** @return the user data */
+	public Object getData() {
+		return data;
+	}
+
+	/**
+	 * @param clazz the {@link Class} of the user data
+	 * @param <T>   the type of the data
+	 * @return the user data
+	 */
+	public <T> T getData(Class<T> clazz) {
+		return clazz.cast(data);
+	}
+
+	/**
+	 * Sets user data. Use this data to get a reference to the game object that owns this body from callbacks.
+	 *
+	 * @param data the user data to set
+	 */
+	public void setData(Object data) {
+		this.data = data;
 	}
 }
