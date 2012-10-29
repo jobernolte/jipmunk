@@ -22,6 +22,14 @@
 
 package org.physics.jipmunk.examples;
 
+import com.jogamp.opengl.util.FPSAnimator;
+import com.jogamp.opengl.util.awt.TextRenderer;
+import org.physics.jipmunk.*;
+import org.physics.jipmunk.constraints.PivotJoint;
+
+import javax.media.opengl.*;
+import javax.media.opengl.awt.GLCanvas;
+import javax.media.opengl.glu.GLU;
 import java.awt.*;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
@@ -31,272 +39,258 @@ import java.nio.FloatBuffer;
 import java.nio.IntBuffer;
 import java.util.ArrayList;
 import java.util.List;
-import javax.media.opengl.GL2;
-import javax.media.opengl.GLAutoDrawable;
-import javax.media.opengl.GLCapabilities;
-import javax.media.opengl.GLEventListener;
-import javax.media.opengl.GLProfile;
-import javax.media.opengl.awt.GLCanvas;
-import javax.media.opengl.glu.GLU;
-import org.physics.jipmunk.Body;
-import org.physics.jipmunk.Constants;
-import org.physics.jipmunk.Constraint;
-import org.physics.jipmunk.Space;
-import org.physics.jipmunk.Util;
-import org.physics.jipmunk.Vector2f;
-import org.physics.jipmunk.constraints.PivotJoint;
-import com.jogamp.opengl.util.FPSAnimator;
-import com.jogamp.opengl.util.awt.TextRenderer;
 
-/** @author jobernolte */
+/**
+ * @author jobernolte
+ */
 public abstract class ExampleBase implements GLEventListener {
-	public static final int GRABABLE_MASK_BIT = 1 << 31;
-	public static final int NOT_GRABABLE_MASK = ~GRABABLE_MASK_BIT;
+    public static final int GRABABLE_MASK_BIT = 1 << 31;
+    public static final int NOT_GRABABLE_MASK = ~GRABABLE_MASK_BIT;
 
-	private DrawSpace.Options drawSpaceOptions = new DrawSpace.Options(
-			false,
-			false,
-			true,
-			4.0f,
-			0.0f,
-			1.5f
-	);
-	private GL2 gl;
-	private GLU glu;
-	private DrawSpace drawSpace;
-	protected Vector2f mousePoint = Util.cpvzero();
-	private Vector2f mousePoint_last = Util.cpvzero();
-	private Body mouseBody = null;
-	private Constraint mouseJoint = null;
-	private int width;
-	private int height;
-	private Space space;
-	private String messageString;
-	private TextRenderer textRenderer;
-	private GLCapabilities glCapabilities;
-	private GLCanvas glCanvas;
-	private Frame frame;
-	private long lastUpdate;
-	private IntBuffer view = BufferUtils.createIntBuffer(4);
-	private FloatBuffer model = BufferUtils.createFloatBuffer(16);
-	private FloatBuffer proj = BufferUtils.createFloatBuffer(16);
-	private FloatBuffer m = BufferUtils.createFloatBuffer(3);
-	private final List<MouseEvent> mouseEvents = new ArrayList<>();
+    private DrawSpace.Options drawSpaceOptions = new DrawSpace.Options(
+            false,
+            false,
+            true,
+            4.0f,
+            0.0f,
+            1.5f
+    );
+    private GL2 gl;
+    private GLU glu;
+    private DrawSpace drawSpace;
+    protected Vector2f mousePoint = Util.cpvzero();
+    private Vector2f mousePoint_last = Util.cpvzero();
+    private Body mouseBody = null;
+    private Constraint mouseJoint = null;
+    private int width;
+    private int height;
+    private Space space;
+    private String messageString;
+    private TextRenderer textRenderer;
+    private GLCapabilities glCapabilities;
+    private GLCanvas glCanvas;
+    private Frame frame;
+    private long lastUpdate;
+    private IntBuffer view = BufferUtils.createIntBuffer(4);
+    private FloatBuffer model = BufferUtils.createFloatBuffer(16);
+    private FloatBuffer proj = BufferUtils.createFloatBuffer(16);
+    private FloatBuffer m = BufferUtils.createFloatBuffer(3);
+    private final List<MouseEvent> mouseEvents = new ArrayList<MouseEvent>();
 
-	public abstract Space init();
+    public abstract Space init();
 
-	public abstract void update(long delta);
+    public abstract void update(long delta);
 
-	public DrawSpace.Options getDrawSpaceOptions() {
-		return drawSpaceOptions;
-	}
+    public DrawSpace.Options getDrawSpaceOptions() {
+        return drawSpaceOptions;
+    }
 
-	public int getHeight() {
-		return height;
-	}
+    public int getHeight() {
+        return height;
+    }
 
-	public int getWidth() {
-		return width;
-	}
+    public int getWidth() {
+        return width;
+    }
 
-	public void start(int width, int height) {
-		GLProfile glProfile = GLProfile.getDefault();
-		glCapabilities = new GLCapabilities(glProfile);
-		glCanvas = new GLCanvas(glCapabilities);
-		//glCanvas.setContextCreationFlags(GLContext.CTX_OPTION_DEBUG);
-		frame = new Frame("AWT");
-		frame.setSize(width, height);
-		frame.add(glCanvas);
-		frame.setVisible(true);
-		frame.addWindowListener(new WindowAdapter() {
-			@Override
-			public void windowClosing(WindowEvent e) {
-				System.exit(0);
-			}
-		});
-		glCanvas.setFocusable(true);
-		glCanvas.addGLEventListener(this);
-	}
+    public void start(int width, int height) {
+        GLProfile glProfile = GLProfile.getDefault();
+        glCapabilities = new GLCapabilities(glProfile);
+        glCanvas = new GLCanvas(glCapabilities);
+        //glCanvas.setContextCreationFlags(GLContext.CTX_OPTION_DEBUG);
+        frame = new Frame("AWT");
+        frame.setSize(width, height);
+        frame.add(glCanvas);
+        frame.setVisible(true);
+        frame.addWindowListener(new WindowAdapter() {
+            @Override
+            public void windowClosing(WindowEvent e) {
+                System.exit(0);
+            }
+        });
+        glCanvas.setFocusable(true);
+        glCanvas.addGLEventListener(this);
+    }
 
-	public void exit() {
-		frame.dispose();
-	}
+    public void exit() {
+        frame.dispose();
+    }
 
-	@Override
-	public void init(GLAutoDrawable glAutoDrawable) {
-		glAutoDrawable.getGL().setSwapInterval(1);
-		this.gl = glAutoDrawable.getGL().getGL2();
-		this.glu = new GLU();
-		this.textRenderer = new TextRenderer(new Font("SansSerif", 0, 14));
-		FPSAnimator animator = new FPSAnimator(60);
-		animator.add(glAutoDrawable);
-		animator.start();
-		this.width = glAutoDrawable.getWidth();
-		this.height = glAutoDrawable.getHeight();
-		this.space = init();
-		this.mouseBody = new Body(Float.POSITIVE_INFINITY, Float.POSITIVE_INFINITY);
-		this.drawSpaceOptions = getDrawSpaceOptions();
-		this.drawSpace = new DrawSpace(this.gl);
+    @Override
+    public void init(GLAutoDrawable glAutoDrawable) {
+        glAutoDrawable.getGL().setSwapInterval(1);
+        this.gl = glAutoDrawable.getGL().getGL2();
+        this.glu = new GLU();
+        this.textRenderer = new TextRenderer(new Font("SansSerif", 0, 14));
+        FPSAnimator animator = new FPSAnimator(60);
+        animator.add(glAutoDrawable);
+        animator.start();
+        this.width = glAutoDrawable.getWidth();
+        this.height = glAutoDrawable.getHeight();
+        this.space = init();
+        this.mouseBody = new Body(Float.POSITIVE_INFINITY, Float.POSITIVE_INFINITY);
+        this.drawSpaceOptions = getDrawSpaceOptions();
+        this.drawSpace = new DrawSpace(this.gl);
 
-		glCanvas.addMouseListener(new MouseAdapter() {
-			@Override
-			public void mousePressed(MouseEvent e) {
-				synchronized (mouseEvents) {
-					mouseEvents.add(e);
-				}
-			}
+        glCanvas.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mousePressed(MouseEvent e) {
+                synchronized (mouseEvents) {
+                    mouseEvents.add(e);
+                }
+            }
 
-			@Override
-			public void mouseReleased(MouseEvent e) {
-				synchronized (mouseEvents) {
-					mouseEvents.add(e);
-				}
-			}
+            @Override
+            public void mouseReleased(MouseEvent e) {
+                synchronized (mouseEvents) {
+                    mouseEvents.add(e);
+                }
+            }
 
-			@Override
-			public void mouseMoved(MouseEvent e) {
-				synchronized (mouseEvents) {
-					mouseEvents.add(e);
-				}
-			}
+            @Override
+            public void mouseMoved(MouseEvent e) {
+                synchronized (mouseEvents) {
+                    mouseEvents.add(e);
+                }
+            }
 
-			@Override
-			public void mouseDragged(MouseEvent e) {
-				synchronized (mouseEvents) {
-					mouseEvents.add(e);
-				}
-			}
-		});
-		glCanvas.addMouseMotionListener(new MouseAdapter() {
-			@Override
-			public void mouseMoved(MouseEvent e) {
-				synchronized (mouseEvents) {
-					mouseEvents.add(e);
-				}
-			}
+            @Override
+            public void mouseDragged(MouseEvent e) {
+                synchronized (mouseEvents) {
+                    mouseEvents.add(e);
+                }
+            }
+        });
+        glCanvas.addMouseMotionListener(new MouseAdapter() {
+            @Override
+            public void mouseMoved(MouseEvent e) {
+                synchronized (mouseEvents) {
+                    mouseEvents.add(e);
+                }
+            }
 
-			@Override
-			public void mouseDragged(MouseEvent e) {
-				synchronized (mouseEvents) {
-					mouseEvents.add(e);
-				}
-			}
-		});
-	}
+            @Override
+            public void mouseDragged(MouseEvent e) {
+                synchronized (mouseEvents) {
+                    mouseEvents.add(e);
+                }
+            }
+        });
+    }
 
-	@Override
-	public void dispose(GLAutoDrawable glAutoDrawable) {
-	}
+    @Override
+    public void dispose(GLAutoDrawable glAutoDrawable) {
+    }
 
-	private void pollEvents() {
-		synchronized (mouseEvents) {
-			for (MouseEvent e : mouseEvents) {
-				switch (e.getID()) {
-					case MouseEvent.MOUSE_PRESSED: {
-						if (e.getButton() == MouseEvent.BUTTON1) {
-							Vector2f point = mouseToSpace(e.getX(), e.getY());
+    private void pollEvents() {
+        synchronized (mouseEvents) {
+            for (MouseEvent e : mouseEvents) {
+                switch (e.getID()) {
+                    case MouseEvent.MOUSE_PRESSED: {
+                        if (e.getButton() == MouseEvent.BUTTON1) {
+                            Vector2f point = mouseToSpace(e.getX(), e.getY());
 
-							org.physics.jipmunk.Shape shape = space.pointQueryFirst(point, GRABABLE_MASK_BIT,
-									Constants.NO_GROUP);
-							if (shape != null) {
-								Body body = shape.getBody();
-								mouseJoint = new PivotJoint(mouseBody, body, Util.cpvzero(), body.world2Local(point));
-								mouseJoint.setMaxForce(50000.0f);
-								mouseJoint.setErrorBias(Util.cpfpow(1.0f - 0.15f, 60.0f));
-								space.addConstraint(mouseJoint);
-							}
-							mousePoint.set(point);
-						}
-						break;
-					}
-					case MouseEvent.MOUSE_RELEASED: {
-						if (mouseJoint != null) {
-							space.removeConstraint(mouseJoint);
-							mouseJoint = null;
-						}
-						break;
-					}
-					case MouseEvent.MOUSE_MOVED:
-					case MouseEvent.MOUSE_DRAGGED: {
-						Vector2f p = mouseToSpace(e.getX(), e.getY());
-						mousePoint.set(p);
-						break;
-					}
-				}
-			}
-			mouseEvents.clear();
-		}
-	}
+                            org.physics.jipmunk.Shape shape = space.pointQueryFirst(point, GRABABLE_MASK_BIT,
+                                    Constants.NO_GROUP);
+                            if (shape != null) {
+                                Body body = shape.getBody();
+                                mouseJoint = new PivotJoint(mouseBody, body, Util.cpvzero(), body.world2Local(point));
+                                mouseJoint.setMaxForce(50000.0f);
+                                mouseJoint.setErrorBias(Util.cpfpow(1.0f - 0.15f, 60.0f));
+                                space.addConstraint(mouseJoint);
+                            }
+                            mousePoint.set(point);
+                        }
+                        break;
+                    }
+                    case MouseEvent.MOUSE_RELEASED: {
+                        if (mouseJoint != null) {
+                            space.removeConstraint(mouseJoint);
+                            mouseJoint = null;
+                        }
+                        break;
+                    }
+                    case MouseEvent.MOUSE_MOVED:
+                    case MouseEvent.MOUSE_DRAGGED: {
+                        Vector2f p = mouseToSpace(e.getX(), e.getY());
+                        mousePoint.set(p);
+                        break;
+                    }
+                }
+            }
+            mouseEvents.clear();
+        }
+    }
 
-	@Override
-	public void display(GLAutoDrawable glAutoDrawable) {
-		pollEvents();
+    @Override
+    public void display(GLAutoDrawable glAutoDrawable) {
+        pollEvents();
 
-		Vector2f newPoint = Util.cpvlerp(mouseBody.getPosition(), mousePoint, 0.25f);
-		mouseBody.setVelocity(Util.cpvmult(Util.cpvsub(newPoint, mouseBody.getPosition()), 60.0f));
-		mouseBody.setPosition(newPoint);
+        Vector2f newPoint = Util.cpvlerp(mouseBody.getPosition(), mousePoint, 0.25f);
+        mouseBody.setVelocity(Util.cpvmult(Util.cpvsub(newPoint, mouseBody.getPosition()), 60.0f));
+        mouseBody.setPosition(newPoint);
 
-		long now = System.currentTimeMillis();
-		if (lastUpdate != 0) {
-			update(now - lastUpdate);
-		}
-		lastUpdate = now;
+        long now = System.currentTimeMillis();
+        if (lastUpdate != 0) {
+            update(now - lastUpdate);
+        }
+        lastUpdate = now;
 
-		//renderer.init();
-		//renderer.enterOrtho(640, 480);
-		gl.glViewport(0, 0, width, height);
+        //renderer.init();
+        //renderer.enterOrtho(640, 480);
+        gl.glViewport(0, 0, width, height);
 
-		int rx = (int) (width / 2.0f);
-		int ry = (int) (height / 2.0f);
+        int rx = (int) (width / 2.0f);
+        int ry = (int) (height / 2.0f);
 
-		gl.glMatrixMode(GL2.GL_PROJECTION);
-		gl.glLoadIdentity();
-		gl.glOrtho(-rx, rx, -ry, ry, -1, 1);
-		gl.glTranslatef(0.5f, 0.5f, 0.0f);
-		gl.glMatrixMode(GL2.GL_MODELVIEW);
-		gl.glLoadIdentity();
-		gl.glEnableClientState(GL2.GL_VERTEX_ARRAY);
-		gl.glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
-		gl.glClear(GL2.GL_COLOR_BUFFER_BIT);
-		drawSpace.drawSpace(space, drawSpaceOptions);
-		gl.glDisableClientState(GL2.GL_VERTEX_ARRAY);
+        gl.glMatrixMode(GL2.GL_PROJECTION);
+        gl.glLoadIdentity();
+        gl.glOrtho(-rx, rx, -ry, ry, -1, 1);
+        gl.glTranslatef(0.5f, 0.5f, 0.0f);
+        gl.glMatrixMode(GL2.GL_MODELVIEW);
+        gl.glLoadIdentity();
+        gl.glEnableClientState(GL2.GL_VERTEX_ARRAY);
+        gl.glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
+        gl.glClear(GL2.GL_COLOR_BUFFER_BIT);
+        drawSpace.drawSpace(space, drawSpaceOptions);
+        gl.glDisableClientState(GL2.GL_VERTEX_ARRAY);
 
-		gl.glGetFloatv(GL2.GL_MODELVIEW_MATRIX, model);
-		gl.glGetFloatv(GL2.GL_PROJECTION_MATRIX, proj);
+        gl.glGetFloatv(GL2.GL_MODELVIEW_MATRIX, model);
+        gl.glGetFloatv(GL2.GL_PROJECTION_MATRIX, proj);
 
-		if (messageString != null && !messageString.isEmpty()) {
-			gl.glMatrixMode(GL2.GL_PROJECTION);
-			gl.glPushMatrix();
-			gl.glMatrixMode(GL2.GL_MODELVIEW);
+        if (messageString != null && !messageString.isEmpty()) {
+            gl.glMatrixMode(GL2.GL_PROJECTION);
+            gl.glPushMatrix();
+            gl.glMatrixMode(GL2.GL_MODELVIEW);
 
-			textRenderer.beginRendering(width, height);
-			textRenderer.setColor(Color.black);
-			textRenderer.draw(messageString, 0, 15);
-			textRenderer.endRendering();
+            textRenderer.beginRendering(width, height);
+            textRenderer.setColor(Color.black);
+            textRenderer.draw(messageString, 0, 15);
+            textRenderer.endRendering();
 
-			gl.glMatrixMode(GL2.GL_PROJECTION);
-			gl.glPopMatrix();
-			gl.glMatrixMode(GL2.GL_MODELVIEW);
-		}
-	}
+            gl.glMatrixMode(GL2.GL_PROJECTION);
+            gl.glPopMatrix();
+            gl.glMatrixMode(GL2.GL_MODELVIEW);
+        }
+    }
 
-	@Override
-	public void reshape(GLAutoDrawable glAutoDrawable, int x, int y, int width, int height) {
-		this.width = width;
-		this.height = height;
-		gl.glGetIntegerv(GL2.GL_VIEWPORT, view);
-	}
+    @Override
+    public void reshape(GLAutoDrawable glAutoDrawable, int x, int y, int width, int height) {
+        this.width = width;
+        this.height = height;
+        gl.glGetIntegerv(GL2.GL_VIEWPORT, view);
+    }
 
-	private Vector2f mouseToSpace(int x, int y) {
-		proj.rewind();
-		model.rewind();
-		view.rewind();
-		m.rewind();
+    private Vector2f mouseToSpace(int x, int y) {
+        proj.rewind();
+        model.rewind();
+        view.rewind();
+        m.rewind();
 
-		glu.gluUnProject(x, height - y, 0.0f, model, proj, view, m);
-		float mx = m.get();
-		float my = m.get();
+        glu.gluUnProject(x, height - y, 0.0f, model, proj, view, m);
+        float mx = m.get();
+        float my = m.get();
 
-		return Util.cpv(mx, my);
-	}
+        return Util.cpv(mx, my);
+    }
 }

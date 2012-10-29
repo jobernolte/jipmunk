@@ -53,7 +53,7 @@ public class SpaceHash<T> extends SpatialIndex<T> {
 	private IntHashMap<Handle<T>> handleSet;
 
 	private HashBin<T> pooledBins;
-	private LinkedList<Handle<T>> pooledHandles = new LinkedList<>();
+	private LinkedList<Handle<T>> pooledHandles = new LinkedList<Handle<T>>();
 
 	private long stamp;
 
