@@ -1091,7 +1091,7 @@ public class Space {
                 cpArbiterApplyImpulse(arbiter);
             }
             for (Constraint constraint : constraints) {
-                constraint.applyImpulse();
+                constraint.applyImpulse(dt);
             }
         }
 

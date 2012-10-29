@@ -1,0 +1,90 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project name="module_examples" default="compile.module.examples">
+  <dirname property="module.examples.basedir" file="${ant.file.module_examples}"/>
+  
+  
+  <property name="compiler.args.examples" value="${compiler.args}"/>
+  
+  <property name="examples.output.dir" value="${module.examples.basedir}/../out/production/examples"/>
+  <property name="examples.testoutput.dir" value="${module.examples.basedir}/../out/test/examples"/>
+  
+  <path id="examples.module.bootclasspath">
+    <!-- Paths to be included in compilation bootclasspath -->
+  </path>
+  
+  <path id="examples.module.production.classpath">
+    <fileset dir="${basedir}/examples/libs">
+      <patternset refid="library.patterns"/>
+    </fileset>
+    <pathelement location="${jipmunk.output.dir}"/>
+  </path>
+  
+  <path id="examples.runtime.production.module.classpath">
+    <pathelement location="${examples.output.dir}"/>
+    <fileset dir="${basedir}/examples/libs">
+      <patternset refid="library.patterns"/>
+    </fileset>
+    <path refid="jipmunk.runtime.production.module.classpath"/>
+  </path>
+  
+  <path id="examples.module.classpath">
+    <pathelement location="${examples.output.dir}"/>
+    <fileset dir="${basedir}/examples/libs">
+      <patternset refid="library.patterns"/>
+    </fileset>
+    <pathelement location="${jipmunk.testoutput.dir}"/>
+    <pathelement location="${jipmunk.output.dir}"/>
+  </path>
+  
+  <path id="examples.runtime.module.classpath">
+    <pathelement location="${examples.testoutput.dir}"/>
+    <pathelement location="${examples.output.dir}"/>
+    <fileset dir="${basedir}/examples/libs">
+      <patternset refid="library.patterns"/>
+    </fileset>
+    <path refid="jipmunk.runtime.module.classpath"/>
+  </path>
+  
+  
+  <patternset id="excluded.from.module.examples">
+    <patternset refid="ignored.files"/>
+  </patternset>
+  
+  <patternset id="excluded.from.compilation.examples">
+    <patternset refid="excluded.from.module.examples"/>
+  </patternset>
+  
+  <path id="examples.module.sourcepath">
+    <dirset dir="${module.examples.basedir}">
+      <include name="src"/>
+    </dirset>
+  </path>
+  
+  
+  <target name="compile.module.examples" depends="compile.module.examples.production,compile.module.examples.tests" description="Compile module examples"/>
+  
+  <target name="compile.module.examples.production" depends="compile.module.jipmunk" description="Compile module examples; production classes">
+    <mkdir dir="${examples.output.dir}"/>
+    <javac destdir="${examples.output.dir}" debug="${compiler.debug}" nowarn="${compiler.generate.no.warnings}" memorymaximumsize="${compiler.max.memory}" fork="true" includeantruntime="false">
+      <compilerarg line="${compiler.args.examples}"/>
+      <bootclasspath refid="examples.module.bootclasspath"/>
+      <classpath refid="examples.module.production.classpath"/>
+      <src refid="examples.module.sourcepath"/>
+      <patternset refid="excluded.from.compilation.examples"/>
+    </javac>
+    
+    <copy todir="${examples.output.dir}">
+      <fileset dir="${module.examples.basedir}/src">
+        <patternset refid="compiler.resources"/>
+        <type type="file"/>
+      </fileset>
+    </copy>
+  </target>
+  
+  <target name="compile.module.examples.tests" depends="compile.module.examples.production" description="compile module examples; test classes" unless="skip.tests"/>
+  
+  <target name="clean.module.examples" description="cleanup module">
+    <delete dir="${examples.output.dir}"/>
+    <delete dir="${examples.testoutput.dir}"/>
+  </target>
+</project>

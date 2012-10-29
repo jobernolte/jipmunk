@@ -37,7 +37,7 @@ public abstract class Constraint {
 	Constraint next_b;
 
 	/** The maximum force that this constraint is allowed to use. Defaults to infinity. */
-	float maxForce;
+	protected float maxForce;
 	/**
 	 * The rate at which joint error is corrected. Defaults to pow(1.0 - 0.1, 60.0) meaning that it will correct 10% of the
 	 * error every 1/60th of a second.
@@ -45,8 +45,15 @@ public abstract class Constraint {
 	protected float errorBias;
 	/** The maximum rate at which joint error is corrected. Defaults to infinity. */
 	protected float maxBias;
+	/** Function called before the solver runs. Animate your joint anchors, update your motor torque, etc. */
 	ConstraintPreSolveFunc preSolveFunc;
+	/** Function called after the solver runs. Use the applied impulse to perform effects like breakable joints. */
 	ConstraintPostSolveFunc postSolveFunc;
+	/**
+	 * User definable data. Generally this points to your the game object class so you can access it when given a Body
+	 * reference in a callback.
+	 */
+	private Object data;
 
 	protected Constraint(Body a, Body b) {
 		this.a = a;
@@ -89,21 +96,9 @@ public abstract class Constraint {
 
 	protected abstract void applyCachedImpulse(float dt_coef);
 
-	protected abstract void applyImpulse();
+	protected abstract void applyImpulse(float dt);
 
 	protected abstract float getImpulse();
-
-	/// @private
-	static void cpConstraintActivateBodies(Constraint constraint) {
-		Body a = constraint.a;
-		if (a != null) cpBodyActivate(a);
-		Body b = constraint.b;
-		if (b != null) cpBodyActivate(b);
-	}
-
-	protected static float J_MAX(Constraint constraint, float dt) {
-		return constraint.maxForce * dt;
-	}
 
 	protected void activateBodies() {
 		if (a != null) cpBodyActivate(a);
@@ -124,5 +119,28 @@ public abstract class Constraint {
 
 	public void setPostSolveFunc(ConstraintPostSolveFunc postSolveFunc) {
 		this.postSolveFunc = postSolveFunc;
+	}
+
+	/** @return the user data */
+	public Object getData() {
+		return data;
+	}
+
+	/**
+	 * @param clazz the {@link Class} of the user data
+	 * @param <T>   the type of the data
+	 * @return the user data
+	 */
+	public <T> T getData(Class<T> clazz) {
+		return clazz.cast(data);
+	}
+
+	/**
+	 * Sets user data. Use this data to get a reference to the game object that owns this body from callbacks.
+	 *
+	 * @param data the user data to set
+	 */
+	public void setData(Object data) {
+		this.data = data;
 	}
 }

@@ -69,6 +69,12 @@ public abstract class Shape {
 	Shape next;
 	Space space;
 
+	/**
+	 * User definable data. Generally this points to your the game object class so you can access it when given a Body
+	 * reference in a callback.
+	 */
+	private Object data;
+
 	public Shape(Body body) {
 		this.body = body;
 	}
@@ -257,5 +263,28 @@ public abstract class Shape {
 
 	public BB getBb() {
 		return bb;
+	}
+
+	/** @return the user data */
+	public Object getData() {
+		return data;
+	}
+
+	/**
+	 * @param clazz the {@link Class} of the user data
+	 * @param <T>   the type of the data
+	 * @return the user data
+	 */
+	public <T> T getData(Class<T> clazz) {
+		return clazz.cast(data);
+	}
+
+	/**
+	 * Sets user data. Use this data to get a reference to the game object that owns this body from callbacks.
+	 *
+	 * @param data the user data to set
+	 */
+	public void setData(Object data) {
+		this.data = data;
 	}
 }

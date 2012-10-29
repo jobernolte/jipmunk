@@ -154,7 +154,7 @@ public class DampedSpring extends Constraint {
 	}
 
 	@Override
-	protected void applyImpulse() {
+	protected void applyImpulse(float dt) {
 		Vector2f n = this.n;
 		Vector2f r1 = this.r1;
 		Vector2f r2 = this.r2;

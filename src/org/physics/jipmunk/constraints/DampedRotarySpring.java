@@ -114,7 +114,7 @@ public class DampedRotarySpring extends Constraint {
 	}
 
 	@Override
-	protected void applyImpulse() {
+	protected void applyImpulse(float dt) {
 		// compute relative velocity
 		float wrn = a.getAngVel() - b.getAngVel();//normal_relative_velocity(a, b, r1, r2, n) - this.target_vrn;
 

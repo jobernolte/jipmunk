@@ -34,7 +34,7 @@ public class SimpleMotor extends Constraint {
 
 	float iSum;
 
-	float jAcc, jMax;
+	float jAcc;
 
 	public SimpleMotor(Body a, Body b, float rate) {
 		super(a, b);
@@ -56,9 +56,6 @@ public class SimpleMotor extends Constraint {
 	protected void preStep(float dt) {
 		// calculate moment of inertia coefficient.
 		this.iSum = 1.0f / (a.getInverseMoment() + b.getInverseMoment());
-
-		// compute max impulse
-		this.jMax = J_MAX(this, dt);
 	}
 
 	@Override
@@ -69,14 +66,16 @@ public class SimpleMotor extends Constraint {
 	}
 
 	@Override
-	protected void applyImpulse() {
+	protected void applyImpulse(float dt) {
 		// compute relative rotational velocity
 		float wr = b.getAngVel() - a.getAngVel() + this.rate;
+
+		float jMax = this.maxForce * dt;
 
 		// compute normal impulse
 		float j = -wr * this.iSum;
 		float jOld = this.jAcc;
-		this.jAcc = cpfclamp(jOld + j, -this.jMax, this.jMax);
+		this.jAcc = cpfclamp(jOld + j, -jMax, jMax);
 		j = this.jAcc - jOld;
 
 		// apply impulse

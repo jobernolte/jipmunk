@@ -50,7 +50,7 @@ public class SlideJoint extends Constraint {
 	Vector2f n;
 	float nMass;
 
-	float jnAcc, jnMax;
+	float jnAcc;
 	float bias;
 
 	/**
@@ -131,9 +131,6 @@ public class SlideJoint extends Constraint {
 		//float maxBias = this.constraint.maxBias;
 		this.bias = cpfclamp(-bias_coef(this.errorBias, dt) * pdist / dt, -this.maxBias, this.maxBias);
 
-		// compute max impulse
-		this.jnMax = J_MAX(this, dt);
-
 		// if bias is 0, then the joint is not at a limit. Reset cached impulse.
 		if (this.bias == 0) {
 			this.jnAcc = 0.0f;
@@ -147,7 +144,7 @@ public class SlideJoint extends Constraint {
 	}
 
 	@Override
-	protected void applyImpulse() {
+	protected void applyImpulse(float dt) {
 		if (this.bias == 0) {
 			return;  // early exit
 		}
@@ -166,7 +163,7 @@ public class SlideJoint extends Constraint {
 		// compute normal impulse
 		float jn = (this.bias - vrn) * this.nMass;
 		float jnOld = this.jnAcc;
-		this.jnAcc = cpfclamp(jnOld + jn, -this.jnMax, 0.0f);
+		this.jnAcc = cpfclamp(jnOld + jn, -this.maxForce * dt, 0.0f);
 		jn = this.jnAcc - jnOld;
 
 		// apply impulse

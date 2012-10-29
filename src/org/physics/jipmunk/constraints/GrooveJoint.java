@@ -61,7 +61,6 @@ public class GrooveJoint extends Constraint {
 	Vector2f k1 = Util.cpvzero(), k2 = Util.cpvzero();
 
 	Vector2f jAcc;
-	float jMaxLen;
 	Vector2f bias;
 
 	void init(Vector2f groove_a, Vector2f groove_b, Vector2f anchr2) {
@@ -138,9 +137,6 @@ public class GrooveJoint extends Constraint {
 		// Calculate mass tensor
 		k_tensor(a, b, this.r1, this.r2, this.k1, this.k2);
 
-		// compute max impulse
-		this.jMaxLen = J_MAX(this, dt);
-
 		// calculate bias velocity
 		Vector2f delta = cpvsub(cpvadd(b.getPosition(), this.r2), cpvadd(a.getPosition(), this.r1));
 		this.bias = cpvclamp(cpvmult(delta, -bias_coef(this.errorBias, dt) / dt), this.maxBias);
@@ -151,14 +147,14 @@ public class GrooveJoint extends Constraint {
 		apply_impulses(a, b, this.r1, this.r2, cpvmult(this.jAcc, dt_coef));
 	}
 
-	Vector2f grooveConstrain(Vector2f j) {
+	Vector2f grooveConstrain(Vector2f j, float dt) {
 		Vector2f n = this.grv_tn;
 		Vector2f jClamp = (this.clamp * cpvcross(j, n) > 0.0f) ? j : cpvproject(j, n);
-		return cpvclamp(jClamp, this.jMaxLen);
+		return cpvclamp(jClamp, this.maxForce * dt);
 	}
 
 	@Override
-	protected void applyImpulse() {
+	protected void applyImpulse(float dt) {
 		Vector2f r1 = this.r1;
 		Vector2f r2 = this.r2;
 
@@ -167,7 +163,7 @@ public class GrooveJoint extends Constraint {
 
 		Vector2f j = mult_k(cpvsub(this.bias, vr), this.k1, this.k2);
 		Vector2f jOld = this.jAcc;
-		this.jAcc = grooveConstrain(cpvadd(jOld, j));
+		this.jAcc = grooveConstrain(cpvadd(jOld, j), dt);
 		j = cpvsub(this.jAcc, jOld);
 
 		// apply impulse

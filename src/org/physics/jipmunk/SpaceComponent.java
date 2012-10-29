@@ -121,12 +121,13 @@ class SpaceComponent {
 	static void cpBodyActivateStatic(Body body, Shape filter) {
 		cpAssertHard(cpBodyIsStatic(body), "cpBodyActivateStatic() called on a non-static body.");
 
-		//CP_BODY_FOREACH_ARBITER(body, arb){
 		for (Arbiter arb : body.arbiters()) {
 			if (filter == null || filter == arb.a || filter == arb.b) {
 				cpBodyActivate(arb.body_a == body ? arb.body_b : arb.body_a);
 			}
 		}
+
+		// TODO should also activate joints?
 	}
 
 	static boolean ComponentActive(Body root, float threshold) {

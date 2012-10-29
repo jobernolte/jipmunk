@@ -1,107 +1,125 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project name="jipmunk" default="all">
-  
-  
-  <property file="build.properties"/>
-  <!-- Uncomment the following property if no tests compilation is needed -->
-  <!-- 
-  <property name="skip.tests" value="true"/>
-   -->
-  
-  <!-- Compiler options -->
-  
-  <property name="compiler.debug" value="on"/>
-  <property name="compiler.generate.no.warnings" value="off"/>
-  <property name="compiler.args" value=""/>
-  <property name="compiler.max.memory" value="128m"/>
-  <patternset id="ignored.files">
-    <exclude name="**/CVS/**"/>
-    <exclude name="**/SCCS/**"/>
-    <exclude name="**/RCS/**"/>
-    <exclude name="**/.DS_Store/**"/>
-    <exclude name="**/.svn/**"/>
-    <exclude name="**/.pyc/**"/>
-    <exclude name="**/.pyo/**"/>
-    <exclude name="**/*.pyc/**"/>
-    <exclude name="**/*.pyo/**"/>
-    <exclude name="**/.git/**"/>
-    <exclude name="**/*.hprof/**"/>
-    <exclude name="**/_svn/**"/>
-    <exclude name="**/.hg/**"/>
-    <exclude name="**/*.lib/**"/>
-    <exclude name="**/*~/**"/>
-    <exclude name="**/__pycache__/**"/>
-    <exclude name="**/.bundle/**"/>
-    <exclude name="**/*.rbc/**"/>
-  </patternset>
-  <patternset id="library.patterns">
-    <include name="*.war"/>
-    <include name="*.ear"/>
-    <include name="*.apk"/>
-    <include name="*.zip"/>
-    <include name="*.swc"/>
-    <include name="*.ane"/>
-    <include name="*.egg"/>
-    <include name="*.jar"/>
-  </patternset>
-  <patternset id="compiler.resources">
-    <include name="**/?*.properties"/>
-    <include name="**/?*.xml"/>
-    <include name="**/?*.gif"/>
-    <include name="**/?*.png"/>
-    <include name="**/?*.jpeg"/>
-    <include name="**/?*.jpg"/>
-    <include name="**/?*.html"/>
-    <include name="**/?*.dtd"/>
-    <include name="**/?*.tld"/>
-    <include name="**/?*.ftl"/>
-  </patternset>
-  
-  
-  <!-- Global Libraries -->
-  
-  
-  <!-- Application Server Libraries -->
-  
-  <!-- Modules -->
-  
-  <import file="${basedir}/module_jipmunk.xml"/>
-  
-  <import file="${basedir}/examples/module_examples.xml"/>
-  
-  <target name="init" description="Build initialization">
-    <!-- Perform any build initialization in this target -->
-  </target>
-  
-  <target name="clean" depends="clean.module.jipmunk, clean.module.examples, clean.artifact.jipmunk:jar" description="cleanup all"/>
-  
-  <target name="build.modules" depends="init, clean, compile.module.jipmunk, compile.module.examples" description="build all modules"/>
-  
-  <target name="init.artifacts">
-    <property name="artifacts.temp.dir" value="${basedir}/__artifacts_temp"/>
-    <property name="artifact.output.jipmunk:jar" value="${basedir}/out/artifacts/jipmunk_jar"/>
-    <mkdir dir="${artifacts.temp.dir}"/>
-    <property name="temp.jar.path.jipmunk.jar" value="${artifacts.temp.dir}/jipmunk.jar"/>
-  </target>
-  
-  <target name="clean.artifact.jipmunk:jar" description="clean jipmunk:jar artifact output">
-    <delete dir="${artifact.output.jipmunk:jar}"/>
-  </target>
-  
-  <target name="artifact.jipmunk:jar" depends="init.artifacts, compile.module.jipmunk" description="Build &#39;jipmunk:jar&#39; artifact">
-    <mkdir dir="${artifact.output.jipmunk:jar}"/>
-    <jar destfile="${temp.jar.path.jipmunk.jar}" duplicate="preserve" filesetmanifest="mergewithoutmain">
-      <zipfileset file="${basedir}/src/META-INF/MANIFEST.MF" prefix="META-INF"/>
-      <zipfileset dir="${jipmunk.output.dir}"/>
-    </jar>
-    <copy file="${temp.jar.path.jipmunk.jar}" tofile="${artifact.output.jipmunk:jar}/jipmunk.jar"/>
-  </target>
-  
-  <target name="build.all.artifacts" depends="artifact.jipmunk:jar" description="Build all artifacts">
-    
-    <!-- Delete temporary files -->
-    <delete dir="${artifacts.temp.dir}"/>
-  </target>
-  
-  <target name="all" depends="build.modules, build.all.artifacts" description="build all"/>
+
+
+	<property file="build.properties"/>
+	<!-- Uncomment the following property if no tests compilation is needed -->
+	<!--
+	  <property name="skip.tests" value="true"/>
+	   -->
+
+	<!-- Compiler options -->
+
+	<property name="compiler.debug" value="on"/>
+	<property name="compiler.generate.no.warnings" value="off"/>
+	<property name="compiler.args" value=""/>
+	<property name="compiler.max.memory" value="128m"/>
+	<patternset id="ignored.files">
+		<exclude name="**/CVS/**"/>
+		<exclude name="**/SCCS/**"/>
+		<exclude name="**/RCS/**"/>
+		<exclude name="**/.DS_Store/**"/>
+		<exclude name="**/.svn/**"/>
+		<exclude name="**/.pyc/**"/>
+		<exclude name="**/.pyo/**"/>
+		<exclude name="**/*.pyc/**"/>
+		<exclude name="**/*.pyo/**"/>
+		<exclude name="**/.git/**"/>
+		<exclude name="**/*.hprof/**"/>
+		<exclude name="**/_svn/**"/>
+		<exclude name="**/.hg/**"/>
+		<exclude name="**/*.lib/**"/>
+		<exclude name="**/*~/**"/>
+		<exclude name="**/__pycache__/**"/>
+		<exclude name="**/.bundle/**"/>
+		<exclude name="**/*.rbc/**"/>
+	</patternset>
+	<patternset id="library.patterns">
+		<include name="*.war"/>
+		<include name="*.ear"/>
+		<include name="*.apk"/>
+		<include name="*.zip"/>
+		<include name="*.swc"/>
+		<include name="*.ane"/>
+		<include name="*.egg"/>
+		<include name="*.jar"/>
+	</patternset>
+	<patternset id="compiler.resources">
+		<include name="**/?*.properties"/>
+		<include name="**/?*.xml"/>
+		<include name="**/?*.gif"/>
+		<include name="**/?*.png"/>
+		<include name="**/?*.jpeg"/>
+		<include name="**/?*.jpg"/>
+		<include name="**/?*.html"/>
+		<include name="**/?*.dtd"/>
+		<include name="**/?*.tld"/>
+		<include name="**/?*.ftl"/>
+	</patternset>
+
+
+	<!-- Global Libraries -->
+
+
+	<!-- Application Server Libraries -->
+
+	<!-- Modules -->
+
+	<import file="${basedir}/module_jipmunk.xml"/>
+
+	<import file="${basedir}/examples/module_examples.xml"/>
+
+	<target name="init" description="Build initialization">
+		<!-- Perform any build initialization in this target -->
+	</target>
+
+	<target name="clean" depends="clean.module.jipmunk, clean.module.examples, clean.artifact.jipmunk:jar"
+			description="cleanup all"/>
+
+	<target name="build.modules" depends="init, clean, compile.module.jipmunk, compile.module.examples"
+			description="build all modules"/>
+
+	<target name="init.artifacts">
+		<property name="artifacts.temp.dir" value="${basedir}/__artifacts_temp"/>
+		<property name="artifact.output.jipmunk:jar" value="${basedir}/out/artifacts/jipmunk_jar"/>
+		<mkdir dir="${artifacts.temp.dir}"/>
+		<property name="temp.jar.path.jipmunk.jar" value="${artifacts.temp.dir}/jipmunk.jar"/>
+	</target>
+
+	<target name="clean.artifact.jipmunk:jar" description="clean jipmunk:jar artifact output">
+		<delete dir="${artifact.output.jipmunk:jar}"/>
+	</target>
+
+	<target name="artifact.jipmunk:jar" depends="init.artifacts, compile.module.jipmunk"
+			description="Build &#39;jipmunk:jar&#39; artifact">
+		<mkdir dir="${artifact.output.jipmunk:jar}"/>
+		<jar destfile="${temp.jar.path.jipmunk.jar}" duplicate="preserve" filesetmanifest="mergewithoutmain">
+			<zipfileset file="${basedir}/src/META-INF/MANIFEST.MF" prefix="META-INF"/>
+			<zipfileset dir="${jipmunk.output.dir}"/>
+		</jar>
+		<copy file="${temp.jar.path.jipmunk.jar}" tofile="${artifact.output.jipmunk:jar}/jipmunk.jar"/>
+	</target>
+
+	<target name="build.all.artifacts" depends="artifact.jipmunk:jar" description="Build all artifacts">
+
+		<!-- Delete temporary files -->
+		<delete dir="${artifacts.temp.dir}"/>
+	</target>
+
+	<target name="all" depends="build.modules, build.all.artifacts" description="build all"/>
+
+	<target name="example.LogoSmash" depends="build.all.artifacts,compile.module.examples"
+			description="runs example 'LogoSmash'">
+		<java fork="true" classname="org.physics.jipmunk.examples.LogoSmash">
+			<classpath refid="jipmunk.runtime.production.module.classpath"/>
+			<classpath refid="examples.runtime.production.module.classpath"/>
+		</java>
+	</target>
+	<target name="example.PyramidStack" depends="build.all.artifacts,compile.module.examples"
+			description="runs example 'PyramidStack'">
+		<java fork="true" classname="org.physics.jipmunk.examples.PyramidStack">
+			<classpath refid="jipmunk.runtime.production.module.classpath"/>
+			<classpath refid="examples.runtime.production.module.classpath"/>
+		</java>
+	</target>
 </project>

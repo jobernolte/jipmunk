@@ -22,6 +22,8 @@
 
 package org.physics.jipmunk.examples;
 
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import org.physics.jipmunk.Body;
 import org.physics.jipmunk.CircleShape;
 import org.physics.jipmunk.Shape;
@@ -31,8 +33,10 @@ import org.physics.jipmunk.Util;
 /** @author jobernolte */
 public class LogoSmash extends ExampleBase {
 
+	final static Logger LOGGER = Logger.getLogger(LogoSmash.class.getSimpleName());
+
 	private Space space;
-    private int allSteps = 0;
+	private int allSteps = 0;
 	static final int image_width = 188;
 	static final int image_height = 35;
 	static final int image_row_length = 24;
@@ -171,11 +175,11 @@ public class LogoSmash extends ExampleBase {
 		while (steps > 0) {
 			space.step(dt);
 			steps -= (int) (1000.0f / 60.0f);
-            allSteps++;
-            if (allSteps >= 100) {
-                //System.exit(0);
-                return;
-            }
+			allSteps++;
+			if (allSteps >= 100) {
+				//System.exit(0);
+				return;
+			}
 		}
 	}
 
@@ -197,6 +201,7 @@ public class LogoSmash extends ExampleBase {
 		} catch (IOException e) {
 			e.printStackTrace();
 		}*/
+		LOGGER.log(Level.INFO, "starting LogoSmash");
 		new LogoSmash().start(640, 480);
 	}
 }

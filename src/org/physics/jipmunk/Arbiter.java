@@ -57,6 +57,11 @@ public class Arbiter {
 	CollisionHandlerEntry handler;
 	boolean swappedColl = false;
 	ArbiterState state = ArbiterState.cpArbiterStateFirstColl;
+	/**
+	 * User definable data. Generally this points to your the game object class so you can access it when given a Body
+	 * reference in a callback.
+	 */
+	private Object data;
 
 	/** @return Calculated value to use for the elasticity coefficient. */
 	public float getElasticity() {
@@ -315,11 +320,11 @@ public class Arbiter {
 			}
 		}
 
-        if (this.contacts == null) {
-            this.contacts = contacts.toArray(new Contact[contacts.size()]);
-        } else {
-            this.contacts = contacts.toArray(this.contacts);
-        }
+		if (this.contacts == null) {
+			this.contacts = contacts.toArray(new Contact[contacts.size()]);
+		} else {
+			this.contacts = contacts.toArray(this.contacts);
+		}
 		this.numContacts = numContacts;
 
 		this.handler = handler;
@@ -395,39 +400,34 @@ public class Arbiter {
 			// Calculate the relative bias velocities.
 			Vector2f vb1 = Util.cpvadd(a.v_bias, Util.cpvmult(Util.cpvperp(r1), a.w_bias));
 			Vector2f vb2 = Util.cpvadd(b.v_bias, Util.cpvmult(Util.cpvperp(r2), b.w_bias));
+			Vector2f vr = Util.relative_velocity(a, b, r1, r2);
+
 			float vbn = Util.cpvdot(Util.cpvsub(vb2, vb1), n);
+			// Calculate the relative velocity.
+			float vrn = Util.cpvdot(vr, n);
+			// Calculate the relative tangent velocity.
+			float vrt = Util.cpvdot(Util.cpvadd(vr, this.surface_vr), Util.cpvperp(n));
 
 			// Calculate and clamp the bias impulse.
 			float jbn = (con.bias - vbn) * con.nMass;
 			float jbnOld = con.jBias;
 			con.jBias = Util.cpfmax(jbnOld + jbn, 0.0f);
-			jbn = con.jBias - jbnOld;
-
-			// Apply the bias impulse.
-			Util.apply_bias_impulses(a, b, r1, r2, Util.cpvmult(n, jbn));
-
-			// Calculate the relative velocity.
-			Vector2f vr = Util.relative_velocity(a, b, r1, r2);
-			float vrn = Util.cpvdot(vr, n);
 
 			// Calculate and clamp the normal impulse.
 			float jn = -(con.bounce + vrn) * con.nMass;
 			float jnOld = con.jnAcc;
 			con.jnAcc = Util.cpfmax(jnOld + jn, 0.0f);
-			jn = con.jnAcc - jnOld;
-
-			// Calculate the relative tangent velocity.
-			float vrt = Util.cpvdot(Util.cpvadd(vr, this.surface_vr), Util.cpvperp(n));
 
 			// Calculate and clamp the friction impulse.
 			float jtMax = this.u * con.jnAcc;
 			float jt = -vrt * con.tMass;
 			float jtOld = con.jtAcc;
 			con.jtAcc = Util.cpfclamp(jtOld + jt, -jtMax, jtMax);
-			jt = con.jtAcc - jtOld;
 
+			// Apply the bias impulse.
+			Util.apply_bias_impulses(a, b, r1, r2, Util.cpvmult(n, con.jBias - jbnOld));
 			// Apply the final impulse.
-			Util.apply_impulses(a, b, r1, r2, Util.cpvrotate(n, Util.cpv(jn, jt)));
+			Util.apply_impulses(a, b, r1, r2, Util.cpvrotate(n, Util.cpv(con.jnAcc - jnOld, con.jtAcc - jtOld)));
 		}
 	}
 
@@ -460,5 +460,28 @@ public class Arbiter {
 
 	static void cpArbiterPreStep(Arbiter arb, float dt, float slop, float bias) {
 		arb.preStep(dt, slop, bias);
+	}
+
+	/** @return the user data */
+	public Object getData() {
+		return data;
+	}
+
+	/**
+	 * @param clazz the {@link Class} of the user data
+	 * @param <T>   the type of the data
+	 * @return the user data
+	 */
+	public <T> T getData(Class<T> clazz) {
+		return clazz.cast(data);
+	}
+
+	/**
+	 * Sets user data. Use this data to get a reference to the game object that owns this body from callbacks.
+	 *
+	 * @param data the user data to set
+	 */
+	public void setData(Object data) {
+		this.data = data;
 	}
 }
