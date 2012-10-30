@@ -152,7 +152,7 @@ public class Space {
             collideShapes(obj1, obj2);
         }
     };
-    private SpatialIndexIteratorFunc activeShapeSpatialIndexIteratorFunc = new SpatialIndexIteratorFunc<Shape>() {
+    private SpatialIndexIteratorFunc<Shape> activeShapeSpatialIndexIteratorFunc = new SpatialIndexIteratorFunc<Shape>() {
         @Override
         public void visit(Shape shape) {
             Body body = shape.body;
