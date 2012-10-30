@@ -59,6 +59,7 @@ public abstract class ExampleBase implements GLEventListener {
     private GLU glu;
     private DrawSpace drawSpace;
     protected Vector2f mousePoint = Util.cpvzero();
+    protected boolean chipmunkDemoRightClick = false;
     private Vector2f mousePoint_last = Util.cpvzero();
     private Body mouseBody = null;
     private Constraint mouseJoint = null;
@@ -212,6 +213,9 @@ public abstract class ExampleBase implements GLEventListener {
                         }
                         mousePoint.set(point);
                     }
+                    if (e.getButton() == MouseEvent.BUTTON2) {
+                        chipmunkDemoRightClick = true;
+                    }
                     break;
                 }
                 case MouseEvent.MOUSE_RELEASED: {
@@ -219,6 +223,7 @@ public abstract class ExampleBase implements GLEventListener {
                         space.removeConstraint(mouseJoint);
                         mouseJoint = null;
                     }
+                    chipmunkDemoRightClick = false;
                     break;
                 }
                 case MouseEvent.MOUSE_MOVED:

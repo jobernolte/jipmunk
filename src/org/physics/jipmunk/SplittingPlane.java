@@ -23,7 +23,7 @@
 package org.physics.jipmunk;
 
 /** @author jobernolte */
-class PolyShapeAxis {
+class SplittingPlane {
 	Vector2f n;
 	float d;
 }

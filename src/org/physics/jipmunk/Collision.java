@@ -139,7 +139,7 @@ class Collision {
 	}
 
 	// Find the minimum separating axis for the give poly and axis list.
-	static int findMSA(final PolyShape poly, final PolyShapeAxis[] axes, final int num, FloatRef min_out) {
+	static int findMSA(final PolyShape poly, final SplittingPlane[] axes, final int num, FloatRef min_out) {
 		int min_index = 0;
 		float min = cpPolyShapeValueOnAxis(poly, axes[0].n, axes[0].d);
 		if (min > 0.0f) return -1;
@@ -210,18 +210,18 @@ class Collision {
 		PolyShape poly2 = (PolyShape) shape2;
 
 		FloatRef min1 = new FloatRef();
-		int mini1 = findMSA(poly2, poly1.tAxes, poly1.verts.length, min1);
+		int mini1 = findMSA(poly2, poly1.tPlanes, poly1.verts.length, min1);
 		if (mini1 == -1) return 0;
 
 		FloatRef min2 = new FloatRef();
-		int mini2 = findMSA(poly1, poly2.tAxes, poly2.verts.length, min2);
+		int mini2 = findMSA(poly1, poly2.tPlanes, poly2.verts.length, min2);
 		if (mini2 == -1) return 0;
 
 		// There is overlap, find the penetrating verts
 		if (min1.value > min2.value)
-			return findVerts(arr, poly1, poly2, poly1.tAxes[mini1].n, min1.value);
+			return findVerts(arr, poly1, poly2, poly1.tPlanes[mini1].n, min1.value);
 		else
-			return findVerts(arr, poly1, poly2, cpvneg(poly2.tAxes[mini2].n), min2.value);
+			return findVerts(arr, poly1, poly2, cpvneg(poly2.tPlanes[mini2].n), min2.value);
 	}
 
 	// Like cpPolyValueOnAxis(), but for segments.
@@ -254,7 +254,7 @@ class Collision {
 	static int seg2poly(final Shape shape1, final Shape shape2, ContactList arr) {
 		SegmentShape seg = (SegmentShape) shape1;
 		PolyShape poly = (PolyShape) shape2;
-		PolyShapeAxis[] axes = poly.tAxes;
+		SplittingPlane[] axes = poly.tPlanes;
 
 		float segD = cpvdot(seg.tn, seg.ta);
 		float minNorm = cpPolyShapeValueOnAxis(poly, seg.tn, segD) - seg.r;
@@ -325,7 +325,7 @@ class Collision {
 	static int circle2poly(final Shape shape1, final Shape shape2, ContactList arr) {
 		CircleShape circ = (CircleShape) shape1;
 		PolyShape poly = (PolyShape) shape2;
-		PolyShapeAxis[] axes = poly.tAxes;
+		SplittingPlane[] axes = poly.tPlanes;
 
 		int mini = 0;
 		float min = cpvdot(axes[0].n, circ.tc) - axes[0].d - circ.r;
