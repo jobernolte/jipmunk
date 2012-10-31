@@ -213,7 +213,7 @@ public abstract class ExampleBase implements GLEventListener {
                         }
                         mousePoint.set(point);
                     }
-                    if (e.getButton() == MouseEvent.BUTTON2) {
+                    if (e.getButton() == MouseEvent.BUTTON3) {
                         chipmunkDemoRightClick = true;
                     }
                     break;

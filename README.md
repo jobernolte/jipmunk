@@ -28,4 +28,6 @@ Features
 Building
 ========
 
-Ant is used as the build system. The buildfile is *build.xml*.
+Ant is used as the build system. The buildfile is *build.xml*. The default target builds the library. Calling
+ant target "example.ExampleMenu" will create the examples and start an application were you can choose to show one
+of the examples.

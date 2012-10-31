@@ -29,9 +29,7 @@ import java.util.Random;
 
 import static org.physics.jipmunk.Util.cpv;
 
-/**
- * @author chris_c based on work by jobernolte & Lembcke
- */
+/** @author chris_c based on work by jobernolte & Lembcke */
 public class Plink extends ExampleBase {
 
     private static Random rgen = new Random();

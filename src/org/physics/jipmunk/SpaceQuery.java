@@ -22,6 +22,8 @@
 
 package org.physics.jipmunk;
 
+import org.physics.jipmunk.constraints.NearestPointQueryInfo;
+
 import static org.physics.jipmunk.Collision.cpCollideShapes;
 import static org.physics.jipmunk.Shape.cpShapePointQuery;
 import static org.physics.jipmunk.Shape.cpShapeSegmentQuery;
@@ -315,4 +317,92 @@ class SpaceQuery {
 		return shapeQueryHelper.reset();
 	}
 
+	private static class NearestPointQueryContext {
+		Vector2f point;
+		float maxDistance;
+		int layers;
+		int group;
+		SpaceNearestPointQueryFunc func;
+
+		private NearestPointQueryContext(Vector2f point, float maxDistance, int layers, int group,
+				SpaceNearestPointQueryFunc func) {
+			this.point = point;
+			this.maxDistance = maxDistance;
+			this.layers = layers;
+			this.group = group;
+			this.func = func;
+		}
+	}
+
+	static void nearestPointQuery(NearestPointQueryContext context, Shape shape) {
+		if (!(shape.group != 0 && context.group == shape.group) && (context.layers & shape.layers) != 0) {
+			NearestPointQueryInfo info = shape.nearestPointQuery(context.point, null);
+
+			if (info.shape != null && info.d < context.maxDistance) {
+				context.func.apply(shape, info.d, info.p);
+			}
+		}
+	}
+
+	static void cpSpaceNearestPointQuery(Space space, Vector2f point, float maxDistance, int layers, int group,
+			SpaceNearestPointQueryFunc func) {
+		final NearestPointQueryContext context = new NearestPointQueryContext(point, maxDistance, layers, group, func);
+		BB bb = BB.forCircle(point, Util.cpfmax(maxDistance, 0.0f));
+
+		cpSpaceLock(space);
+		{
+			cpSpatialIndexQuery(space.activeShapes, bb, new SpatialIndexQueryFunc<Shape>() {
+				@Override
+				public void apply(Shape shape) {
+					nearestPointQuery(context, shape);
+				}
+			});
+			cpSpatialIndexQuery(space.staticShapes, bb, new SpatialIndexQueryFunc<Shape>() {
+				@Override
+				public void apply(Shape shape) {
+					nearestPointQuery(context, shape);
+				}
+			});
+		}
+		cpSpaceUnlock(space, true);
+	}
+
+	static void nearestPointQueryNearest(NearestPointQueryContext context, Shape shape, NearestPointQueryInfo out) {
+		if (!(shape.group != 0 && context.group == shape.group) && (context.layers & shape.layers) != 0
+				&& !shape.sensor) {
+			NearestPointQueryInfo info = shape.nearestPointQuery(context.point, null);
+
+			if (info.d < out.d) {
+				out.set(info);
+			}
+		}
+	}
+
+	static NearestPointQueryInfo cpSpaceNearestPointQueryNearest(Space space, Vector2f point, float maxDistance,
+			int layers, int group, NearestPointQueryInfo out) {
+		final NearestPointQueryInfo info = out == null ? new NearestPointQueryInfo(null, Util.cpvzero(), maxDistance)
+				: out;
+
+		final NearestPointQueryContext context = new NearestPointQueryContext(
+				point, maxDistance,
+				layers, group,
+				null
+		);
+
+		BB bb = BB.forCircle(point, Util.cpfmax(maxDistance, 0.0f));
+		cpSpatialIndexQuery(space.activeShapes, bb, new SpatialIndexQueryFunc<Shape>() {
+			@Override
+			public void apply(Shape shape) {
+				nearestPointQueryNearest(context, shape, info);
+			}
+		});
+		cpSpatialIndexQuery(space.staticShapes, bb, new SpatialIndexQueryFunc<Shape>() {
+			@Override
+			public void apply(Shape shape) {
+				nearestPointQueryNearest(context, shape, info);
+			}
+		});
+
+		return info;
+	}
 }
