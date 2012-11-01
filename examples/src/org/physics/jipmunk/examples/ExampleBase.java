@@ -305,6 +305,7 @@ public abstract class ExampleBase implements GLEventListener {
         m.rewind();
 
         glu.gluUnProject(x, height - y, 0.0f, model, proj, view, m);
+		m.rewind();
         float mx = m.get();
         float my = m.get();
 
