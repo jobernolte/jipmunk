@@ -274,6 +274,7 @@ public abstract class ExampleBase implements GLEventListener {
 
         gl.glGetFloatv(GL2.GL_MODELVIEW_MATRIX, model);
         gl.glGetFloatv(GL2.GL_PROJECTION_MATRIX, proj);
+		gl.glGetIntegerv(GL2.GL_VIEWPORT, view);
 
         if (messageString != null && !messageString.isEmpty()) {
             gl.glMatrixMode(GL2.GL_PROJECTION);
