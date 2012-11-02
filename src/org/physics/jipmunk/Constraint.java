@@ -37,14 +37,14 @@ public abstract class Constraint {
 	Constraint next_b;
 
 	/** The maximum force that this constraint is allowed to use. Defaults to infinity. */
-	protected float maxForce;
+	protected float maxForce = Float.POSITIVE_INFINITY;
 	/**
 	 * The rate at which joint error is corrected. Defaults to pow(1.0 - 0.1, 60.0) meaning that it will correct 10% of the
 	 * error every 1/60th of a second.
 	 */
-	protected float errorBias;
+	protected float errorBias = Util.cpfpow(1.0f - 0.1f, 60.0f);
 	/** The maximum rate at which joint error is corrected. Defaults to infinity. */
-	protected float maxBias;
+	protected float maxBias = Float.POSITIVE_INFINITY;
 	/** Function called before the solver runs. Animate your joint anchors, update your motor torque, etc. */
 	ConstraintPreSolveFunc preSolveFunc;
 	/** Function called after the solver runs. Use the applied impulse to perform effects like breakable joints. */

@@ -17,7 +17,8 @@ public class ExampleMenu extends JFrame implements ActionListener {
 			"Convex",
 			"LogoSmash",
 			"Plink",
-			"PyramidStack"
+			"PyramidStack",
+			"Pump"
 	};
 
 	public ExampleMenu() {

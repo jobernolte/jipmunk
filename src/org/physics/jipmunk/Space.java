@@ -424,7 +424,7 @@ public class Space {
 	 * @param shape the {@link Shape} to add to this space
 	 * @return the added shape
 	 */
-	public Shape addShape(Shape shape) {
+	public <T extends Shape> T addShape(T shape) {
 		Body body = shape.body;
 		if (body.isStatic()) {
 			return addStaticShape(shape);
@@ -446,7 +446,7 @@ public class Space {
 		return shape;
 	}
 
-	private Shape addStaticShape(Shape shape) {
+	private <T extends Shape> T addStaticShape(T shape) {
 		assert shape.space == null : "This shape is already added to a space and cannot be added to another.";
 		assertSpaceUnlocked();
 
@@ -488,7 +488,7 @@ public class Space {
 	 * @param constraint the {@link Constraint} to add to this space
 	 * @return the added constraint
 	 */
-	public Constraint addConstraint(Constraint constraint) {
+	public <T extends Constraint> T addConstraint(T constraint) {
 		cpAssertSoft(constraint.space == null, "This shape is already added to a space and cannot be added to " +
 				"another.");
 		assertSpaceUnlocked();
