@@ -33,26 +33,49 @@ import static org.physics.jipmunk.Util.cpvzero;
  * @author jobernolte
  */
 public class SegmentQueryInfo {
-    /** The shape that was hit, <code>null</code> if no collision occured. */
-    public Shape shape;
-    /** The normalized distance along the query segment in the range [0, 1]. */
-    public float t = 1.0f;
-    /** The normal of the surface hit. */
-    public Vector2f n = cpvzero();
+	/** The shape that was hit, <code>null</code> if no collision occured. */
+	public Shape shape;
+	/** The normalized distance along the query segment in the range [0, 1]. */
+	public float t = 1.0f;
+	/** The normal of the surface hit. */
+	public Vector2f n = cpvzero();
 
-    public SegmentQueryInfo() {
+	public SegmentQueryInfo() {
 
-    }
+	}
 
-    public void set(Shape shape, float t, Vector2f n) {
-        this.shape = shape;
-        this.t = t;
-        this.n.set(n);
-    }
+	public void set(Shape shape, float t, Vector2f n) {
+		this.shape = shape;
+		this.t = t;
+		this.n.set(n);
+	}
 
-    public void reset() {
-        shape = null;
-        t = 1;
-        n.set(0, 0);
-    }
+	public void reset() {
+		shape = null;
+		t = 1;
+		n.set(0, 0);
+	}
+
+	/**
+	 * Get the hit point for a segment query.
+	 *
+	 * @param start
+	 * @param end
+	 * @return
+	 */
+	public Vector2f getHitPoint(final Vector2f start, final Vector2f end) {
+		return Util.cpvlerp(start, end, this.t);
+	}
+
+	/**
+	 * Get the hit distance for a segment query.
+	 *
+	 * @param start
+	 * @param end
+	 * @return
+	 */
+	public float getHitDist(final Vector2f start, final Vector2f end) {
+		return Util.cpvdist(start, end) * this.t;
+	}
+
 }

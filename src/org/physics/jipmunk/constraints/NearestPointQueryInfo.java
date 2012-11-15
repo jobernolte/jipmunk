@@ -6,35 +6,45 @@ import org.physics.jipmunk.Vector2f;
 
 /**
  * Nearest point query info struct.
+ * <p/>
+ * Point queries are useful for things like mouse picking and simple sensors. They allow you to check if there are
+ * shapes within a certain distance of a point, find the closest point on a shape to a given point or find the closest
+ * shape to a point.
  *
  * @author jobernolte
  */
 public class NearestPointQueryInfo {
-    /** The nearest shape, NULL if no shape was within range. */
-    public Shape shape;
-    /** The closest point on the shape's surface. (in world space coordinates) */
-    public Vector2f p = Util.cpvzero();
-    /** The distance to the point. The distance is negative if the point is inside the shape. */
-    public float d;
+	/** The nearest shape, NULL if no shape was within range. */
+	public Shape shape;
+	/** The closest point on the shape's surface. (in world space coordinates) */
+	public Vector2f p = Util.cpvzero();
+	/** The distance to the point. The distance is negative if the point is inside the shape. */
+	public float d;
 
-    public NearestPointQueryInfo() {
-    }
+	public NearestPointQueryInfo() {
+	}
 
-    public NearestPointQueryInfo(Shape shape, Vector2f p, float d) {
-        this.shape = shape;
-        this.p = p;
-        this.d = d;
-    }
+	public NearestPointQueryInfo(Shape shape, Vector2f p, float d) {
+		this.shape = shape;
+		this.p = p;
+		this.d = d;
+	}
 
-    public void set(Shape shape, Vector2f p, float d) {
-        this.shape = shape;
-        this.p.set(p);
-        this.d = d;
-    }
+	public void set(Shape shape, Vector2f p, float d) {
+		this.shape = shape;
+		this.p.set(p);
+		this.d = d;
+	}
 
-    public void reset() {
-        this.shape = null;
-        this.p.set(0, 0);
-        this.d = 0;
-    }
+	public void set(NearestPointQueryInfo info) {
+		this.shape = info.shape;
+		this.p.set(info.p);
+		this.d = info.d;
+	}
+
+	public void reset() {
+		this.shape = null;
+		this.p.set(0, 0);
+		this.d = 0;
+	}
 }

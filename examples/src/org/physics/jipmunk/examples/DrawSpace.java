@@ -268,7 +268,7 @@ public class DrawSpace {
 						d.getX(), d.getY(), 0.0f, 0.0f,
 						a.getX(), a.getY(), 0.0f, 1.0f,
 				};
-				gl.glMultMatrixf(matrix, matrix.length);
+				gl.glMultMatrixf(matrix, 0);
 
 				if (!seg.isSensor()) {
 					glColorForShape(seg, space);

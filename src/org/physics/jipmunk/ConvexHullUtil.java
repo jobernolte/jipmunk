@@ -3,145 +3,131 @@ package org.physics.jipmunk;
 /** @author jobernolte */
 public class ConvexHullUtil {
 
-    public static class ConvexHullInfo {
-        public final int first;
-        public final int count;
+	static class StartEnd {
+		int start;
+		int end;
+	}
 
-        public ConvexHullInfo(int first, int count) {
-            this.first = first;
-            this.count = count;
-        }
+	static void loopIndices(Vector2f[] verts, int count, StartEnd startEnd) {
+		startEnd.start = startEnd.end = 0;
+		Vector2f min = verts[0];
+		Vector2f max = min;
 
-        public int getFirst() {
-            return first;
-        }
+		for (int i = 1; i < count; i++) {
+			Vector2f v = verts[i];
 
-        public int getCount() {
-            return count;
-        }
-    }
+			if (v.getX() < min.getX() || (v.getX() == min.getX() && v.getY() < min.getY())) {
+				min = v;
+				startEnd.start = i;
+			} else if (v.getX() > max.getX() || (v.getX() == max.getX() && v.getY() > max.getY())) {
+				max = v;
+				startEnd.end = i;
+			}
+		}
+	}
 
-    static class StartEnd {
-        int start;
-        int end;
-    }
+	static void swap(Vector2f[] verts, int a, int b) {
+		/*float x = verts[a].getX();
+		float y = verts[a].getY();
+		verts[a].set(verts[b]);
+		verts[b].set(x, y);*/
+		Vector2f tmp = verts[a];
+		verts[a] = verts[b];
+		verts[b] = tmp;
+	}
 
-    static void cpLoopIndexes(Vector2f[] verts, int count, StartEnd startEnd) {
-        startEnd.start = startEnd.end = 0;
-        Vector2f min = verts[0];
-        Vector2f max = min;
+	static int QHullPartition(Vector2f[] verts, int offset, int count, Vector2f a, Vector2f b, float tol) {
+		if (count == 0) {
+			return 0;
+		}
 
-        for (int i = 1; i < count; i++) {
-            Vector2f v = verts[i];
+		float max = 0;
+		int pivot = 0;
 
-            if (v.getX() < min.getX() || (v.getX() == min.getX() && v.getY() < min.getY())) {
-                min = v;
-                startEnd.start = i;
-            } else if (v.getX() > max.getX() || (v.getX() == max.getX() && v.getY() > max.getY())) {
-                max = v;
-                startEnd.end = i;
-            }
-        }
-    }
+		Vector2f delta = Util.cpvsub(b, a);
+		float valueTol = tol * Util.cpvlength(delta);
 
+		int head = 0;
+		for (int tail = count - 1; head <= tail; ) {
+			float value = Util.cpvcross(delta, Util.cpvsub(verts[offset + head], a));
+			if (value > valueTol) {
+				if (value > max) {
+					max = value;
+					pivot = head;
+				}
 
-    static int QHullPartition(Vector2f[] verts, int offset, int count, Vector2f a, Vector2f b, float tol) {
-        if (count == 0) {
-            return 0;
-        }
+				head++;
+			} else {
+				swap(verts, offset + head, offset + tail);
+				tail--;
+			}
+		}
 
-        float max = 0;
-        int pivot = 0;
+		// move the new pivot to the front if it's not already there.
+		if (pivot != 0) {
+			swap(verts, offset, offset + pivot);
+		}
+		return head;
+	}
 
-        Vector2f delta = Util.cpvsub(b, a);
-        float valueTol = tol * Util.cpvlength(delta);
+	static int QHullReduce(float tol, Vector2f[] verts, int offset, int count, Vector2f a, Vector2f pivot, Vector2f b,
+			Vector2f[] result, int resultOffset) {
+		if (count < 0) {
+			return 0;
+		} else if (count == 0) {
+			result[resultOffset] = pivot;
+			//result[resultOffset].set(pivot);
+			return 1;
+		} else {
+			int left_count = QHullPartition(verts, offset, count, a, pivot, tol);
+			int index = QHullReduce(tol, verts, offset + 1, left_count - 1,
+					a, Util.cpv(verts[offset]), pivot,
+					result, resultOffset);
 
-        int head = 0;
-        for (int tail = count - 1; head <= tail; ) {
-            float value = Util.cpvcross(delta, Util.cpvsub(verts[head], a));
-            if (value > valueTol) {
-                if (value > max) {
-                    max = value;
-                    pivot = head;
-                }
+			result[resultOffset + index++] = pivot;
+			//result[resultOffset + index++].set(pivot);
 
-                head++;
-            } else {
-                //SWAP(verts[head], verts[tail]);
-                Vector2f tmp = verts[head];
-                verts[head] = verts[tail];
-                verts[tail] = tmp;
-                tail--;
-            }
-        }
+			int right_count = QHullPartition(verts, offset + left_count, count - left_count, pivot, b, tol);
+			/*System.out.format("QHullReduce: offset: %d, left_count: %d, right_count: %d\n", offset, left_count,
+					right_count);*/
+			if (right_count == 0) {
+				return index;
+			}
+			return index + QHullReduce(tol, verts, offset + left_count + 1, right_count - 1, pivot,
+					Util.cpv(verts[offset + left_count]), b, result, resultOffset + index);
+		}
+	}
 
-        // move the new pivot to the front if it's not already there.
-        if (pivot != 0) {
-            // SWAP(verts[0], verts[pivot]);
-            Vector2f tmp = verts[0];
-            verts[0] = verts[pivot];
-            verts[pivot] = tmp;
-        }
-        return head;
-    }
+	/**
+	 * QuickHull seemed like a neat algorithm, and efficient-ish for large input sets. My implementation performs an in
+	 * place reduction using the result array as scratch space.
+	 */
+	public static ConvexHullInfo convexHull(int count, Vector2f[] verts, Vector2f[] result, float tol) {
+		if (result != null) {
+			// Copy the line vertexes into the empty part of the result polyline to use as a scratch buffer.
+			System.arraycopy(verts, 0, result, 0, count);
+		} else {
+			// If a result array was not specified, reduce the input instead.
+			result = verts;
+		}
 
-    static int QHullReduce(float tol, Vector2f[] verts, int offset, int count, Vector2f a, Vector2f pivot, Vector2f b, Vector2f[] result, int resultOffset) {
-        if (count < 0) {
-            return 0;
-        } else if (count == 0) {
-            result[resultOffset] = pivot;
-            return 1;
-        } else {
-            int left_count = QHullPartition(verts, 0, count, a, pivot, tol);
-            int index = QHullReduce(tol, verts, offset + 1, left_count - 1, a, verts[0], pivot, result, 0);
+		// Degenerate case, all poins are the same.
+		StartEnd startEnd = new StartEnd();
+		loopIndices(verts, count, startEnd);
+		if (startEnd.start == startEnd.end) {
+			return new ConvexHullInfo(0, 1);
+		}
 
-            result[index++] = pivot;
+		swap(result, 0, startEnd.start);
+		swap(result, 1, startEnd.end == 0 ? startEnd.start : startEnd.end);
 
-            int right_count = QHullPartition(verts, offset + left_count, count - left_count, pivot, b, tol);
-            return index + QHullReduce(tol, verts, offset + left_count + 1, right_count - 1, pivot, verts[left_count], b, result, resultOffset + index);
-        }
-    }
+		Vector2f a = Util.cpv(result[0]);
+		Vector2f b = Util.cpv(result[1]);
 
-    // QuickHull seemed like a neat algorithm, and efficient-ish for large input sets.
-// My implementation performs an in place reduction using the result array as scratch space.
-    public static ConvexHullInfo cpConvexHull(int count, Vector2f[] verts, Vector2f[] result, float tol) {
-        if (result != null) {
-            // Copy the line vertexes into the empty part of the result polyline to use as a scratch buffer.
-            //memcpy(result, verts, count * sizeof(Vector2f));
-            System.arraycopy(verts, 0, result, 0, count);
-        } else {
-            // If a result array was not specified, reduce the input instead.
-            result = verts;
-        }
-
-        // Degenerate case, all poins are the same.
-        StartEnd startEnd = new StartEnd();
-        cpLoopIndexes(verts, count, startEnd);
-        if (startEnd.start == startEnd.end) {
-            return new ConvexHullInfo(0, 1);
-        }
-
-        {
-            // SWAP(result[0], result[start]);
-            Vector2f tmp = result[0];
-            result[0] = result[startEnd.start];
-            result[startEnd.start] = tmp;
-        }
-        {
-            // SWAP(result[1], result[end == 0 ? start : end]);
-            Vector2f tmp = result[1];
-            int i = startEnd.end == 0 ? startEnd.start : startEnd.end;
-            result[1] = result[i];
-            result[i] = tmp;
-        }
-
-        Vector2f a = result[0];
-        Vector2f b = result[1];
-
-        int resultCount = QHullReduce(tol, result, 2, count - 2, a, b, a, result, 1) + 1;
-        /*Assert.cpAssertSoft(cpPolyValidate(result, resultCount),
-                "Internal error: cpConvexHull() and cpPolyValidate() did not agree."
-                "Please report this error with as much info as you can.");*/
-        return new ConvexHullInfo(startEnd.start, resultCount);
-    }
+		int resultCount = QHullReduce(tol, result, 2, count - 2, a, b, a, result, 1) + 1;
+		Assert.cpAssertSoft(PolyShape.validate(result, 0, resultCount),
+				"Internal error: convexHull() and Poly.validate() did not agree. "
+						+ "Please report this error with as much info as you can.");
+		return new ConvexHullInfo(startEnd.start, resultCount);
+	}
 }
