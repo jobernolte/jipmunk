@@ -22,6 +22,7 @@
 
 package org.physics.jipmunk;
 
+import static org.physics.jipmunk.Assert.cpAssertSoft;
 import static org.physics.jipmunk.Contact.cpContactInit;
 import static org.physics.jipmunk.PolyShape.cpPolyShapeContainsVert;
 import static org.physics.jipmunk.PolyShape.cpPolyShapeContainsVertPartial;
@@ -36,7 +37,9 @@ import static org.physics.jipmunk.Util.cpvdot;
 import static org.physics.jipmunk.Util.cpvlengthsq;
 import static org.physics.jipmunk.Util.cpvmult;
 import static org.physics.jipmunk.Util.cpvneg;
+import static org.physics.jipmunk.Util.cpvproject;
 import static org.physics.jipmunk.Util.cpvsub;
+import static org.physics.jipmunk.Util.cpvzero;
 
 /** @author jobernolte */
 class Collision {
@@ -364,10 +367,57 @@ class Collision {
 		}
 	}
 
+	// Submitted by LegoCyclon
+	static int seg2seg(final Shape shape1, final Shape shape2, ContactList con) {
+		SegmentShape seg1 = (SegmentShape) shape1;
+		SegmentShape seg2 = (SegmentShape) shape2;
+
+		Vector2f v1 = cpvsub(seg1.tb, seg1.ta);
+		Vector2f v2 = cpvsub(seg2.tb, seg2.ta);
+		float v1lsq = cpvlengthsq(v1);
+		float v2lsq = cpvlengthsq(v2);
+		// project seg2 onto seg1
+		Vector2f p1a = cpvproject(cpvsub(seg2.ta, seg1.ta), v1);
+		Vector2f p1b = cpvproject(cpvsub(seg2.tb, seg1.ta), v1);
+		// project seg1 onto seg2
+		Vector2f p2a = cpvproject(cpvsub(seg1.ta, seg2.ta), v2);
+		Vector2f p2b = cpvproject(cpvsub(seg1.tb, seg2.ta), v2);
+
+		// clamp projections to segment endcaps
+		if (cpvdot(p1a, v1) < 0.0f)
+			p1a = cpvzero();
+		else if (cpvdot(p1a, v1) > 0.0f && cpvlengthsq(p1a) > v1lsq)
+			p1a = v1;
+		if (cpvdot(p1b, v1) < 0.0f)
+			p1b = cpvzero();
+		else if (cpvdot(p1b, v1) > 0.0f && cpvlengthsq(p1b) > v1lsq)
+			p1b = v1;
+		if (cpvdot(p2a, v2) < 0.0f)
+			p2a = cpvzero();
+		else if (cpvdot(p2a, v2) > 0.0f && cpvlengthsq(p2a) > v2lsq)
+			p2a = v2;
+		if (cpvdot(p2b, v2) < 0.0f)
+			p2b = cpvzero();
+		else if (cpvdot(p2b, v2) > 0.0f && cpvlengthsq(p2b) > v2lsq)
+			p2b = v2;
+
+		p1a = cpvadd(p1a, seg1.ta);
+		p1b = cpvadd(p1b, seg1.ta);
+		p2a = cpvadd(p2a, seg2.ta);
+		p2b = cpvadd(p2b, seg2.ta);
+
+		circle2circleQuery(p1a, p2a, seg1.r, seg2.r, con);
+		circle2circleQuery(p1b, p2b, seg1.r, seg2.r, con);
+		circle2circleQuery(p1a, p2b, seg1.r, seg2.r, con);
+		circle2circleQuery(p1b, p2a, seg1.r, seg2.r, con);
+
+		return con.size();
+	}
+
 	static int cpCollideShapes(final Shape a, final Shape b, ContactList arr) {
 		// Their shape types must be in order.
-		assert a.getType().ordinal() <= b.getType().ordinal() : "Collision shapes passed to cpCollideShapes() are " +
-				"not sorted.";
+		cpAssertSoft(a.getType().ordinal() <= b.getType().ordinal(),
+				"Collision shapes passed to cpCollideShapes() are not sorted.");
 
 		/*collisionFunc cfunc = colfuncs[a.klass.type + b.klass.type*CP_NUM_SHAPES];
 			  return (cfunc) ? cfunc(a, b, arr) : 0;*/
@@ -387,6 +437,8 @@ class Collision {
 				switch (b.getType()) {
 					case POLY_SHAPE:
 						return seg2poly(a, b, arr);
+					case SEGMENT_SHAPE:
+						return seg2seg(a, b, arr);
 				}
 				break;
 			}

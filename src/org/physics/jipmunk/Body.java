@@ -415,6 +415,14 @@ public class Body {
 			node.idleTime = 0;
 			componentActivate(SpaceComponent.ComponentRoot(this));
 		}
+		for (Arbiter arb : arbiters()) {
+			// Reset the idle timer of things the body is touching as well.
+			// That way things don't get left hanging in the air.
+			Body other = (arb.body_a == this ? arb.body_b : arb.body_a);
+			if (!cpBodyIsStatic(other)) {
+				other.node.idleTime = 0.0f;
+			}
+		}
 	}
 
 	/**

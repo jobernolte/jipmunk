@@ -25,7 +25,7 @@ package org.physics.jipmunk;
 import java.util.logging.Logger;
 
 /** @author jobernolte */
-class Assert {
+public class Assert {
 	final static Logger logger = Logger.getLogger(Assert.class.getName());
 
 	public static void cpAssertSoft(boolean condition, String message) {

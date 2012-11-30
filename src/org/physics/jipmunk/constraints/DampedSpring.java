@@ -67,6 +67,8 @@ public class DampedSpring extends Constraint {
 	private float nMass;
 	private Vector2f n;
 
+	private float jAcc;
+
 	public DampedSpring(Body a, Body b, Vector2f anchr1, Vector2f anchr2, float restLength, float stiffness,
 			float damping) {
 		super(a, b);
@@ -138,7 +140,7 @@ public class DampedSpring extends Constraint {
 		this.n = cpvmult(delta, 1.0f / (dist != 0.0f ? dist : Float.POSITIVE_INFINITY));
 
 		float k = k_scalar(a, b, this.r1, this.r2, this.n);
-		assert k != 0.0 : "Unsolvable this.";
+		assert k != 0.0 : "Unsolvable spring.";
 		this.nMass = 1.0f / k;
 
 		this.target_vrn = 0.0f;
@@ -146,7 +148,8 @@ public class DampedSpring extends Constraint {
 
 		// apply spring force
 		float f_spring = this.springForceFunc.apply(this, dist);
-		apply_impulses(a, b, this.r1, this.r2, cpvmult(this.n, f_spring * dt));
+		float j_spring = this.jAcc = f_spring * dt;
+		apply_impulses(a, b, this.r1, this.r2, cpvmult(this.n, j_spring));
 	}
 
 	@Override
@@ -166,11 +169,13 @@ public class DampedSpring extends Constraint {
 		float v_damp = (this.target_vrn - vrn) * this.v_coef;
 		this.target_vrn = vrn + v_damp;
 
-		apply_impulses(a, b, this.r1, this.r2, cpvmult(this.n, v_damp * this.nMass));
+		float j_damp = v_damp * this.nMass;
+		this.jAcc += j_damp;
+		apply_impulses(a, b, this.r1, this.r2, cpvmult(this.n, j_damp));
 	}
 
 	@Override
 	protected float getImpulse() {
-		return 0;
+		return jAcc;
 	}
 }

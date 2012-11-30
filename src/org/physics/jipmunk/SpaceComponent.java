@@ -263,9 +263,9 @@ class SpaceComponent {
 	static void cpBodySleepWithGroup(Body body, Body group) {
 		cpAssertHard(!cpBodyIsStatic(body) && !cpBodyIsRogue(body),
 				"Rogue and static bodies cannot be putSingle to sleep.");
+		cpAssertHard(!cpBodyIsRogue(body), "Rogue (and static) bodies cannot be put to sleep.");
 
 		Space space = body.space;
-		cpAssertHard(space != null, "Cannot putSingle a rogue body to sleep.");
 		cpAssertHard(space.locked == 0,
 				"Bodies cannot be putSingle to sleep during a query or a call to cpSpaceStep(). " +
 						"Put" +

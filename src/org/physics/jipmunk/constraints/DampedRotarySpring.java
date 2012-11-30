@@ -22,6 +22,7 @@
 
 package org.physics.jipmunk.constraints;
 
+import org.physics.jipmunk.Assert;
 import org.physics.jipmunk.Body;
 import org.physics.jipmunk.Constraint;
 
@@ -52,6 +53,7 @@ public class DampedRotarySpring extends Constraint {
 	private float w_coef;
 
 	private float iSum;
+	private float jAcc;
 
 	public DampedRotarySpring(Body a, Body b, float restAngle, float stiffness, float damping) {
 		super(a, b);
@@ -97,7 +99,7 @@ public class DampedRotarySpring extends Constraint {
 	@Override
 	protected void preStep(float dt) {
 		float moment = a.getInverseMoment() + b.getInverseMoment();
-		assert moment != 0.0 : "Unsolvable this.";
+		Assert.cpAssertSoft(moment != 0.0, "Unsolvable spring.");
 		this.iSum = 1.0f / moment;
 
 		this.w_coef = 1.0f - cpfexp(-this.damping * dt * moment);
@@ -105,6 +107,8 @@ public class DampedRotarySpring extends Constraint {
 
 		// apply spring torque
 		float j_spring = this.springTorqueFunc.apply(this, a.getAngleInRadians() - b.getAngleInRadians()) * dt;
+		this.jAcc = j_spring;
+
 		a.setAngVel(a.getAngVel() - j_spring * a.getInverseMoment());
 		b.setAngVel(b.getAngVel() + j_spring * b.getInverseMoment());
 	}
@@ -125,12 +129,14 @@ public class DampedRotarySpring extends Constraint {
 
 		//apply_impulses(a, b, this.r1, this.r2, cpvmult(this.n, v_damp*this.nMass));
 		float j_damp = w_damp * this.iSum;
+		this.jAcc += j_damp;
+
 		a.setAngVel(a.getAngVel() + j_damp * a.getInverseMoment());
 		b.setAngVel(b.getAngVel() - j_damp * b.getInverseMoment());
 	}
 
 	@Override
 	protected float getImpulse() {
-		return 0;
+		return jAcc;
 	}
 }

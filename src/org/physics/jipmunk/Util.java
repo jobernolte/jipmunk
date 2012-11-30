@@ -163,14 +163,17 @@ public class Util {
 	}
 
 	public static Vector2f cpvslerp(final Vector2f v1, final Vector2f v2, final float t) {
-		float omega = (float) Math.acos(cpvdot(v1, v2));
+		float dot = cpvdot(cpvnormalize(v1), cpvnormalize(v2));
+		float omega = (float) Math.acos(cpfclamp(dot, -1.0f, 1.0f));
 
-		if (omega != 0) {
-			float denom = (float) (1.0f / Math.sin(omega));
-			return cpvadd(cpvmult(v1, (float) (Math.sin((1.0f - t) * omega) * denom)), cpvmult(v2, (float) (Math.sin(
-					t * omega) * denom)));
+		if (omega < 1e-3) {
+			// If the angle between two vectors is very small, lerp instead to avoid precision issues.
+			return cpvlerp(v1, v2, t);
 		} else {
-			return v1;
+			float denom = (float) (1.0f / Math.sin(omega));
+			return cpvadd(
+					cpvmult(v1, (float) (Math.sin((1.0f - t) * omega) * denom)),
+					cpvmult(v2, (float) (Math.sin(t * omega) * denom)));
 		}
 	}
 
