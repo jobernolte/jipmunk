@@ -39,4 +39,11 @@ public class ContactPoint {
 		this.normal = normal;
 		this.dist = dist;
 	}
+
+    public ContactPoint set(ContactPoint contactPoint) {
+        this.point.set(contactPoint.point);
+        this.normal.set(contactPoint.normal);
+        this.dist = contactPoint.dist;
+        return this;
+    }
 }

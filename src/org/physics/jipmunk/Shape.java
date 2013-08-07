@@ -24,6 +24,8 @@ package org.physics.jipmunk;
 
 import org.physics.jipmunk.constraints.NearestPointQueryInfo;
 
+import static org.physics.jipmunk.Util.cpvnormalize;
+import static org.physics.jipmunk.Util.cpvsub;
 import static org.physics.jipmunk.Util.cpvzero;
 
 /**
@@ -247,7 +249,17 @@ public abstract class Shape {
 		info.shape = null;
 		info.t = 0;
 		info.n = cpvzero();
-		segmentQueryImpl(a, b, info);
+
+        NearestPointQueryInfo nearest = new NearestPointQueryInfo();
+        nearest = nearestPointQuery(a, nearest);
+        if(nearest.d <= 0.0){
+            info.shape = this;
+            info.t = 0.0f;
+            info.n = cpvnormalize(cpvsub(a, nearest.p));
+        } else {
+            segmentQueryImpl(a, b, info);
+        }
+
 		return info.shape != null;
 	}
 

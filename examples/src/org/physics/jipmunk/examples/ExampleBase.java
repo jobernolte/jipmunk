@@ -69,6 +69,7 @@ public abstract class ExampleBase implements GLEventListener {
 	private DrawSpace drawSpace;
 	protected Vector2f mousePoint = Util.cpvzero();
 	protected boolean chipmunkDemoRightClick = false;
+    protected boolean chipmunkDemoRightDown = false;
 	protected Vector2f chipmunkDemoKeyboard = Util.cpvzero();
 	private Vector2f mousePoint_last = Util.cpvzero();
 	private Body mouseBody = null;
@@ -86,8 +87,8 @@ public abstract class ExampleBase implements GLEventListener {
 	private FloatBuffer model = BufferUtils.createFloatBuffer(16);
 	private FloatBuffer proj = BufferUtils.createFloatBuffer(16);
 	private FloatBuffer m = BufferUtils.createFloatBuffer(3);
-	private final List<MouseEvent> mouseEvents = new LinkedList<MouseEvent>();
-	private final List<KeyEvent> keyEvents = new LinkedList<KeyEvent>();
+	private final List<MouseEvent> mouseEvents = new LinkedList<>();
+	private final List<KeyEvent> keyEvents = new LinkedList<>();
 	private BitSet pressedKeys = new BitSet();
 
 	public abstract Space init();
@@ -254,6 +255,7 @@ public abstract class ExampleBase implements GLEventListener {
 					if (e.getButton() == MouseEvent.BUTTON3) {
 						Vector2f point = mouseToSpace(e.getX(), e.getY());
 						chipmunkDemoRightClick = true;
+                        chipmunkDemoRightDown = true;
 						mousePoint.set(point);
 					}
 					break;
@@ -264,6 +266,7 @@ public abstract class ExampleBase implements GLEventListener {
 						mouseJoint = null;
 					}
 					chipmunkDemoRightClick = false;
+                    chipmunkDemoRightDown = false;
 					break;
 				}
 				case MouseEvent.MOUSE_MOVED:

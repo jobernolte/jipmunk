@@ -69,9 +69,9 @@ public class Arbiter {
 	}
 
 	/**
-	 * The calculated elasticity for this collision pair. Setting the value in a {@link CollisionHandler#preSolve (Arbiter,
-	 * Space)}  callback will override the value calculated by the space.
-	 *
+	 * The calculated elasticity for this collision pair. Setting the value in a
+	 * {@link CollisionHandler#preSolve (Arbiter, Space)} callback will override the value calculated by the space.
+	 * 
 	 * @param e the calculated elasticity
 	 */
 	public void setElasticity(float e) {
@@ -84,9 +84,9 @@ public class Arbiter {
 	}
 
 	/**
-	 * The calculated friction for this collision pair. Setting the value in a {@link CollisionHandler#preSolve (Arbiter,
-	 * Space)} callback will override the value calculated by the space.
-	 *
+	 * The calculated friction for this collision pair. Setting the value in a
+	 * {@link CollisionHandler#preSolve (Arbiter, Space)} callback will override the value calculated by the space.
+	 * 
 	 * @param u the calculated friction
 	 */
 	public void setFriction(float u) {
@@ -99,9 +99,9 @@ public class Arbiter {
 	}
 
 	/**
-	 * The calculated surface velocity for this collision pair. Setting the value in a {@link
-	 * CollisionHandler#preSolve(Arbiter, Space)} callback will override the value calculated by the space.
-	 *
+	 * The calculated surface velocity for this collision pair. Setting the value in a
+	 * {@link CollisionHandler#preSolve(Arbiter, Space)} callback will override the value calculated by the space.
+	 * 
 	 * @param surface_vr the calculated surface velocity
 	 */
 	public void setSurfaceVelocity(Vector2f surface_vr) {
@@ -203,7 +203,10 @@ public class Arbiter {
 
 		if (prev != null) {
 			prev.threadForBody(body).next = next;
-		} else {
+		} else if (body.arbiterList == this) {
+			// IFF prev is NULL and body->arbiterList == arb, is arb at the head of the list.
+			// This function may be called for an arbiter that was never in a list.
+			// In that case, we need to protect it from wiping out the body.arbiterList pointer.
 			body.arbiterList = next;
 		}
 
@@ -239,20 +242,31 @@ public class Arbiter {
 		return this.contacts[i].dist;
 	}
 
-	public ContactPoint[] getContactPointSet() {
+	public ContactPoint[] getContactPoints() {
 		ContactPoint[] set = new ContactPoint[numContacts];
 
 		int i;
 		for (i = 0; i < numContacts; i++) {
-			/*set.points[i].point = arb - > CP_PRIVATE(contacts)[i].CP_PRIVATE(p);
-						set.points[i].normal = arb - > CP_PRIVATE(contacts)[i].CP_PRIVATE(n);
-						set.points[i].dist = arb - > CP_PRIVATE(contacts)[i].CP_PRIVATE(dist);*/
+			/*
+			 * set.points[i].point = arb - > CP_PRIVATE(contacts)[i].CP_PRIVATE(p); set.points[i].normal = arb - >
+			 * CP_PRIVATE(contacts)[i].CP_PRIVATE(n); set.points[i].dist = arb - >
+			 * CP_PRIVATE(contacts)[i].CP_PRIVATE(dist);
+			 */
 			// TODO Contact can use ContactPoint
 			set[i] = new ContactPoint(contacts[i].p, contacts[i].n, contacts[i].dist);
 		}
 
 		return set;
 	}
+
+    public void setContactPoints(int numContacts, ContactPoint[] contactPoints) {
+        if (this.numContacts != numContacts) {
+            throw new IllegalArgumentException("The number of contact points cannot be changed.");
+        }
+        for (int i = 0; i < numContacts; i++) {
+            this.contacts[i].set(contactPoints[i]);
+        }
+    }
 
 	public Contact[] getContacts() {
 		return contacts;
@@ -354,8 +368,9 @@ public class Arbiter {
 			Contact con = this.contacts[i];
 
 			// Calculate the offsets.
-			/*con.r1 = Util.cpvsub(con.p, a.p);
-			con.r2 = Util.cpvsub(con.p, b.p);*/
+			/*
+			 * con.r1 = Util.cpvsub(con.p, a.p); con.r2 = Util.cpvsub(con.p, b.p);
+			 */
 			con.r1.set(con.p.getX() - a.p.getX(), con.p.getY() - a.p.getY());
 			con.r2.set(con.p.getX() - b.p.getX(), con.p.getY() - b.p.getY());
 
@@ -469,7 +484,7 @@ public class Arbiter {
 
 	/**
 	 * @param clazz the {@link Class} of the user data
-	 * @param <T>   the type of the data
+	 * @param <T> the type of the data
 	 * @return the user data
 	 */
 	public <T> T getData(Class<T> clazz) {
@@ -478,7 +493,7 @@ public class Arbiter {
 
 	/**
 	 * Sets user data. Use this data to get a reference to the game object that owns this body from callbacks.
-	 *
+	 * 
 	 * @param data the user data to set
 	 */
 	public void setData(Object data) {

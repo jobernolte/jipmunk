@@ -612,7 +612,7 @@ public class Body {
 	}
 
 	static boolean cpBodyIsRogue(Body body) {
-		return body.isStatic();
+		return body.isRogue();
 	}
 
 	/// Get the kinetic energy of a body.

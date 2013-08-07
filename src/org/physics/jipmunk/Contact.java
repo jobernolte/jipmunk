@@ -24,7 +24,11 @@ package org.physics.jipmunk;
 
 /** @author jobernolte */
 class Contact {
-	Vector2f p = Util.cpvzero(), n = Util.cpvzero();
+	/** The position of the contact. */
+	Vector2f p = Util.cpvzero();
+	/** The normal of the contact. */
+	Vector2f n = Util.cpvzero();
+	/** The depth of the contact. */
 	float dist;
 
 	Vector2f r1 = Util.cpvzero(), r2 = Util.cpvzero();
@@ -63,5 +67,12 @@ class Contact {
 
 	public float getDistance() {
 		return dist;
+	}
+
+	public Contact set(ContactPoint contactPoint) {
+		this.p.set(contactPoint.point);
+		this.n.set(contactPoint.normal);
+		this.dist = contactPoint.dist;
+		return this;
 	}
 }

@@ -64,19 +64,19 @@ public class CircleShape extends Shape {
 	static void segmentQueryImpl(Shape shape, Vector2f center, float r, Vector2f a, Vector2f b,
 			SegmentQueryInfo info) {
 		// offset the line to be relative to the circle
-		a = cpvsub(a, center);
-		b = cpvsub(b, center);
+		Vector2f da = cpvsub(a, center);
+		Vector2f db = cpvsub(b, center);
 
-		float qa = cpvdot(a, a) - 2.0f * cpvdot(a, b) + cpvdot(b, b);
-		float qb = -2.0f * cpvdot(a, a) + 2.0f * cpvdot(a, b);
-		float qc = cpvdot(a, a) - r * r;
+		float qa = cpvdot(da, da) - 2.0f * cpvdot(da, db) + cpvdot(db, db);
+		float qb = -2.0f * cpvdot(da, da) + 2.0f * cpvdot(da, db);
+		float qc = cpvdot(da, da) - r * r;
 
 		float det = qb * qb - 4.0f * qa * qc;
 
 		if (det >= 0.0f) {
 			float t = (-qb - cpfsqrt(det)) / (2.0f * qa);
 			if (0.0f <= t && t <= 1.0f) {
-				info.set(shape, t, cpvnormalize(cpvlerp(a, b, t)));
+				info.set(shape, t, cpvnormalize(cpvlerp(da, db, t)));
 			}
 		}
 	}
