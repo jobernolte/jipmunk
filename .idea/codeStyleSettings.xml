@@ -8,6 +8,7 @@
         </XML>
       </value>
     </option>
+    <option name="PREFERRED_PROJECT_CODE_STYLE" value="SF_eclipse_code_formatting" />
   </component>
 </project>
 

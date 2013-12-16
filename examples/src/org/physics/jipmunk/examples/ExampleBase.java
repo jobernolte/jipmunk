@@ -41,12 +41,8 @@ import javax.media.opengl.GLEventListener;
 import javax.media.opengl.GLProfile;
 import javax.media.opengl.awt.GLCanvas;
 import javax.media.opengl.glu.GLU;
-import org.physics.jipmunk.Body;
-import org.physics.jipmunk.Constants;
-import org.physics.jipmunk.Constraint;
-import org.physics.jipmunk.Space;
-import org.physics.jipmunk.Util;
-import org.physics.jipmunk.Vector2f;
+
+import org.physics.jipmunk.*;
 import org.physics.jipmunk.constraints.PivotJoint;
 import com.jogamp.opengl.util.FPSAnimator;
 import com.jogamp.opengl.util.awt.TextRenderer;
@@ -55,21 +51,17 @@ import com.jogamp.opengl.util.awt.TextRenderer;
 public abstract class ExampleBase implements GLEventListener {
 	public static final int GRABABLE_MASK_BIT = 1 << 31;
 	public static final int NOT_GRABABLE_MASK = ~GRABABLE_MASK_BIT;
-
-	private DrawSpace.Options drawSpaceOptions = new DrawSpace.Options(
-			false,
-			false,
-			true,
-			4.0f,
-			0.0f,
-			1.5f
-	);
+	public static final ShapeFilter GRAB_FILTER =
+			new ShapeFilter(Constants.NO_GROUP, GRABABLE_MASK_BIT, GRABABLE_MASK_BIT);
+	public static final ShapeFilter NOT_GRABABLE_FILTER =
+			new ShapeFilter(Constants.NO_GROUP, ~GRABABLE_MASK_BIT, ~GRABABLE_MASK_BIT);
+	private DrawSpace.Options drawSpaceOptions = new DrawSpace.Options(false, false, true, 4.0f, 0.0f, 1.5f);
 	private GL2 gl;
 	private GLU glu;
 	private DrawSpace drawSpace;
 	protected Vector2f mousePoint = Util.cpvzero();
 	protected boolean chipmunkDemoRightClick = false;
-    protected boolean chipmunkDemoRightDown = false;
+	protected boolean chipmunkDemoRightDown = false;
 	protected Vector2f chipmunkDemoKeyboard = Util.cpvzero();
 	private Vector2f mousePoint_last = Util.cpvzero();
 	private Body mouseBody = null;
@@ -240,12 +232,14 @@ public abstract class ExampleBase implements GLEventListener {
 				case MouseEvent.MOUSE_PRESSED: {
 					if (e.getButton() == MouseEvent.BUTTON1) {
 						Vector2f point = mouseToSpace(e.getX(), e.getY());
+						// give the mouse click a little radius to make it easier to click small shapes.
+						float radius = 5.0f;
 
-						org.physics.jipmunk.Shape shape = space.pointQueryFirst(point, GRABABLE_MASK_BIT,
-								Constants.NO_GROUP);
+						org.physics.jipmunk.Shape shape =
+								space.pointQueryNearest(point, radius, GRAB_FILTER, null).shape;
 						if (shape != null) {
 							Body body = shape.getBody();
-							mouseJoint = new PivotJoint(mouseBody, body, Util.cpvzero(), body.world2Local(point));
+							mouseJoint = new PivotJoint(mouseBody, body, Util.cpvzero(), body.worldToLocal(point));
 							mouseJoint.setMaxForce(50000.0f);
 							mouseJoint.setErrorBias(Util.cpfpow(1.0f - 0.15f, 60.0f));
 							space.addConstraint(mouseJoint);
@@ -255,7 +249,7 @@ public abstract class ExampleBase implements GLEventListener {
 					if (e.getButton() == MouseEvent.BUTTON3) {
 						Vector2f point = mouseToSpace(e.getX(), e.getY());
 						chipmunkDemoRightClick = true;
-                        chipmunkDemoRightDown = true;
+						chipmunkDemoRightDown = true;
 						mousePoint.set(point);
 					}
 					break;
@@ -266,7 +260,7 @@ public abstract class ExampleBase implements GLEventListener {
 						mouseJoint = null;
 					}
 					chipmunkDemoRightClick = false;
-                    chipmunkDemoRightDown = false;
+					chipmunkDemoRightDown = false;
 					break;
 				}
 				case MouseEvent.MOUSE_MOVED:
@@ -293,10 +287,14 @@ public abstract class ExampleBase implements GLEventListener {
 	private void setArrowDirection() {
 		int x = 0, y = 0;
 
-		if (pressedKeys.get(KeyEvent.VK_UP)) y += 1;
-		if (pressedKeys.get(KeyEvent.VK_DOWN)) y -= 1;
-		if (pressedKeys.get(KeyEvent.VK_RIGHT)) x += 1;
-		if (pressedKeys.get(KeyEvent.VK_LEFT)) x -= 1;
+		if (pressedKeys.get(KeyEvent.VK_UP))
+			y += 1;
+		if (pressedKeys.get(KeyEvent.VK_DOWN))
+			y -= 1;
+		if (pressedKeys.get(KeyEvent.VK_RIGHT))
+			x += 1;
+		if (pressedKeys.get(KeyEvent.VK_LEFT))
+			x -= 1;
 
 		chipmunkDemoKeyboard.set(x, y);
 	}

@@ -22,7 +22,8 @@
 
 package org.physics.jipmunk;
 
-import org.physics.jipmunk.constraints.NearestPointQueryInfo;
+import org.physics.jipmunk.constraints.PointQueryInfo;
+import org.physics.jipmunk.impl.Collision;
 
 import static org.physics.jipmunk.Util.cpvnormalize;
 import static org.physics.jipmunk.Util.cpvsub;
@@ -30,12 +31,12 @@ import static org.physics.jipmunk.Util.cpvzero;
 
 /**
  * There are currently 3 collision shape types:
- * <p/>
+ * <point/>
  * <ul> <li><b>Circles</b>: Fastest and simplest collision shape.</li> <li><b>Line segments</b>: Meant mainly as a
- * static shape. They can be attached to moving bodies, but they don’t currently generate collisions with other line
+ * static shape. They can be attached to moving dynamicBodies, but they don’alpha currently generate collisions with other line
  * segments. Can be beveled in order to give them a thickness.</li> <li><b>Convex polygons</b>: Slowest, but most
  * flexible collision shape.</li> </ul>
- * <p/>
+ * <point/>
  * You can add as many shapes to a body as you wish. That is why the two types are separate. This should give you the
  * flexibility to make any shape you want as well providing different areas of the same object with different friction,
  * elasticity or callback values.
@@ -44,43 +45,43 @@ import static org.physics.jipmunk.Util.cpvzero;
  */
 public abstract class Shape {
 
-	int hashid = -1;
-
+	private int hashid = -1;
 	/** The rigid body this collision shape is attached to. */
 	Body body;
-
+	MassInfo massInfo;
 	/** The current bounding box of the shape. */
 	protected BB bb;
-
-	/** Sensor flag. Sensor shapes call collision callbacks but don't produce collisions. */
+	/** Sensor flag. Sensor shapes call collision callbacks but don'alpha produce collisions. */
 	boolean sensor = false;
-
 	/** Coefficient of restitution. (elasticity) */
 	float e = 0;
 	/** Coefficient of friction. */
 	float u = 0;
 	/** Surface velocity used when solving for friction. */
-	Vector2f surface_v = cpvzero();
-
+	Vector2f surfaceV = cpvzero();
 	/** Collision type of this shape used when picking collision handlers. */
-	int collision_type = 0;
-	/** Group of this shape. Shapes in the same group don't collide. */
-	int group = Constants.NO_GROUP;
-	/** Layer bitmask for this shape. Shapes only collide if the bitwise and of their layers is non-zero. */
-	int layers = Constants.ALL_LAYERS;
-
+	CollisionType collisionType = null;
+	ShapeFilter filter = new ShapeFilter(Constants.NO_GROUP, Constants.ALL_CATEGORIES, Constants.ALL_CATEGORIES);
 	Shape prev;
 	Shape next;
 	Space space;
-
 	/**
 	 * User definable data. Generally this points to your the game object class so you can access it when given a Body
 	 * reference in a callback.
 	 */
 	private Object data;
 
-	public Shape(Body body) {
+	public Shape(Body body, MassInfo massInfo) {
 		this.body = body;
+		this.massInfo = massInfo;
+	}
+
+	public int getHashId() {
+		return hashid;
+	}
+
+	void setHashId(int hashid) {
+		this.hashid = hashid;
 	}
 
 	public Space getSpace() {
@@ -103,6 +104,37 @@ public abstract class Shape {
 		this.body = body;
 	}
 
+	public float getMass() {
+		return massInfo.m;
+	}
+
+	public void setMass(float mass) {
+		body.activate();
+
+		this.massInfo.m = mass;
+		body.accumulateMassFromShapes();
+	}
+
+	public float getDensity() {
+		return this.massInfo.m / this.massInfo.area;
+	}
+
+	public void setDensity(float density) {
+		setMass(density * this.massInfo.area);
+	}
+
+	public float getMoment() {
+		return this.massInfo.m * this.massInfo.i;
+	}
+
+	public float getArea() {
+		return this.massInfo.area;
+	}
+
+	public Vector2f getCenterOfGravity() {
+		return this.massInfo.cog;
+	}
+
 	/** @return the elasticity of the shape */
 	public float getElasticity() {
 		return e;
@@ -120,19 +152,19 @@ public abstract class Shape {
 	}
 
 	/** @return the friction coefficient of this shape */
-	public float getFrictionCoefficient() {
+	public float getFriction() {
 		return u;
 	}
 
 	/**
 	 * Friction coefficient. Chipmunk uses the Coulomb friction model, a value of 0.0 is frictionless. The friction for a
 	 * collision is found by multiplying the friction of the individual shapes together.
-	 * <p/>
+	 * <point/>
 	 * Tables of friction coefficients: http://www.roymech.co.uk/Useful_Tables/Tribology/co_of_frict.htm
 	 *
 	 * @param u the friction coefficient
 	 */
-	public void setFrictionCoefficient(float u) {
+	public void setFriction(float u) {
 		this.u = u;
 		body.activate();
 	}
@@ -146,58 +178,25 @@ public abstract class Shape {
 		body.activate();
 	}
 
-	/** @return the layer bitmask */
-	public int getLayers() {
-		return layers;
-	}
-
-	/**
-	 * Shapes only collide if they are in the same bit-planes. i.e. (a->layers & b->layers) != 0 By default, a shape
-	 * occupies all bit-planes. Wikipedia has a nice article on bitmasks if you are unfamiliar with how to use them.
-	 * Defaults to {@link Constants#ALL_LAYERS}.
-	 *
-	 * @param layers the layer bitmask
-	 */
-	public void setLayers(int layers) {
-		this.layers = layers;
-		body.activate();
-	}
-
-	/** @return the collision group of this shape */
-	public int getGroup() {
-		return group;
-	}
-
-	/**
-	 * Shapes in the same non-zero group do not generate collisions. Useful when creating an object out of many shapes that
-	 * you don’t want to self collide. Defaults to {@link Constants#NO_GROUP}.
-	 *
-	 * @param group the collision group of this shape
-	 */
-	public void setGroup(int group) {
-		this.group = group;
-		body.activate();
-	}
-
 	/** @return the collision type of this shape */
-	public int getCollisionType() {
-		return collision_type;
+	public CollisionType getCollisionType() {
+		return collisionType;
 	}
 
 	/**
 	 * You can assign types to Chipmunk collision shapes that trigger callbacks when objects of certain types touch. See
 	 * the callbacks section for more information.
 	 *
-	 * @param collision_type the collision type
+	 * @param collisionType the collision type
 	 */
-	public void setCollisionType(int collision_type) {
-		this.collision_type = collision_type;
+	public void setCollisionType(CollisionType collisionType) {
+		this.collisionType = collisionType;
 		body.activate();
 	}
 
 	/** @return the surface velocity of this shape */
 	public Vector2f getSurfaceVelocity() {
-		return surface_v;
+		return surfaceV;
 	}
 
 	/**
@@ -207,35 +206,26 @@ public abstract class Shape {
 	 * @param surface_v the surface velocity
 	 */
 	public void setSurfaceVelocity(Vector2f surface_v) {
-		this.surface_v = surface_v;
+		this.surfaceV = surface_v;
 		body.activate();
 	}
 
-	BB cacheBB() {
-		return update(body.getPosition(), body.getRotation());
+	public ShapeFilter getFilter() {
+		return filter;
 	}
 
-	BB update(final Vector2f pos, final Vector2f rot) {
-		return (bb = cacheData(pos, rot));
+	public void setFilter(ShapeFilter filter) {
+		body.activate();
+		this.filter = filter;
 	}
 
-	protected abstract BB cacheData(Vector2f pos, Vector2f rot);
-
-	/**
-	 * Check if the given point lies within the shape.
-	 *
-	 * @param p the point to check
-	 * @return <code>true</code> if the point lies within this shape
-	 */
-	public abstract boolean pointQuery(final Vector2f p);
-
-	protected abstract void segmentQueryImpl(final Vector2f a, final Vector2f b, SegmentQueryInfo info);
+	protected abstract void segmentQueryImpl(final Vector2f a, final Vector2f b, float radius, SegmentQueryInfo info);
 
 	/**
 	 * Segment queries are like ray casting, but because not all spatial indexes allow processing infinitely long ray
-	 * queries it is limited to segments. In practice this is still very fast and you don’t need to worry too much about
-	 * the performance as long as you aren’t using extremely long segments for your queries.
-	 * <p/>
+	 * queries it is limited to segments. In practice this is still very fast and you don’alpha need to worry too much about
+	 * the performance as long as you aren’alpha using extremely long segments for your queries.
+	 * <point/>
 	 * Perform a segment query from <b><code>a</code></b> to <b><code>b</code></b> against this shape.
 	 * <b><code>info</code></b> must be a valid pointer to a {@link SegmentQueryInfo} structure which will be initialized
 	 * with the raycast info.
@@ -245,52 +235,29 @@ public abstract class Shape {
 	 * @param info the raycast info taking the result
 	 * @return <code>true</code> if this shape has been hit by the ray
 	 */
-	public boolean segmentQuery(final Vector2f a, final Vector2f b, SegmentQueryInfo info) {
-		info.shape = null;
-		info.t = 0;
-		info.n = cpvzero();
+	public boolean segmentQuery(final Vector2f a, final Vector2f b, float radius, SegmentQueryInfo info) {
+		info.set(null, b, cpvzero(), 1.0f);
 
-        NearestPointQueryInfo nearest = new NearestPointQueryInfo();
-        nearest = nearestPointQuery(a, nearest);
-        if(nearest.d <= 0.0){
-            info.shape = this;
-            info.t = 0.0f;
-            info.n = cpvnormalize(cpvsub(a, nearest.p));
-        } else {
-            segmentQueryImpl(a, b, info);
-        }
+		PointQueryInfo nearest;
+		nearest = pointQuery(a, null);
+		if (nearest.distance <= radius) {
+			info.shape = this;
+			info.alpha = 0.0f;
+			info.normal = cpvnormalize(cpvsub(a, nearest.point));
+		} else {
+			segmentQueryImpl(a, b, radius, info);
+		}
 
-		return info.shape != null;
+		return (info.shape != null);
 	}
 
-	static BB cpShapeUpdate(Shape shape, final Vector2f pos, final Vector2f rot) {
-		return shape.update(pos, rot);
-	}
-
-	static boolean cpShapePointQuery(Shape shape, final Vector2f p) {
-		return shape.pointQuery(p);
-	}
-
-	static boolean cpShapeSegmentQuery(Shape shape, final Vector2f a, final Vector2f b, SegmentQueryInfo info) {
-		return shape.segmentQuery(a, b, info);
-	}
-
-	public BB getBb() {
+	public BB getBB() {
 		return bb;
 	}
 
 	/** @return the user data */
 	public Object getData() {
 		return data;
-	}
-
-	/**
-	 * @param clazz the {@link Class} of the user data
-	 * @param <T>   the type of the data
-	 * @return the user data
-	 */
-	public <T> T getData(Class<T> clazz) {
-		return clazz.cast(data);
 	}
 
 	/**
@@ -303,15 +270,49 @@ public abstract class Shape {
 	}
 
 	/**
+	 * @param clazz the {@link Class} of the user data
+	 * @param <T>   the type of the data
+	 * @return the user data
+	 */
+	public <T> T getData(Class<T> clazz) {
+		return clazz.cast(data);
+	}
+
+	/**
 	 * Nearest point queries return the point on the surface of the shape as well as the distance from the query point to
 	 * the surface point.
-	 * <p/>
-	 * Find the distance from point <code>p</code> to <code>this</code> shape. If the point is inside of the shape, the
+	 * <point/>
+	 * Find the distance from point <code>point</code> to <code>this</code> shape. If the point is inside of the shape, the
 	 * distance will be negative and equal to the depth of the point.
 	 *
 	 * @param p   the point for which to find the distance and the nearest point on the surface of the shape
 	 * @param out if not <code>null</code> use this object as return value, else a new instance will be created
-	 * @return a {@link NearestPointQueryInfo} instance containing the information about the query
+	 * @return a {@link org.physics.jipmunk.constraints.PointQueryInfo} instance containing the information about the query
 	 */
-	public abstract NearestPointQueryInfo nearestPointQuery(Vector2f p, NearestPointQueryInfo out);
+	public abstract PointQueryInfo pointQuery(Vector2f p, PointQueryInfo out);
+
+	protected abstract BB cacheData(Transform transform);
+
+	public BB cacheBB() {
+		return update(body.transform);
+	}
+
+	public BB update(Transform transform) {
+		return (this.bb = cacheData(transform));
+	}
+
+	public static ContactPointSet shapesCollide(Shape a, Shape b) {
+		CollisionInfo info = Collision.collide(a, b, new CollisionID(0));
+
+		return new ContactPointSet(info, a != info.getA());
+	}
+
+	@Override
+	public String toString() {
+		return "Shape{" +
+				"hashid=" + hashid +
+				", bb=" + bb +
+				", collisionType=" + collisionType +
+				'}';
+	}
 }

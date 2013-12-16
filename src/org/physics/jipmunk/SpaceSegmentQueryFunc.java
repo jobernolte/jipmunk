@@ -24,5 +24,5 @@ package org.physics.jipmunk;
 
 /** @author jobernolte */
 public interface SpaceSegmentQueryFunc {
-	void apply(Shape shape, float t, Vector2f n);
+	void apply(Shape shape, Vector2f point, Vector2f normal, float alpha);
 }

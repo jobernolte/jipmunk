@@ -23,6 +23,7 @@
 package org.physics.jipmunk;
 
 /** @author jobernolte */
+@FunctionalInterface
 public interface BodyPositionFunc {
-	void position(Body body, float dt);
+	void apply(Body body, float dt);
 }

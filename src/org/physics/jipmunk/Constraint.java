@@ -45,6 +45,7 @@ public abstract class Constraint {
 	protected float errorBias = Util.cpfpow(1.0f - 0.1f, 60.0f);
 	/** The maximum rate at which joint error is corrected. Defaults to infinity. */
 	protected float maxBias = Float.POSITIVE_INFINITY;
+	boolean collideBodies;
 	/** Function called before the solver runs. Animate your joint anchors, update your motor torque, etc. */
 	ConstraintPreSolveFunc preSolveFunc;
 	/** Function called after the solver runs. Use the applied impulse to perform effects like breakable joints. */

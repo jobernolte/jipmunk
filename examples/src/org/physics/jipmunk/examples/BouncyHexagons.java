@@ -97,7 +97,7 @@ public class BouncyHexagons extends ExampleBase {
 
         // Create vertexes for a hexagon shape.
         final int NUM_VERTS = 6;
-        Vector2f[] verts = new DefaultVector2f[NUM_VERTS];
+        Vector2f[] verts = new Vector2f[NUM_VERTS];
         for (int i = 0; i < NUM_VERTS; i++) {
             float angle = -2f * (float) Math.PI * i / ((float) NUM_VERTS);
             verts[i] = Util.cpv(5f * (float) Math.cos(angle), 5f * (float) Math.sin(angle));
@@ -105,13 +105,13 @@ public class BouncyHexagons extends ExampleBase {
 
         // Add lots of hexagons.
         for (int i = 0; i < 500; i++) {
-            body = space.addBody(new Body(1.0f, Util.momentForPoly(1.0f, verts, Util.cpvzero())));
+            body = space.addBody(new Body(1.0f, Util.momentForPoly(1.0f, verts, Util.cpvzero(), 0.0f)));
             float x = rgen.nextFloat() * 200f - 100f;
             float y = rgen.nextFloat() * 200f - 100f;
             body.setPosition(Util.cpv(x, y));
             body.setVelocity(Util.cpv(rgen.nextFloat() * 160f - 80f, rgen.nextFloat() * 160f - 80f));
 
-            shape = space.addShape(new PolyShape(body, verts, Util.cpvzero()));
+            shape = space.addShape(new PolyShape(body, 0.0f, verts));
             shape.setElasticity(1.0f);
         }
 

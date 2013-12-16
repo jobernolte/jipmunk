@@ -27,17 +27,21 @@ import static org.physics.jipmunk.Assert.cpAssertSoft;
 /** @author jobernolte */
 public class Util {
 
+	public static boolean cpveql(final Vector2f a, final Vector2f b) {
+		return a.x == b.x && a.y == b.y;
+	}
+
 	/// Clamp @c f to be between @c min and @c max.
 	public static float cpfclamp(float f, float min, float max) {
 		return Math.min(Math.max(f, min), max);
 	}
 
-	/// Linearly interpolate (or extrapolate) between @c f1 and @c f2 by @c t percent.
+	/// Linearly interpolate (or extrapolate) between @c f1 and @c f2 by @c alpha percent.
 	public static float cpflerp(float f1, float f2, float t) {
 		return f1 * (1.0f - t) + f2 * t;
 	}
 
-	/// Linearly interpolate from @c f1 to @c f2 by no more than @c d.
+	/// Linearly interpolate from @c f1 to @c f2 by no more than @c distance.
 	public static float cpflerpconst(float f1, float f2, float d) {
 		return f1 + cpfclamp(f2 - f1, -d, d);
 	}
@@ -47,53 +51,53 @@ public class Util {
 	}
 
 	public static Vector2f cpvforangle(float a) {
-		return new DefaultVector2f((float) Math.cos(a), (float) Math.sin(a));
+		return new Vector2f((float) Math.cos(a), (float) Math.sin(a));
 	}
 
 	public static Vector2f cpv(float x, float y) {
-		return new DefaultVector2f(x, y);
+		return new Vector2f(x, y);
 	}
 
 	/// Add two vectors
 	public static Vector2f cpvadd(final Vector2f v1, final Vector2f v2) {
-		return new DefaultVector2f(v1.getX() + v2.getX(), v1.getY() + v2.getY());
+		return new Vector2f(v1.x + v2.x, v1.y + v2.y);
 	}
 
 	/// Subtract two vectors.
 	public static Vector2f cpvsub(final Vector2f v1, final Vector2f v2) {
-		return new DefaultVector2f(v1.getX() - v2.getX(), v1.getY() - v2.getY());
+		return new Vector2f(v1.x - v2.x, v1.y - v2.y);
 	}
 
 	/// Negate a vector.
 	public static Vector2f cpvneg(final Vector2f v) {
-		return new DefaultVector2f(-v.getX(), -v.getY());
+		return new Vector2f(-v.x, -v.y);
 	}
 
 	/// Scalar multiplication.
 	public static Vector2f cpvmult(final Vector2f v, final float s) {
-		return new DefaultVector2f(v.getX() * s, v.getY() * s);
+		return new Vector2f(v.x * s, v.y * s);
 	}
 
 	/// Vector dot product.
 	public static float cpvdot(final Vector2f v1, final Vector2f v2) {
-		return v1.getX() * v2.getX() + v1.getY() * v2.getY();
+		return v1.x * v2.x + v1.y * v2.y;
 	}
 
 	/// 2D vector cross product analog.
-/// The cross product of 2D vectors results in a 3D vector with only a z component.
-/// This function returns the magnitude of the z value.
+	/// The cross product of 2D vectors results in a 3D vector with only a z component.
+	/// This function returns the magnitude of the z value.
 	public static float cpvcross(final Vector2f v1, final Vector2f v2) {
-		return v1.getX() * v2.getY() - v1.getY() * v2.getX();
+		return v1.x * v2.y - v1.y * v2.x;
 	}
 
 	/// Returns a perpendicular vector. (90 degree rotation)
 	public static Vector2f cpvperp(final Vector2f v) {
-		return new DefaultVector2f(-v.getY(), v.getX());
+		return new Vector2f(-v.y, v.x);
 	}
 
 	/// Returns a perpendicular vector. (-90 degree rotation)
 	public static Vector2f cpvrperp(final Vector2f v) {
-		return new DefaultVector2f(v.getY(), -v.getX());
+		return new Vector2f(v.y, -v.x);
 	}
 
 	/// Returns the vector projection of v1 onto v2.
@@ -103,14 +107,12 @@ public class Util {
 
 	/// Uses complex number multiplication to rotate v1 by v2. Scaling will occur if v1 is not a unit vector.
 	public static Vector2f cpvrotate(final Vector2f v1, final Vector2f v2) {
-		return new DefaultVector2f(v1.getX() * v2.getX() - v1.getY() * v2.getY(),
-				v1.getX() * v2.getY() + v1.getY() * v2.getX());
+		return new Vector2f(v1.x * v2.x - v1.y * v2.y, v1.x * v2.y + v1.y * v2.x);
 	}
 
 	/// Inverse of cpvrotate().
 	public static Vector2f cpvunrotate(final Vector2f v1, final Vector2f v2) {
-		return new DefaultVector2f(v1.getX() * v2.getX() + v1.getY() * v2.getY(),
-				v1.getY() * v2.getX() - v1.getX() * v2.getY());
+		return new Vector2f(v1.x * v2.x + v1.y * v2.y, v1.y * v2.x - v1.x * v2.y);
 	}
 
 	/// Returns the squared length of v. Faster than cpvlength() when you only need to compare lengths.
@@ -130,7 +132,7 @@ public class Util {
 
 	/// Returns a normalized copy of v or cpvzero if v was already cpvzero. Protects against divide by zero errors.
 	public static Vector2f cpvnormalize_safe(final Vector2f v) {
-		return (v.getX() == 0.0f && v.getY() == 0.0f ? new DefaultVector2f(0, 0) : cpvnormalize(v));
+		return (v.x == 0.0f && v.y == 0.0f ? new Vector2f(0, 0) : cpvnormalize(v));
 	}
 
 	/// Clamp v to length len.
@@ -138,7 +140,7 @@ public class Util {
 		return (cpvdot(v, v) > len * len) ? cpvmult(cpvnormalize(v), len) : v;
 	}
 
-	/// Linearly interpolate between v1 towards v2 by distance d.
+	/// Linearly interpolate between v1 towards v2 by distance distance.
 	public static Vector2f cpvlerpfinal(Vector2f v1, Vector2f v2, float d) {
 		return cpvadd(v1, cpvclamp(cpvsub(v2, v1), d));
 	}
@@ -171,9 +173,8 @@ public class Util {
 			return cpvlerp(v1, v2, t);
 		} else {
 			float denom = (float) (1.0f / Math.sin(omega));
-			return cpvadd(
-					cpvmult(v1, (float) (Math.sin((1.0f - t) * omega) * denom)),
-					cpvmult(v2, (float) (Math.sin(t * omega) * denom)));
+			return cpvadd(cpvmult(v1, (float) (Math.sin((1.0f - t) * omega) * denom)),
+						  cpvmult(v2, (float) (Math.sin(t * omega) * denom)));
 		}
 	}
 
@@ -183,11 +184,11 @@ public class Util {
 	}
 
 	public static float cpvtoangle(final Vector2f v) {
-		return (float) Math.atan2(v.getY(), v.getX());
+		return (float) Math.atan2(v.y, v.x);
 	}
 
 	public static Vector2f cpvzero() {
-		return new DefaultVector2f(0, 0);
+		return new Vector2f(0, 0);
 	}
 
 	public static float cpfsqrt(float value) {
@@ -195,7 +196,7 @@ public class Util {
 	}
 
 	public static float cpfabs(float value) {
-		return Math.abs(value);
+		return (value <= 0.0F) ? 0.0F - value : value;
 	}
 
 	public static float cpfmin(float a, float b) {
@@ -210,10 +211,6 @@ public class Util {
 		return (float) Math.pow(a, b);
 	}
 
-	public static BB cpBBNew(float l, float b, float r, float t) {
-		return new BB(l, b, r, t);
-	}
-
 	/// Returns the area of the bounding box.
 	static float cpBBArea(BB bb) {
 		return (bb.r - bb.l) * (bb.t - bb.b);
@@ -226,34 +223,32 @@ public class Util {
 
 	/// Return true if the bounding box intersects the line segment with ends @c a and @c b.
 	static boolean cpBBIntersectsSegment(BB bb, Vector2f a, Vector2f b) {
-		BB seg_bb = new BB(cpfmin(a.getX(), b.getX()), cpfmin(a.getY(), b.getY()), cpfmax(a.getX(), b.getX()), cpfmax(
-				a.getY(), b.getY()));
+		BB seg_bb = new BB(cpfmin(a.x, b.x), cpfmin(a.y, b.y), cpfmax(a.x, b.x), cpfmax(a.y, b.y));
 		if (bb.intersects(seg_bb)) {
-			Vector2f axis = cpv(b.getY() - a.getY(), a.getX() - b.getX());
-			Vector2f offset = cpv((a.getX() + b.getX() - bb.r - bb.l), (a.getY() + b.getY() - bb.t - bb.b));
+			Vector2f axis = cpv(b.y - a.y, a.x - b.x);
+			Vector2f offset = cpv((a.x + b.x - bb.r - bb.l), (a.y + b.y - bb.t - bb.b));
 			Vector2f extents = cpv(bb.r - bb.l, bb.t - bb.b);
 
-			return (cpfabs(cpvdot(axis, offset)) < cpfabs(axis.getX() * extents.getX()) + cpfabs(
-					axis.getY() * extents.getY()));
+			return (cpfabs(cpvdot(axis, offset)) < cpfabs(axis.x * extents.x) + cpfabs(axis.y * extents.y));
 		}
 
 		return false;
 	}
 
+	static float
+	k_scalar_body(Body body, Vector2f r, Vector2f n)
+	{
+		float rcn = cpvcross(r, n);
+		return body.m_inv + body.i_inv*rcn*rcn;
+	}
+
 	public static float k_scalar(Body a, Body b, Vector2f r1, Vector2f r2, Vector2f n) {
-		float mass_sum = a.m_inv + b.m_inv;
-		float r1cn = cpvcross(r1, n);
-		float r2cn = cpvcross(r2, n);
-
-		float value = mass_sum + a.i_inv * r1cn * r1cn + b.i_inv * r2cn * r2cn;
-		assert value != 0.0 : "Unsolvable collision or constraint.";
-
-		return value;
+		return k_scalar_body(a, r1, n) + k_scalar_body(b, r2, n);
 	}
 
 	public static void k_tensor(Body a, Body b, Vector2f r1, Vector2f r2, Vector2f k1, Vector2f k2) {
 		// calculate mass matrix
-		// If I wasn't lazy and wrote a proper matrix class, this wouldn't be so gross...
+		// If I wasn'alpha lazy and wrote a proper matrix class, this wouldn'alpha be so gross...
 		float k11, k12, k21, k22;
 		float m_sum = a.m_inv + b.m_inv;
 
@@ -265,9 +260,9 @@ public class Util {
 
 		// add the influence from r1
 		float a_i_inv = a.i_inv;
-		float r1xsq = r1.getX() * r1.getX() * a_i_inv;
-		float r1ysq = r1.getY() * r1.getY() * a_i_inv;
-		float r1nxy = -r1.getX() * r1.getY() * a_i_inv;
+		float r1xsq = r1.x * r1.x * a_i_inv;
+		float r1ysq = r1.y * r1.y * a_i_inv;
+		float r1nxy = -r1.x * r1.y * a_i_inv;
 		k11 += r1ysq;
 		k12 += r1nxy;
 		k21 += r1nxy;
@@ -275,9 +270,9 @@ public class Util {
 
 		// add the influnce from r2
 		float b_i_inv = b.i_inv;
-		float r2xsq = r2.getX() * r2.getX() * b_i_inv;
-		float r2ysq = r2.getY() * r2.getY() * b_i_inv;
-		float r2nxy = -r2.getX() * r2.getY() * b_i_inv;
+		float r2xsq = r2.x * r2.x * b_i_inv;
+		float r2ysq = r2.y * r2.y * b_i_inv;
+		float r2nxy = -r2.x * r2.y * b_i_inv;
 		k11 += r2ysq;
 		k12 += r2nxy;
 		k21 += r2nxy;
@@ -294,7 +289,7 @@ public class Util {
 
 	public static Mat2x2 k_tensor(Body a, Body b, Vector2f r1, Vector2f r2) {
 		// calculate mass matrix
-		// If I wasn't lazy and wrote a proper matrix class, this wouldn't be so gross...
+		// If I wasn'alpha lazy and wrote a proper matrix class, this wouldn'alpha be so gross...
 		float k11, k12, k21, k22;
 		float m_sum = a.m_inv + b.m_inv;
 
@@ -306,9 +301,9 @@ public class Util {
 
 		// add the influence from r1
 		float a_i_inv = a.i_inv;
-		float r1xsq = r1.getX() * r1.getX() * a_i_inv;
-		float r1ysq = r1.getY() * r1.getY() * a_i_inv;
-		float r1nxy = -r1.getX() * r1.getY() * a_i_inv;
+		float r1xsq = r1.x * r1.x * a_i_inv;
+		float r1ysq = r1.y * r1.y * a_i_inv;
+		float r1nxy = -r1.x * r1.y * a_i_inv;
 		k11 += r1ysq;
 		k12 += r1nxy;
 		k21 += r1nxy;
@@ -316,9 +311,9 @@ public class Util {
 
 		// add the influnce from r2
 		float b_i_inv = b.i_inv;
-		float r2xsq = r2.getX() * r2.getX() * b_i_inv;
-		float r2ysq = r2.getY() * r2.getY() * b_i_inv;
-		float r2nxy = -r2.getX() * r2.getY() * b_i_inv;
+		float r2xsq = r2.x * r2.x * b_i_inv;
+		float r2ysq = r2.y * r2.y * b_i_inv;
+		float r2nxy = -r2.x * r2.y * b_i_inv;
 		k11 += r2ysq;
 		k12 += r2nxy;
 		k21 += r2nxy;
@@ -329,14 +324,11 @@ public class Util {
 		cpAssertSoft(determinant != 0.0, "Unsolvable constraint.");
 
 		float det_inv = 1.0f / determinant;
-		return new Mat2x2(
-				k22 * det_inv, -k12 * det_inv,
-				-k21 * det_inv, k11 * det_inv
-		);
+		return new Mat2x2(k22 * det_inv, -k12 * det_inv, -k21 * det_inv, k11 * det_inv);
 	}
 
 	public static Vector2f mult_k(Vector2f vr, Vector2f k1, Vector2f k2) {
-		return new DefaultVector2f(cpvdot(vr, k1), cpvdot(vr, k2));
+		return new Vector2f(cpvdot(vr, k1), cpvdot(vr, k2));
 	}
 
 	public static float bias_coef(float errorBias, float dt) {
@@ -374,13 +366,6 @@ public class Util {
 		apply_bias_impulse(b, j, r2);
 	}
 
-	public final static long CP_HASH_COEF = 3344921057L;
-
-	public static long CP_HASH_PAIR(int A, int B) {
-		//return (int) ((A) * CP_HASH_COEF ^ (B) * CP_HASH_COEF);
-		return (((long) A) << 32) | B;
-	}
-
 	public static float momentForCircle(float m, float r1, float r2, Vector2f offset) {
 		return m * (0.5f * (r1 * r1 + r2 * r2) + cpvlengthsq(offset));
 	}
@@ -389,27 +374,34 @@ public class Util {
 		return 2.0f * (float) Math.PI * cpfabs(r1 * r1 - r2 * r2);
 	}
 
-	public static float momentForSegment(float m, Vector2f a, Vector2f b) {
-		float length = cpvlength(cpvsub(b, a));
-		Vector2f offset = cpvmult(cpvadd(a, b), 1.0f / 2.0f);
+	public static float momentForSegment(float m, Vector2f a, Vector2f b, float r) {
+		Vector2f offset = cpvlerp(a, b, 0.5f);
 
-		return m * (length * length / 12.0f + cpvlengthsq(offset));
+		// This approximates the shape as a box for rounded segments, but it's quite close.
+		float length = cpvdist(b, a) + 2.0f * r;
+		return m * ((length * length + 4.0f * r * r) / 12.0f + cpvlengthsq(offset));
 	}
 
 	public static float areaForSegment(Vector2f a, Vector2f b, float r) {
 		return 2.0f * r * ((float) Math.PI * r + cpvdist(a, b));
 	}
 
-	public static float momentForPoly(float m, Vector2f[] verts, Vector2f offset) {
-		return momentForPoly(m, verts, 0, verts.length, offset);
+	public static float momentForPoly(float m, Vector2f[] verts, Vector2f offset, float radius) {
+		return momentForPoly(m, verts, 0, verts.length, offset, radius);
 	}
 
-	public static float momentForPoly(float m, Vector2f[] verts, int voffset, int length, Vector2f offset) {
+	public static float momentForPoly(float m, Vector2f[] verts, int voffset, int count, Vector2f offset,
+			float radius) {
+		// TODO account for radius.
+		if (count == 2) {
+			return momentForSegment(m, verts[voffset], verts[voffset + 1], 0.0f);
+		}
+
 		float sum1 = 0.0f;
 		float sum2 = 0.0f;
-		for (int i = 0; i < length; i++) {
+		for (int i = 0; i < count; i++) {
 			Vector2f v1 = cpvadd(verts[voffset + i], offset);
-			Vector2f v2 = cpvadd(verts[voffset + ((i + 1) % length)], offset);
+			Vector2f v2 = cpvadd(verts[voffset + ((i + 1) % count)], offset);
 
 			float a = cpvcross(v2, v1);
 			float b = cpvdot(v1, v1) + cpvdot(v1, v2) + cpvdot(v2, v2);
@@ -421,17 +413,22 @@ public class Util {
 		return (m * sum1) / (6.0f * sum2);
 	}
 
-	public static float areaForPoly(Vector2f[] verts) {
-		return areaForPoly(verts, 0, verts.length);
+	public static float areaForPoly(Vector2f[] verts, float r) {
+		return areaForPoly(verts, 0, verts.length, r);
 	}
 
-	public static float areaForPoly(Vector2f[] verts, int offset, int count) {
+	public static float areaForPoly(Vector2f[] verts, int offset, int count, float r) {
 		float area = 0.0f;
-		for (int i = offset; i < (offset + count); i++) {
-			area += cpvcross(verts[i], verts[(i + 1) % verts.length]);
+		float perimeter = 0.0f;
+		for (int i = 0; i < count; i++) {
+			Vector2f v1 = verts[offset + i];
+			Vector2f v2 = verts[offset + ((i + 1) % count)];
+
+			area += cpvcross(v1, v2);
+			perimeter += cpvdist(v1, v2);
 		}
 
-		return -area / 2.0f;
+		return r * ((float) Math.PI * cpfabs(r) + perimeter) + area / 2.0f;
 	}
 
 	public static Vector2f centroidForPoly(Vector2f[] verts) {
@@ -467,7 +464,7 @@ public class Util {
 	}
 
 	public static Vector2f cpv(Vector2f a) {
-		return new DefaultVector2f(a.getX(), a.getY());
+		return new Vector2f(a.x, a.y);
 	}
 
 	public static float cpffloor(float v) {

@@ -34,8 +34,8 @@ public class Planet extends ExampleBase {
 
         shape = space.addShape(new CircleShape(planetBody, 70.0f, Util.cpvzero()));
         shape.setElasticity(1.0f);
-        shape.setFrictionCoefficient(1.0f);
-        shape.setLayers(NOT_GRABABLE_MASK);
+        shape.setFriction(1.0f);
+        shape.setFilter(NOT_GRABABLE_FILTER);
 
         return space;
     }
@@ -49,14 +49,14 @@ public class Planet extends ExampleBase {
         for (int j = 0; j < steps; j++) {
             space.step(dt);
             // Update the static body spin so that it looks like it's rotating.
-            Body.updatePosition(planetBody, dt);
+            planetBody.updatePosition(dt);
         }
     }
 
 
     class planetGravityVelocityFunc implements BodyVelocityFunc {
 
-        public void velocity(Body body, Vector2f gravity, float damping, float dt) {
+        public void apply(Body body, Vector2f gravity, float damping, float dt) {
             // Gravitational acceleration is proportional to the inverse square of
             // distance, and directed toward the origin. The central planet is assumed
             // to be massive enough that it affects the satellites but not vice versa.
@@ -64,7 +64,7 @@ public class Planet extends ExampleBase {
             float sqdist = Util.cpvlengthsq(p);
             Vector2f g = Util.cpvmult(p, -gravityStrength / (sqdist * Util.cpfsqrt(sqdist)));
 
-            Body.updateVelocity(body, g, damping, dt);
+            body.updateVelocity(g, damping, dt);
         }
     }
 
@@ -92,7 +92,7 @@ public class Planet extends ExampleBase {
         float radius = Util.cpvlength(Util.cpv(size, size));
         Vector2f pos = rand_pos(radius);
 
-        Body body = space.addBody(new Body(mass, Util.momentForPoly(mass, verts, Util.cpvzero())));
+        Body body = space.addBody(new Body(mass, Util.momentForPoly(mass, verts, Util.cpvzero(), 0.0f)));
         body.setVelocityFunc(pgvf);
         body.setPosition(pos);
 
@@ -106,9 +106,9 @@ public class Planet extends ExampleBase {
         // align its initial angle with its position.
         body.setAngVel(v);
         body.setAngleInRadians(Util.cpvtoangle(pos));
-        Shape shape = space.addShape(new PolyShape(body, verts, Util.cpvzero()));
+        Shape shape = space.addShape(new PolyShape(body, 0.0f, verts));
         shape.setElasticity(0.0f);
-        shape.setFrictionCoefficient(0.7f);
+        shape.setFriction(0.7f);
     }
 
 

@@ -24,5 +24,5 @@ package org.physics.jipmunk;
 
 /** @author jobernolte */
 public interface SpacePointQueryFunc {
-	void apply(Shape shape);
+	void apply(Shape shape, Vector2f point, float distance, Vector2f gradient);
 }

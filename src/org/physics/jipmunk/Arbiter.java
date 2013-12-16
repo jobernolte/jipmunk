@@ -22,10 +22,31 @@
 
 package org.physics.jipmunk;
 
-import java.util.Iterator;
+import org.physics.jipmunk.impl.Contact;
 
-/** @author jobernolte */
+import java.util.Iterator;
+import java.util.List;
+
+import static org.physics.jipmunk.Assert.cpAssertHard;
+import static org.physics.jipmunk.Util.*;
+
+/**
+ * jipmunk’s Arbiter class encapsulates a pair of colliding shapes and all of the data about their collision.
+ * <p>
+ * Why are they called arbiters? The short answer is that I kept using the word “arbitrates” to describe the way that
+ * collisions were resolved and then I saw that Box2D actually called them arbiters way back in 2006 when I was looking
+ * at its solver. An arbiter is like a judge, a person that has authority to settle disputes between two people. It was
+ * a fun, fitting name and was shorter to type than CollisionPair which I had been using. It was originally meant to be
+ * a private internal structure only, but evolved to be useful from callbacks.
+ *
+ * @author jobernolte
+ */
 public class Arbiter {
+
+	private final static CollisionHandler DO_NOTHING =
+			new CollisionHandler(CollisionType.WILDCARD, CollisionType.WILDCARD, CollisionHandler::alwaysCollide,
+								 CollisionHandler::alwaysCollide, CollisionHandler::doNothing,
+								 CollisionHandler::doNothing);
 	/**
 	 * Calculated value to use for the elasticity coefficient. Override in a pre-solve collision handler for custom
 	 * behavior.
@@ -41,72 +62,25 @@ public class Arbiter {
 	 * behavior.
 	 */
 	Vector2f surface_vr = Util.cpvzero();
-
 	Shape a;
 	Shape b;
 	Body body_a;
 	Body body_b;
-
 	ArbiterThread thread_a = new ArbiterThread();
 	ArbiterThread thread_b = new ArbiterThread();
-
-	int numContacts = 0;
-	Contact[] contacts;
-
+	List<Contact> contacts;
+	Vector2f normal = Util.cpvzero();
+	CollisionHandler handler;
+	CollisionHandler handlerA;
+	CollisionHandler handlerB;
+	boolean swapped = false;
 	int stamp = 0;
-	CollisionHandlerEntry handler;
-	boolean swappedColl = false;
-	ArbiterState state = ArbiterState.cpArbiterStateFirstColl;
+	ArbiterState state = ArbiterState.FIRST_COLLISION;
 	/**
 	 * User definable data. Generally this points to your the game object class so you can access it when given a Body
 	 * reference in a callback.
 	 */
 	private Object data;
-
-	/** @return Calculated value to use for the elasticity coefficient. */
-	public float getElasticity() {
-		return e;
-	}
-
-	/**
-	 * The calculated elasticity for this collision pair. Setting the value in a
-	 * {@link CollisionHandler#preSolve (Arbiter, Space)} callback will override the value calculated by the space.
-	 * 
-	 * @param e the calculated elasticity
-	 */
-	public void setElasticity(float e) {
-		this.e = e;
-	}
-
-	/** @return The calculated friction for this collision pair. */
-	public float getFriction() {
-		return u;
-	}
-
-	/**
-	 * The calculated friction for this collision pair. Setting the value in a
-	 * {@link CollisionHandler#preSolve (Arbiter, Space)} callback will override the value calculated by the space.
-	 * 
-	 * @param u the calculated friction
-	 */
-	public void setFriction(float u) {
-		this.u = u;
-	}
-
-	/** @return The calculated surface velocity for this collision pair. */
-	public Vector2f getSurfaceVelocity() {
-		return surface_vr;
-	}
-
-	/**
-	 * The calculated surface velocity for this collision pair. Setting the value in a
-	 * {@link CollisionHandler#preSolve(Arbiter, Space)} callback will override the value calculated by the space.
-	 * 
-	 * @param surface_vr the calculated surface velocity
-	 */
-	public void setSurfaceVelocity(Vector2f surface_vr) {
-		this.surface_vr = surface_vr;
-	}
 
 	public Shape getShapeA() {
 		return a;
@@ -124,76 +98,39 @@ public class Arbiter {
 		return body_b;
 	}
 
-	public Iterable<ContactPoint> contacts() {
-		return new Iterable<ContactPoint>() {
-			@Override
-			public Iterator<ContactPoint> iterator() {
-				return new Iterator<ContactPoint>() {
-					ContactPoint contact = new ContactPoint();
-					int i = 0;
-
-					@Override
-					public boolean hasNext() {
-						return i < contacts.length;
-					}
-
-					@Override
-					public ContactPoint next() {
-						contact.point = contacts[i].p;
-						contact.normal = contacts[i].n;
-						contact.dist = contacts[i].dist;
-						i++;
-						return contact;
-					}
-
-					@Override
-					public void remove() {
-						throw new UnsupportedOperationException("removal not allowed");
-					}
-				};
-			}
-		};
-	}
-
 	void init(Shape a, Shape b) {
 		this.handler = null;
-		this.surface_vr = Util.cpvzero();
+		this.handlerA = null;
+		this.handlerB = null;
+		this.swapped = false;
+		///
+		this.e = 0;
+		this.u = 0;
+		this.surface_vr.set(0, 0);
+		///
+		this.contacts = null;
+		///
 		this.a = a;
 		this.b = b;
 		this.body_a = a.getBody();
 		this.body_b = b.getBody();
-		this.e = 0;
-		this.u = 0;
-		this.numContacts = 0;
-		this.contacts = null;
-		this.swappedColl = false;
+		///
 		this.thread_a.next = null;
 		this.thread_b.next = null;
 		this.thread_a.prev = null;
 		this.thread_b.prev = null;
+		///
 		this.stamp = 0;
-		this.state = ArbiterState.cpArbiterStateFirstColl;
-	}
-
-	void reset(ContactList contactList) {
-		this.a = this.b = null;
-		this.body_a = this.body_b = null;
-		contactList.free(this.contacts);
-		this.contacts = null;
-		this.numContacts = 0;
-		this.handler = null;
-		this.thread_a.next = null;
-		this.thread_b.next = null;
-		this.thread_a.prev = null;
-		this.thread_b.prev = null;
+		this.state = ArbiterState.FIRST_COLLISION;
 	}
 
 	ArbiterThread threadForBody(Body body) {
 		return (this.body_a == body ? this.thread_a : this.thread_b);
 	}
 
-	void ignore() {
-		this.state = ArbiterState.cpArbiterStateIgnore;
+	public boolean ignore() {
+		this.state = ArbiterState.IGNORE;
+		return false;
 	}
 
 	void unthreadHelper(Body body) {
@@ -223,258 +160,324 @@ public class Arbiter {
 		unthreadHelper(this.body_b);
 	}
 
-	public Vector2f getNormal(int i) {
-		assert 0 <= i && i < this.numContacts : "Index error: The specified contact index is invalid for this arbiter";
-
-		Vector2f n = this.contacts[i].n;
-		return this.swappedColl ? Util.cpvneg(n) : n;
+	public boolean isFirstContact() {
+		return this.state == ArbiterState.FIRST_COLLISION;
 	}
 
-	public Vector2f getPoint(int i) {
-		assert 0 <= i && i < this.numContacts : "Index error: The specified contact index is invalid for this arbiter";
+	boolean isRemoval() {
+		return this.state == ArbiterState.INVALIDATED;
+	}
 
-		return this.contacts[i].p;
+	public int getCount() {
+		return (state.ordinal() < ArbiterState.CACHED.ordinal() && contacts != null) ? contacts.size() : 0;
+	}
+
+	public Vector2f getNormal() {
+		return cpvmult(this.normal, this.swapped ? -1.0f : 1.0f);
+	}
+
+	public Vector2f getPoint1(int i) {
+		cpAssertHard(0 <= i && i < getCount(), "Index error: The specified contact index is invalid for this arbiter");
+		return cpvadd(this.body_a.p, this.contacts.get(i).getR1());
+	}
+
+	public Vector2f getPoint2(int i) {
+		cpAssertHard(0 <= i && i < getCount(), "Index error: The specified contact index is invalid for this arbiter");
+		return cpvadd(this.body_a.p, this.contacts.get(i).getR2());
 	}
 
 	public float getDepth(int i) {
-		assert 0 <= i && i < this.numContacts : "Index error: The specified contact index is invalid for this arbiter";
+		cpAssertHard(0 <= i && i < getCount(), "Index error: The specified contact index is invalid for this arbiter");
 
-		return this.contacts[i].dist;
+		final Contact con = this.contacts.get(i);
+		return cpvdot(cpvadd(cpvsub(con.getR2(), con.getR1()), cpvsub(this.body_b.p, this.body_a.p)), this.normal);
 	}
 
-	public ContactPoint[] getContactPoints() {
-		ContactPoint[] set = new ContactPoint[numContacts];
-
-		int i;
-		for (i = 0; i < numContacts; i++) {
-			/*
-			 * set.points[i].point = arb - > CP_PRIVATE(contacts)[i].CP_PRIVATE(p); set.points[i].normal = arb - >
-			 * CP_PRIVATE(contacts)[i].CP_PRIVATE(n); set.points[i].dist = arb - >
-			 * CP_PRIVATE(contacts)[i].CP_PRIVATE(dist);
-			 */
-			// TODO Contact can use ContactPoint
-			set[i] = new ContactPoint(contacts[i].p, contacts[i].n, contacts[i].dist);
-		}
-
-		return set;
-	}
-
-    public void setContactPoints(int numContacts, ContactPoint[] contactPoints) {
-        if (this.numContacts != numContacts) {
-            throw new IllegalArgumentException("The number of contact points cannot be changed.");
-        }
-        for (int i = 0; i < numContacts; i++) {
-            this.contacts[i].set(contactPoints[i]);
-        }
-    }
-
-	public Contact[] getContacts() {
+	List<Contact> getContacts() {
 		return contacts;
 	}
 
-	public int getNumContacts() {
-		return numContacts;
+	public ContactPointSet getContactPointSet() {
+		boolean swapped = this.swapped;
+		Vector2f n = this.normal;
+		ContactPoint[] points = new ContactPoint[getCount()];
+
+		for (int i = 0; i < points.length; i++) {
+			// Contact points are relative to body CoGs;
+			final Contact contact = this.contacts.get(i);
+			Vector2f p1 = cpvadd(this.body_a.p, contact.getR1());
+			Vector2f p2 = cpvadd(this.body_b.p, contact.getR2());
+
+			points[i].point1 = (swapped ? p2 : p1);
+			points[i].point2 = (swapped ? p1 : p2);
+			points[i].distance = cpvdot(cpvsub(p2, p1), n);
+		}
+
+		return new ContactPointSet(swapped ? cpvneg(n) : new Vector2f(n), points);
+	}
+
+	public void setContactPointSet(ContactPointSet set) {
+		int count = set.getCount();
+		if (count != getCount()) {
+			throw new IllegalArgumentException("The number of contact points cannot be changed.");
+		}
+
+		boolean swapped = this.swapped;
+		this.normal.set(swapped ? cpvneg(set.getNormal()) : set.getNormal());
+
+		ContactPoint[] points = set.getPoints();
+		for (int i = 0; i < count; i++) {
+			// Convert back to CoG relative offsets.
+			Vector2f p1 = points[i].point1;
+			Vector2f p2 = points[i].point2;
+			Contact contact = this.contacts.get(i);
+			contact.getR1().set(cpvsub(swapped ? p2 : p1, this.body_a.getPosition()));
+			contact.getR2().set(cpvsub(swapped ? p1 : p2, this.body_b.getPosition()));
+		}
+	}
+
+	public Iterable<ContactPoint> contactPoints() {
+		return () -> new Iterator<ContactPoint>() {
+			ContactPoint contact = new ContactPoint();
+			int i = 0;
+
+			@Override
+			public boolean hasNext() {
+				return i < getCount();
+			}
+
+			@Override
+			public ContactPoint next() {
+				final Contact contact1 = contacts.get(i);
+				// Contact points are relative to body CoGs;
+				Vector2f p1 = cpvadd(Arbiter.this.body_a.p, contact1.getR1());
+				Vector2f p2 = cpvadd(Arbiter.this.body_b.p, contact1.getR2());
+
+				contact.point1 = (swapped ? p2 : p1);
+				contact.point2 = (swapped ? p1 : p2);
+				contact.distance = cpvdot(cpvsub(p2, p1), normal);
+				i++;
+				return contact;
+			}
+
+			@Override
+			public void remove() {
+				throw new UnsupportedOperationException("removal not allowed");
+			}
+		};
 	}
 
 	public Vector2f totalImpulse() {
-		Vector2f sum = Util.cpvzero();
-
-		for (int i = 0, count = this.numContacts; i < count; i++) {
-			Contact con = contacts[i];
-			sum = Util.cpvadd(sum, Util.cpvmult(con.n, con.jnAcc));
+		Vector2f n = this.normal;
+		Vector2f sum = cpvzero();
+		for (int i = 0, count = getCount(); i < count; i++) {
+			Contact con = contacts.get(i);
+			sum = cpvadd(sum, cpvrotate(n, cpv(con.getJnAcc(), con.getJtAcc())));
 		}
-
-		return swappedColl ? sum : Util.cpvneg(sum);
-	}
-
-	public Vector2f totalImpulseWithFriction() {
-		Vector2f sum = Util.cpvzero();
-
-		for (int i = 0, count = this.numContacts; i < count; i++) {
-			Contact con = contacts[i];
-			sum = Util.cpvadd(sum, Util.cpvrotate(con.n, Util.cpv(con.jnAcc, con.jtAcc)));
-		}
-
-		return swappedColl ? sum : Util.cpvneg(sum);
+		return (this.swapped ? sum : cpvneg(sum));
 	}
 
 	public float totalKE() {
 		float eCoef = (1 - this.e) / (1 + this.e);
 		float sum = 0.0f;
 
-		for (int i = 0, count = this.numContacts; i < count; i++) {
-			Contact con = contacts[i];
-			float jnAcc = con.jnAcc;
-			float jtAcc = con.jtAcc;
+		for (int i = 0, count = getCount(); i < count; i++) {
+			Contact con = contacts.get(i);
+			float jnAcc = con.getJnAcc();
+			float jtAcc = con.getJtAcc();
 
-			sum += eCoef * jnAcc * jnAcc / con.nMass + jtAcc * jtAcc / con.tMass;
+			sum += eCoef * jnAcc * jnAcc / con.getnMass() + jtAcc * jtAcc / con.gettMass();
 		}
-
 		return sum;
 	}
 
-	void update(ContactList contacts, int numContacts, CollisionHandlerEntry handler, Shape a, Shape b) {
-		// Arbiters without contact data may exist if a collision function rejected the collision.
-		if (this.contacts != null) {
-			// Iterate over the possible pairs to look for hash value matches.
-			for (int i = 0; i < this.numContacts; i++) {
-				Contact old = this.contacts[i];
+	public float getRestitution() {
+		return this.e;
+	}
 
-				for (int j = 0; j < numContacts; j++) {
-					Contact new_contact = contacts.get(j);
+	public void setRestitution(float restitution) {
+		this.e = restitution;
+	}
 
-					// This could trigger false positives, but is fairly unlikely nor serious if it does.
-					if (new_contact.hash == old.hash) {
-						// Copy the persistant contact information.
-						new_contact.jnAcc = old.jnAcc;
-						new_contact.jtAcc = old.jtAcc;
-					}
-				}
-				contacts.free(old);
-			}
-		}
+	/** @return The calculated friction for this collision pair. */
+	public float getFriction() {
+		return this.u;
+	}
 
-		if (this.contacts == null) {
-			this.contacts = contacts.toArray(new Contact[contacts.size()]);
-		} else {
-			this.contacts = contacts.toArray(this.contacts);
-		}
-		this.numContacts = numContacts;
+	/**
+	 * The calculated friction for this collision pair. Setting the value in a {@link CollisionHandler#preSolve
+	 * (Arbiter, Space)} callback will override the value calculated by the space.
+	 *
+	 * @param friction the calculated friction
+	 */
+	public void setFriction(float friction) {
+		this.u = friction;
+	}
 
-		this.handler = handler;
-		this.swappedColl = (a.collision_type != handler.a);
+	/** @return the calculated surface velocity for this collision pair. */
+	public Vector2f getSurfaceVelocity() {
+		return cpvmult(this.surface_vr, this.swapped ? -1.0f : 1.0f);
+	}
 
-		this.e = a.e * b.e;
-		this.u = a.u * b.u;
-		this.surface_vr = Util.cpvsub(a.surface_v, b.surface_v);
+	/**
+	 * The calculated surface velocity for this collision pair. Setting the value in a {@link
+	 * CollisionHandler#preSolve(Arbiter, Space)} callback will override the value calculated by the space.
+	 *
+	 * @param vr the calculated surface velocity.
+	 */
+	public void setSurfaceVelocity(Vector2f vr) {
+		this.surface_vr = cpvmult(vr, this.swapped ? -1.0f : 1.0f);
+	}
 
-		// For collisions between two similar primitive types, the order could have been swapped.
+	public void update(CollisionInfo info, Space space) {
+		Shape a = info.getA(), b = info.getB();
+
+		// For collisions between two similar primitive types, the order could have been swapped since the last frame.
 		this.a = a;
 		this.body_a = a.body;
 		this.b = b;
 		this.body_b = b.body;
 
+		if (info.getContacts() != null) {
+			// Iterate over the possible pairs to look for hash value matches.
+			for (Contact con : info.getContacts()) {
+				// r1 and r2 store absolute offsets at init time.
+				// Need to convert them to relative offsets.
+				con.setR1(cpvsub(con.getR1(), a.body.p));
+				con.setR2(cpvsub(con.getR2(), b.body.p));
+
+				// Cached impulses are not zeroed at init time.
+				con.setJnAcc(0.0f);
+				con.setJtAcc(0.0f);
+
+				if (this.contacts != null) {
+					for (int j = 0; j < this.contacts.size(); j++) {
+						Contact old = this.contacts.get(j);
+
+						// This could trigger false positives, but is fairly unlikely nor serious if it does.
+						if (con.getHash() == old.getHash()) {
+							// Copy the persistant contact information.
+							con.setJnAcc(old.getJnAcc());
+							con.setJtAcc(old.getJtAcc());
+						}
+					}
+				}
+			}
+		}
+
+		this.contacts = info.getContacts();
+		this.normal.set(info.getN());
+
+		this.e = a.e * b.e;
+		this.u = a.u * b.u;
+
+		Vector2f surface_vr = cpvsub(b.surfaceV, a.surfaceV);
+		this.surface_vr = cpvsub(surface_vr, cpvmult(info.getN(), cpvdot(surface_vr, info.getN())));
+
+		CollisionType typeA = info.getA().getCollisionType(), typeB = info.getB().getCollisionType();
+		CollisionHandler defaultHandler = space.getDefaultHandler();
+		CollisionHandler handler = this.handler = space.lookupHandler(typeA, typeB, defaultHandler);
+
+		// Check if the types match, but don't swap for a default handler which use the wildcard for type A.
+		boolean swapped = this.swapped = (typeA != handler.typeA && handler.typeA != CollisionType.WILDCARD);
+
+		if (handler != defaultHandler || space.isUseWildcards()) {
+			// The order of the main handler swaps the wildcard handlers too. Uffda.
+			this.handlerA = space.lookupHandler((swapped ? typeB : typeA), CollisionType.WILDCARD, DO_NOTHING);
+			this.handlerB = space.lookupHandler((swapped ? typeA : typeB), CollisionType.WILDCARD, DO_NOTHING);
+		}
+
 		// mark it as new if it's been cached
-		if (this.state == ArbiterState.cpArbiterStateCached) {
-			this.state = ArbiterState.cpArbiterStateFirstColl;
+		if (this.state == ArbiterState.CACHED) {
+			this.state = ArbiterState.FIRST_COLLISION;
 		}
 	}
 
 	void preStep(float dt, float slop, float bias) {
-		Body a = this.body_a;
-		Body b = this.body_b;
+		if (this.contacts != null) {
+			Body a = this.body_a;
+			Body b = this.body_b;
+			Vector2f n = this.normal;
+			Vector2f body_delta = cpvsub(b.p, a.p);
 
-		for (int i = 0; i < this.numContacts; i++) {
-			Contact con = this.contacts[i];
+			for (Contact con : this.contacts) {
+				// Calculate the mass normal and mass tangent.
+				con.setnMass(1.0f / k_scalar(a, b, con.getR1(), con.getR2(), n));
+				con.settMass(1.0f / k_scalar(a, b, con.getR1(), con.getR2(), cpvperp(n)));
 
-			// Calculate the offsets.
-			/*
-			 * con.r1 = Util.cpvsub(con.p, a.p); con.r2 = Util.cpvsub(con.p, b.p);
-			 */
-			con.r1.set(con.p.getX() - a.p.getX(), con.p.getY() - a.p.getY());
-			con.r2.set(con.p.getX() - b.p.getX(), con.p.getY() - b.p.getY());
+				// Calculate the target bias velocity.
+				float dist = cpvdot(cpvadd(cpvsub(con.getR2(), con.getR1()), body_delta), n);
+				con.setBias(-bias * cpfmin(0.0f, dist + slop) / dt);
+				con.setjBias(0.0f);
 
-			// Calculate the mass normal and mass tangent.
-			con.nMass = 1.0f / Util.k_scalar(a, b, con.r1, con.r2, con.n);
-			con.tMass = 1.0f / Util.k_scalar(a, b, con.r1, con.r2, Util.cpvperp(con.n));
-
-			// Calculate the target bias velocity.
-			con.bias = -bias * Util.cpfmin(0.0f, con.dist + slop) / dt;
-			con.jBias = 0.0f;
-
-			// Calculate the target bounce velocity.
-			con.bounce = Util.normal_relative_velocity(a, b, con.r1, con.r2, con.n) * this.e;
+				// Calculate the target bounce velocity.
+				con.setBounce(normal_relative_velocity(a, b, con.getR1(), con.getR2(), n) * this.e);
+			}
 		}
 	}
 
 	void applyCachedImpulse(float dt_coef) {
-		if (isFirstContact()) return;
+		if (isFirstContact()) {
+			return;
+		}
+		if (this.contacts != null) {
+			Body a = this.body_a;
+			Body b = this.body_b;
+			Vector2f n = this.normal;
 
-		Body a = this.body_a;
-		Body b = this.body_b;
-
-		for (int i = 0; i < this.numContacts; i++) {
-			Contact con = this.contacts[i];
-			Vector2f j = Util.cpvrotate(con.n, Util.cpv(con.jnAcc, con.jtAcc));
-			Util.apply_impulses(a, b, con.r1, con.r2, Util.cpvmult(j, dt_coef));
+			for (Contact con : this.contacts) {
+				Vector2f j = cpvrotate(n, cpv(con.getJnAcc(), con.getJtAcc()));
+				apply_impulses(a, b, con.getR1(), con.getR2(), cpvmult(j, dt_coef));
+			}
 		}
 	}
 
 	// TODO is it worth splitting velocity/position correction?
 
 	void applyImpulse() {
+		if (this.contacts == null) {
+			return;
+		}
 		Body a = this.body_a;
 		Body b = this.body_b;
+		Vector2f n = this.normal;
+		Vector2f surface_vr = this.surface_vr;
+		float friction = this.u;
 
-		for (int i = 0; i < this.numContacts; i++) {
-			Contact con = this.contacts[i];
-			Vector2f n = con.n;
-			Vector2f r1 = con.r1;
-			Vector2f r2 = con.r2;
+		for (Contact con : this.contacts) {
+			float nMass = con.getnMass();
+			Vector2f r1 = con.getR1();
+			Vector2f r2 = con.getR2();
 
-			// Calculate the relative bias velocities.
-			Vector2f vb1 = Util.cpvadd(a.v_bias, Util.cpvmult(Util.cpvperp(r1), a.w_bias));
-			Vector2f vb2 = Util.cpvadd(b.v_bias, Util.cpvmult(Util.cpvperp(r2), b.w_bias));
-			Vector2f vr = Util.relative_velocity(a, b, r1, r2);
+			Vector2f vb1 = cpvadd(a.v_bias, cpvmult(cpvperp(r1), a.w_bias));
+			Vector2f vb2 = cpvadd(b.v_bias, cpvmult(cpvperp(r2), b.w_bias));
+			Vector2f vr = cpvadd(relative_velocity(a, b, r1, r2), surface_vr);
 
-			float vbn = Util.cpvdot(Util.cpvsub(vb2, vb1), n);
-			// Calculate the relative velocity.
-			float vrn = Util.cpvdot(vr, n);
-			// Calculate the relative tangent velocity.
-			float vrt = Util.cpvdot(Util.cpvadd(vr, this.surface_vr), Util.cpvperp(n));
+			float vbn = cpvdot(cpvsub(vb2, vb1), n);
+			float vrn = cpvdot(vr, n);
+			float vrt = cpvdot(vr, cpvperp(n));
 
-			// Calculate and clamp the bias impulse.
-			float jbn = (con.bias - vbn) * con.nMass;
-			float jbnOld = con.jBias;
-			con.jBias = Util.cpfmax(jbnOld + jbn, 0.0f);
+			float jbn = (con.getBias() - vbn) * nMass;
+			float jbnOld = con.getjBias();
+			con.setjBias(cpfmax(jbnOld + jbn, 0.0f));
 
-			// Calculate and clamp the normal impulse.
-			float jn = -(con.bounce + vrn) * con.nMass;
-			float jnOld = con.jnAcc;
-			con.jnAcc = Util.cpfmax(jnOld + jn, 0.0f);
+			float jn = -(con.getBounce() + vrn) * nMass;
+			float jnOld = con.getJnAcc();
+			con.setJnAcc(cpfmax(jnOld + jn, 0.0f));
 
-			// Calculate and clamp the friction impulse.
-			float jtMax = this.u * con.jnAcc;
-			float jt = -vrt * con.tMass;
-			float jtOld = con.jtAcc;
-			con.jtAcc = Util.cpfclamp(jtOld + jt, -jtMax, jtMax);
+			float jtMax = friction * con.getJnAcc();
+			float jt = -vrt * con.gettMass();
+			float jtOld = con.getJtAcc();
+			con.setJtAcc(cpfclamp(jtOld + jt, -jtMax, jtMax));
 
-			// Apply the bias impulse.
-			Util.apply_bias_impulses(a, b, r1, r2, Util.cpvmult(n, con.jBias - jbnOld));
-			// Apply the final impulse.
-			Util.apply_impulses(a, b, r1, r2, Util.cpvrotate(n, Util.cpv(con.jnAcc - jnOld, con.jtAcc - jtOld)));
+			apply_bias_impulses(a, b, r1, r2, cpvmult(n, con.getjBias() - jbnOld));
+			apply_impulses(a, b, r1, r2, cpvrotate(n, cpv(con.getJnAcc() - jnOld, con.getJtAcc() - jtOld)));
 		}
-	}
 
-	public boolean isFirstContact() {
-		return state == ArbiterState.cpArbiterStateFirstColl;
 	}
 
 	static Arbiter arbiterNext(Arbiter node, Body body) {
 		return (node.body_a == body ? node.thread_a.next : node.thread_b.next);
-	}
-
-	void callSeparate(Space space) {
-		// The handler needs to be looked up again as the handler cached on the arbiter may have been deleted since
-		// the last step.
-		CollisionHandler handler = space.lookupHandler(this.a.collision_type, this.b.collision_type);
-		handler.separate(this, space);
-	}
-
-	static void cpArbiterCallSeparate(Arbiter arb, Space space) {
-		arb.callSeparate(space);
-	}
-
-	static void cpArbiterApplyCachedImpulse(Arbiter arb, float dt_coef) {
-		arb.applyCachedImpulse(dt_coef);
-	}
-
-	static void cpArbiterApplyImpulse(Arbiter arb) {
-		arb.applyImpulse();
-	}
-
-	static void cpArbiterPreStep(Arbiter arb, float dt, float slop, float bias) {
-		arb.preStep(dt, slop, bias);
 	}
 
 	/** @return the user data */
@@ -483,20 +486,70 @@ public class Arbiter {
 	}
 
 	/**
+	 * Sets user data. Use this data to get a reference to the game object that owns this body from callbacks.
+	 *
+	 * @param data the user data to set
+	 */
+	public void setData(Object data) {
+		this.data = data;
+	}
+
+	/**
 	 * @param clazz the {@link Class} of the user data
-	 * @param <T> the type of the data
+	 * @param <T>   the type of the data
 	 * @return the user data
 	 */
 	public <T> T getData(Class<T> clazz) {
 		return clazz.cast(data);
 	}
 
-	/**
-	 * Sets user data. Use this data to get a reference to the game object that owns this body from callbacks.
-	 * 
-	 * @param data the user data to set
-	 */
-	public void setData(Object data) {
-		this.data = data;
+	boolean callWildcardBeginA(Space space) {
+		CollisionHandler handler = this.handlerA;
+		return handler.beginFunc.apply(this, space);
+	}
+
+	boolean callWildcardBeginB(Space space) {
+		CollisionHandler handler = this.handlerB;
+		this.swapped = !this.swapped;
+		boolean retval = handler.beginFunc.apply(this, space);
+		this.swapped = !this.swapped;
+		return retval;
+	}
+
+	boolean callWildcardPreSolveA(Space space) {
+		CollisionHandler handler = this.handlerA;
+		return handler.preSolveFunc.apply(this, space);
+	}
+
+	boolean callWildcardPreSolveB(Space space) {
+		CollisionHandler handler = this.handlerB;
+		this.swapped = !this.swapped;
+		boolean retval = handler.preSolveFunc.apply(this, space);
+		this.swapped = !this.swapped;
+		return retval;
+	}
+
+	void callWildcardPostSolveA(Space space) {
+		CollisionHandler handler = this.handlerA;
+		handler.postSolveFunc.apply(this, space);
+	}
+
+	void callWildcardPostSolveB(Space space) {
+		CollisionHandler handler = this.handlerB;
+		this.swapped = !this.swapped;
+		handler.postSolveFunc.apply(this, space);
+		this.swapped = !this.swapped;
+	}
+
+	void callWildcardSeparateA(Space space) {
+		CollisionHandler handler = this.handlerA;
+		handler.separateFunc.apply(this, space);
+	}
+
+	void callWildcardSeparateB(Space space) {
+		CollisionHandler handler = this.handlerB;
+		this.swapped = !this.swapped;
+		handler.separateFunc.apply(this, space);
+		this.swapped = !this.swapped;
 	}
 }

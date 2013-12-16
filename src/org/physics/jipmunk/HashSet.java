@@ -23,6 +23,7 @@
 package org.physics.jipmunk;
 
 import java.util.Iterator;
+import java.util.Map;
 
 /** @author jobernolte */
 class HashSet {
@@ -36,5 +37,25 @@ class HashSet {
 		}
 	}
 
-	//public static <T> void cpHashSetInsert(LongHashMap<T> set, int hash, )
+	public static <T> void cpHashSetFilter(IntHashMap<T> set, HashSetFilterFunc<T> func) {
+		Iterator<IntHashMap.Entry<T>> it = set.entrySet().iterator();
+		while (it.hasNext()) {
+			IntHashMap.Entry<T> entry = it.next();
+			if (!func.filter(entry.getValue())) {
+				it.remove();
+			}
+		}
+	}
+
+	public static <K, V> void cpHashSetFilter(Map<K, V> set, HashSetFilterFunc<V> func) {
+		Iterator<Map.Entry<K, V>> it = set.entrySet().iterator();
+		while (it.hasNext()) {
+			Map.Entry<K, V> entry = it.next();
+			if (!func.filter(entry.getValue())) {
+				it.remove();
+			}
+		}
+	}
+
+
 }

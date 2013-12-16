@@ -22,13 +22,15 @@
 
 package org.physics.jipmunk;
 
-import static org.physics.jipmunk.Arbiter.*;
+import org.physics.jipmunk.constraints.PointQueryInfo;
+import org.physics.jipmunk.impl.Collision;
+
+import java.util.*;
+
 import static org.physics.jipmunk.Array.cpArrayDeleteObj;
 import static org.physics.jipmunk.Array.cpArrayPush;
 import static org.physics.jipmunk.Assert.*;
-import static org.physics.jipmunk.BBTree.cpBBTreeSetVelocityFunc;
 import static org.physics.jipmunk.Body.*;
-import static org.physics.jipmunk.Collision.cpCollideShapes;
 import static org.physics.jipmunk.HashSet.cpHashSetFilter;
 import static org.physics.jipmunk.SpaceComponent.*;
 import static org.physics.jipmunk.SpaceQuery.*;
@@ -36,103 +38,81 @@ import static org.physics.jipmunk.SpatialIndex.*;
 import static org.physics.jipmunk.Util.cpfpow;
 import static org.physics.jipmunk.Util.cpvzero;
 
-import java.util.ArrayList;
-import java.util.LinkedList;
-import java.util.List;
-
-import org.physics.jipmunk.constraints.NearestPointQueryInfo;
-
 /**
- * Spaces in Chipmunk are the basic unit of simulation. You add rigid bodies, shapes and constraints to it and then step
+ * Spaces in Chipmunk are the basic unit of simulation. You add rigid dynamicBodies, shapes and constraints to it and then step
  * them all forward through time together.
- * <p/>
+ * <point/>
  * <b>What Are Iterations, and Why Should I care?</b>
- * <p/>
+ * <point/>
  * Chipmunk uses an iterative solver to figure out the forces between objects in the space. What this means is that it
- * builds a big list of all of the collisions, joints, and other constraints between the bodies and makes several passes
+ * builds a big list of all of the collisions, joints, and other constraints between the dynamicBodies and makes several passes
  * over the list considering each one individually. The number of passes it makes is the iteration count, and each
  * iteration makes the solution more accurate. If you use too many iterations, the physics should look nice and solid,
  * but may use up too much CPU time. If you use too few iterations, the simulation may seem mushy or bouncy when the
  * objects should be solid. Setting the number of iterations lets you balance between CPU usage and the accuracy of the
  * physics. Chipmunk’s default of 10 iterations is sufficient for most simple games.
- * <p/>
- * <p/>
+ * <point/>
+ * <point/>
  * <b>Sleeping</b>
- * <p/>
+ * <point/>
  * New in Chipmunk is the ability of spaces to disable entire groups of objects that have stopped moving to save CPU
  * time as well as battery life. In order to use this feature you must do 2 things. The first is that you must attach
- * all your static geometry to static bodies. Objects cannot fall asleep if they are touching a non-static rogue body
+ * all your static geometry to static dynamicBodies. Objects cannot fall asleep if they are touching a non-static rogue body
  * even if it’s shapes were added as static shapes. The second is that you must enable sleeping explicitly by choosing a
  * time threshold value for cpSpace.sleepTimeThreshold. If you do not set {@link Space#idleSpeedThreshold} explicitly, a
  * value will be chosen automatically based on the current amount of gravity.
- * 
+ *
  * @author jobernolte
  */
 public class Space {
+
+	private static final CollisionHandler DEFAULT_COLLISION_HANDLER = CollisionHandler.createDefaultHandler();
 	// / Number of iterations to use in the impulse solver to solve contacts.
 	int iterations = 10;
-
-	/** Gravity to pass to rigid bodies when integrating velocity. */
+	/** Gravity to pass to rigid dynamicBodies when integrating velocity. */
 	Vector2f gravity = Util.cpvzero();
-
-	// / Damping rate expressed as the fraction of velocity bodies retain each second.
+	// / Damping rate expressed as the fraction of velocity dynamicBodies retain each second.
 	// / A value of 0.9 would mean that each body's velocity will drop 10% per second.
 	// / The default value is 1.0, meaning no damping is applied.
 	// / @note This damping value is different than those of cpDampedSpring and cpDampedRotarySpring.
 	private float damping = 1;
-
 	/**
 	 * Speed threshold for a body to be considered idle. The default value of 0 means to let the space guess a good
 	 * threshold based on gravity.
 	 */
 	private float idleSpeedThreshold = 0;
-
 	/**
-	 * Time a group of bodies must remain idle in order to fall asleep. Enabling sleeping also implicitly enables the
+	 * Time a group of dynamicBodies must remain idle in order to fall asleep. Enabling sleeping also implicitly enables the
 	 * the contact graph. The default value of INFINITY disables the sleeping algorithm.
 	 */
 	float sleepTimeThreshold = Float.POSITIVE_INFINITY;
-
 	/**
 	 * Amount of encouraged penetration between colliding shapes.. Used to reduce oscillating contacts and keep the
 	 * collision cache warm. Defaults to 0.1. If you have poor simulation quality, increase this number as much as
 	 * possible without allowing visible amounts of overlap.
 	 */
 	private float collisionSlop = 0.1f;
-
 	/**
 	 * Determines how fast overlapping shapes are pushed apart. Expressed as a fraction of the error remaining after
 	 * each second. Defaults to pow(1.0 - 0.1, 60.0) meaning that Chipmunk fixes 10% of overlap each frame at 60Hz.
 	 */
 	private float collisionBias = (float) Math.pow(1.0 - 0.1, 60);
-
 	/**
 	 * Number of frames that contact information should persist. Defaults to 3. There is probably never a reason to
 	 * change this value.
 	 */
 	private int collisionPersistence = 3;
-
-	/**
-	 * Rebuild the contact graph during each step. Must be enabled to use the cpBodyEachArbiter() function. Disabled by
-	 * default for a small performance boost. Enabled implicitly when the sleeping feature is enabled.
-	 */
-	private boolean enableContactGraph = false;
-
 	private int stamp;
-	List<Body> bodies = new LinkedList<>();
+	private float curr_dt;
+	List<Body> dynamicBodies = new LinkedList<>();
+	List<Body> otherBodies = new LinkedList<>();
 	private List<Body> rousedBodies = new LinkedList<>();
 	List<Body> sleepingComponents = new LinkedList<>();
-	int locked = 0;
-	private LongHashMap<CollisionHandlerEntry> collisionHandlers = new LongHashMap<>();
-	private final static SpatialIndexBBFunc<Shape> shapeGetBBFunc = new SpatialIndexBBFunc<Shape>() {
-		@Override
-		public BB apply(Shape obj) {
-			return obj.getBb();
-		}
-	};
-	SpatialIndex<Shape> staticShapes = new BBTree<>(shapeGetBBFunc, null);
-	SpatialIndex<Shape> activeShapes = new BBTree<>(shapeGetBBFunc, staticShapes);
+	SpatialIndex<Shape> staticShapes = new BBTree2<>(Shape::getBB, null);
+	SpatialIndex<Shape> dynamicShapes = new BBTree2<>(Shape::getBB, staticShapes);
+	List<Constraint> constraints = new ArrayList<>();
 	List<Arbiter> arbiters = new ArrayList<>();
+	// private Map<IdentityMapKey<Shape>, Arbiter> cachedArbiters = new HashMap<>();
 	private LongHashMap<Arbiter> cachedArbiters = new LongHashMap<>();
 	private Pool<Arbiter> pooledArbiters = new Pool<Arbiter>() {
 		@Override
@@ -140,53 +120,71 @@ public class Space {
 			return new Arbiter();
 		}
 	};
-	private List<PostStepFunc> postStepCallbacks;
-	private Body staticBody;
-	List<Constraint> constraints = new ArrayList<>();
+	int locked = 0;
+	private boolean useWildcards;
 	private IntHashMap<Shape> shapeIds = new IntHashMap<>();
 	private int lastShapeId = 0;
-	private float curr_dt;
-	private SpatialReIndexQueryFunc<Shape> activeShapesSpatialReIndexQueryFunc = new SpatialReIndexQueryFunc<Shape>() {
-		@Override
-		public void apply(Shape obj1, Shape obj2) {
-			collideShapes(obj1, obj2);
+
+	private static class CollisionHandlerMapKey {
+		CollisionType typeA;
+		CollisionType typeB;
+
+		private CollisionHandlerMapKey(CollisionType typeA, CollisionType typeB) {
+			this.typeA = typeA;
+			this.typeB = typeB;
 		}
-	};
-	private SpatialIndexIteratorFunc<Shape> activeShapeSpatialIndexIteratorFunc = new SpatialIndexIteratorFunc<Shape>() {
+
 		@Override
-		public void visit(Shape shape) {
-			Body body = shape.body;
-			shape.update(body.p, body.rot);
+		public boolean equals(Object o) {
+			if (this == o) {
+				return true;
+			}
+			if (o == null || getClass() != o.getClass()) {
+				return false;
+			}
+
+			CollisionHandlerMapKey that = (CollisionHandlerMapKey) o;
+
+			return !(typeA != null ? !typeA.equals(that.typeA) : that.typeA != null) && !(typeB != null ?
+					!typeB.equals(that.typeB) : that.typeB != null);
+
 		}
-	};
+
+		@Override
+		public int hashCode() {
+			int result = typeA != null ? typeA.hashCode() : 0;
+			result = 31 * result + (typeB != null ? typeB.hashCode() : 0);
+			return result;
+		}
+	}
+
+	private Map<CollisionHandlerMapKey, CollisionHandler> collisionHandlers = new HashMap<>();
+	private CollisionHandler defaultHandler = CollisionHandler.createDoNothingHandler();
 	private boolean skipPostStep;
+	private List<PostStepFunc> postStepCallbacks;
+	private Body staticBody;
 
 	public Space() {
-		cpBBTreeSetVelocityFunc(activeShapes, new BBTreeVelocityFunc<Shape>() {
-			@Override
-			public Vector2f velocity(Shape obj) {
-				return obj.body.v;
-			}
-		});
+		BBTree2.cpBBTreeSetVelocityFunc(dynamicShapes, obj -> obj.body.v);
 		this.staticBody = Body.createStatic();
 	}
 
 	/**
-	 * Iterations allow you to control the accuracy of the solver.
-	 * 
-	 * @param iterations the number of iterations to be used by the solver
-	 */
-	public void setIterations(int iterations) {
-		this.iterations = iterations;
-	}
-
-	/**
 	 * Iterations allow you to control the accuracy of the solver. Defaults to 10.
-	 * 
+	 *
 	 * @return the number of iterations used by the solver
 	 */
 	public int getIterations() {
 		return iterations;
+	}
+
+	/**
+	 * Iterations allow you to control the accuracy of the solver.
+	 *
+	 * @param iterations the number of iterations to be used by the solver
+	 */
+	public void setIterations(int iterations) {
+		this.iterations = iterations;
 	}
 
 	/** @return the idle speed threshold being used */
@@ -197,21 +195,11 @@ public class Space {
 	/**
 	 * Speed threshold for a body to be considered idle. The default value of 0 means to let the space guess a good
 	 * threshold based on gravity.
-	 * 
+	 *
 	 * @param idleSpeedThreshold the idle speed threshold to be used
 	 */
 	public void setIdleSpeedThreshold(float idleSpeedThreshold) {
 		this.idleSpeedThreshold = idleSpeedThreshold;
-	}
-
-	/**
-	 * Global gravity applied to the space. Can be overridden on a per body basis by writing custom integration
-	 * functions.
-	 * 
-	 * @param gravity the gravity applied to the space
-	 */
-	public void setGravity(final Vector2f gravity) {
-		this.gravity.set(gravity);
 	}
 
 	/** @return Global gravity applied to the space. Defaults to cpvzero. */
@@ -220,29 +208,52 @@ public class Space {
 	}
 
 	/**
-	 * A dedicated static body for the space. You don’t have to use it, but because it’s memory is managed automatically
+	 * Global gravity applied to the space. Can be overridden on a per body basis by writing custom integration
+	 * functions.
+	 *
+	 * @param gravity the gravity applied to the space
+	 */
+	public void setGravity(final Vector2f gravity) {
+		this.gravity.set(gravity);
+	}
+
+	/**
+	 * A dedicated static body for the space. You don’alpha have to use it, but because it’s memory is managed automatically
 	 * with the space it’s very convenient. You can set its user data pointer to something helpful if you want for
 	 * callbacks.
-	 * 
+	 *
 	 * @return the dedicated static body for the space
 	 */
 	public Body getStaticBody() {
 		return staticBody;
 	}
 
-	/**
-	 * Time a group of bodies must remain idle in order to fall asleep. The default value of
-	 * {@link Float#POSITIVE_INFINITY} disables the sleeping feature.
-	 * 
-	 * @param sleepTimeThreshold the sleep time threshold
-	 */
-	public void setSleepTimeThreshold(float sleepTimeThreshold) {
-		this.sleepTimeThreshold = sleepTimeThreshold;
+	public void setStaticBody(Body body) {
+		if (this.staticBody != null) {
+			if (this.staticBody.getShapeList() != null) {
+				throw new IllegalStateException(
+						"Internal Error: Changing the designated static body while the old one still had shapes attached.");
+			}
+			this.staticBody.space = null;
+		}
+
+		this.staticBody = body;
+		body.space = this;
 	}
 
 	/** @return the current sleep time threshold */
 	public float getSleepTimeThreshold() {
 		return sleepTimeThreshold;
+	}
+
+	/**
+	 * Time a group of dynamicBodies must remain idle in order to fall asleep. The default value of
+	 * {@link Float#POSITIVE_INFINITY} disables the sleeping feature.
+	 *
+	 * @param sleepTimeThreshold the sleep time threshold
+	 */
+	public void setSleepTimeThreshold(float sleepTimeThreshold) {
+		this.sleepTimeThreshold = sleepTimeThreshold;
 	}
 
 	/** @return the damping being used */
@@ -253,7 +264,7 @@ public class Space {
 	/**
 	 * Amount of simple damping to apply to the space. A value of 0.9 means that each body will lose 10% of it’s
 	 * velocity per second. Defaults to 1. Like gravity can be overridden on a per body basis.
-	 * 
+	 *
 	 * @param damping the damping to be used
 	 */
 	public void setDamping(float damping) {
@@ -268,7 +279,7 @@ public class Space {
 	/**
 	 * Amount of overlap between shapes that is allowed. It’s encouraged to set this as high as you can without
 	 * noticable overlapping as it improves the stability. It defaults to 0.1.
-	 * 
+	 *
 	 * @param collisionSlop the amount of overlap that is allowed for collisions
 	 */
 	public void setCollisionSlop(float collisionSlop) {
@@ -287,7 +298,7 @@ public class Space {
 	 * defaults to ~0.2%. Valid values are in the range from 0 to 1, but using 0 is not recommended for stability
 	 * reasons. The default value is calculated as cpfpow(1.0f - 0.1f, 60.0f) meaning that Chipmunk attempts to correct
 	 * 10% of error ever 1/60th of a second. Note: Very very few games will need to change this value.
-	 * 
+	 *
 	 * @param collisionBias the collision bias
 	 */
 	public void setCollisionBias(float collisionBias) {
@@ -302,33 +313,17 @@ public class Space {
 	/**
 	 * The number of frames the space keeps collision solutions around for. Helps prevent jittering contacts from
 	 * getting worse. This defaults to 3 and very very very few games will need to change this value.
-	 * 
+	 *
 	 * @param collisionPersistence the new collision persistence
 	 */
 	public void setCollisionPersistence(int collisionPersistence) {
 		this.collisionPersistence = collisionPersistence;
 	}
 
-	/** @return <code>true</code> if the contact graph is enabled */
-	public boolean isEnableContactGraph() {
-		return enableContactGraph;
-	}
-
-	/**
-	 * In order to use the {@link Body#arbiters()} function, you must tell Chipmunk to generate the contact graph.
-	 * Disabled by default as it incurrs a small 5-10% overhead. Enabling the sleeping feature also enables the contact
-	 * graph.
-	 * 
-	 * @param enableContactGraph <code>true</code> to enable the contact graph
-	 */
-	public void setEnableContactGraph(boolean enableContactGraph) {
-		this.enableContactGraph = enableContactGraph;
-	}
-
 	/**
 	 * Retrieves the current (if you are in a callback from {@link Space#step(float)}) or most recent (outside of a
 	 * {@link Space#step(float)} call) timestep.
-	 * 
+	 *
 	 * @return the current timestep
 	 */
 	public float getCurrentTimeStep() {
@@ -338,53 +333,83 @@ public class Space {
 	/**
 	 * Returns <code>true</code> when in a callback meaning that you cannot add/remove objects from the space. Can be
 	 * used to choose to create a post-step callback instead.
-	 * 
+	 *
 	 * @return <code>true</code> if the space is locked
 	 */
 	public boolean isLocked() {
 		return locked > 0;
 	}
 
+	void useWildcardDefaultHandler() {
+		// Spaces default to using the slightly faster "do nothing" default handler until wildcards are potentially needed.
+		if (!this.useWildcards) {
+			this.useWildcards = true;
+			this.defaultHandler = DEFAULT_COLLISION_HANDLER;
+		}
+	}
+
+	public CollisionHandler addDefaultCollisionHandler() {
+		useWildcardDefaultHandler();
+		return defaultHandler;
+	}
+
 	/**
 	 * Set a collision handler to handle specific collision types.
-	 * <p/>
+	 * <point/>
 	 * The methods are called only when shapes with the specified collision types collide.
-	 * <p/>
+	 * <point/>
 	 * <code>typeA</code> and <code>typeB</code> should be the same references set to {@link Shape#getCollisionType()}.
 	 * Add a collision handler for given collision type pair.
-	 * <p/>
+	 * <point/>
 	 * Whenever a shapes with collision type <code>typeA</code> and collision type <code>typeB</code> collide, these
 	 * callbacks will be used to process the collision. If you need to fall back on the space’s default callbacks,
 	 * you’ll have to provide them individually to each handler definition.
-	 * 
+	 *
 	 * @param typeA collision type a
 	 * @param typeB collision type b
-	 * @param handler {@link CollisionHandler} to be used as callback
+	 * @return {@link CollisionHandler} to be used as callback
 	 */
-	public void addCollisionHandler(int typeA, int typeB, CollisionHandler handler) {
+
+	public CollisionHandler addCollisionHandler(CollisionType typeA, CollisionType typeB) {
 		assertSpaceUnlocked();
-
-		long key = (((long) typeA) << 32) | typeB;
-
-		// Remove any old function so the new one will get added.
-		removeCollisionHandler(typeA, typeB);
-		if (handler != null) {
-			final CollisionHandlerEntry handlerEntry = new CollisionHandlerEntry(handler, typeA, typeB);
-			collisionHandlers.put(key, handlerEntry);
-			collisionHandlers.put((((long) typeB) << 32) | typeA, handlerEntry);
+		CollisionHandlerMapKey key = new CollisionHandlerMapKey(typeA, typeB);
+		CollisionHandler handler = collisionHandlers.get(key);
+		if (handler == null) {
+			handler = new CollisionHandler(typeA, typeB);
+			handler.setBeginFunc(CollisionHandler::defaultBegin);
+			handler.setPreSolveFunc(CollisionHandler::defaultPreSolve);
+			handler.setPostSolveFunc(CollisionHandler::defaultPostSolve);
+			handler.setSeparateFunc(CollisionHandler::defaultSeparate);
+			collisionHandlers.put(key, handler);
 		}
+		return handler;
+	}
+
+	public CollisionHandler addWildcardHandler(CollisionType type) {
+		useWildcardDefaultHandler();
+
+		CollisionHandlerMapKey key = new CollisionHandlerMapKey(type, CollisionType.WILDCARD);
+		CollisionHandler handler = collisionHandlers.get(key);
+		if (handler == null) {
+			handler = new CollisionHandler(type, CollisionType.WILDCARD);
+			handler.setBeginFunc(CollisionHandler::alwaysCollide);
+			handler.setPreSolveFunc(CollisionHandler::alwaysCollide);
+			handler.setPostSolveFunc(CollisionHandler::doNothing);
+			handler.setSeparateFunc(CollisionHandler::doNothing);
+			collisionHandlers.put(key, handler);
+		}
+		return handler;
 	}
 
 	/**
 	 * Removes a {@link CollisionHandler} for a given collision type pair.
-	 * 
-	 * @param a collision type a
-	 * @param b collision type b
+	 *
+	 * @param typeA collision type a
+	 * @param typeB collision type b
 	 */
-	public void removeCollisionHandler(int a, int b) {
-		long key = (((long) a) << 32) | b;
+	public void removeCollisionHandler(CollisionType typeA, CollisionType typeB) {
+		CollisionHandlerMapKey key = new CollisionHandlerMapKey(typeA, typeB);
 		collisionHandlers.remove(key);
-		collisionHandlers.remove((((long) b) << 32) | a);
 	}
 
 	private void assertSpaceUnlocked() {
@@ -396,56 +421,46 @@ public class Space {
 		while (shapeIds.get(lastShapeId) != null) {
 			lastShapeId++;
 		}
-		shape.hashid = lastShapeId++;
-		shapeIds.put(shape.hashid, shape);
+		shape.setHashId(lastShapeId++);
+		shapeIds.put(shape.getHashId(), shape);
 
 	}
 
 	private void revokeShapeId(Shape shape) {
-		shapeIds.remove(shape.hashid);
-		shape.hashid = -1;
+		shapeIds.remove(shape.getHashId());
+		shape.setHashId(-1);
 	}
 
 	/**
 	 * Adds the given shape to this space. Cannot be called from within a callback other than a {@link PostStepFunc}
 	 * callback (which is different than a {@link CollisionHandler#postSolve(Arbiter, Space)} callback!). Attempting to
 	 * add or remove objects from the space while {@link Space#step(float)} is still executing will throw an assertion.
-	 * 
+	 *
 	 * @param shape the {@link Shape} to add to this space
 	 * @return the added shape
 	 */
 	public <T extends Shape> T addShape(T shape) {
-		Body body = shape.body;
-		if (body.isStatic()) {
-			return addStaticShape(shape);
+		Body body = shape.getBody();
+
+		if (shape.space == this) {
+			throw new IllegalArgumentException(
+					"You have already added this shape to this space. You must not add it a second time.");
 		}
+		if (shape.space != null) {
+			throw new IllegalArgumentException(
+					"You have already added this shape to another space. You cannot add it to a second.");
+		}
+		cpAssertSpaceUnlocked(this);
 
-		// TODO change these to check if it was added to a space at all.
-		assert shape.space == null : "This shape is already added to a space and cannot be added to another.";
-		assertSpaceUnlocked();
-
-		assignShapeId(shape);
-
-		body.activate();
+		boolean isStatic = body.isStatic();
+		if (!isStatic) {
+			body.activate();
+		}
 		body.addShape(shape);
 
-		shape.update(body.p, body.rot);
-		activeShapes.insert(shape, shape.hashid);
-		shape.space = this;
-
-		return shape;
-	}
-
-	private <T extends Shape> T addStaticShape(T shape) {
-		assert shape.space == null : "This shape is already added to a space and cannot be added to another.";
-		assertSpaceUnlocked();
-
 		assignShapeId(shape);
-
-		Body body = shape.body;
-		body.addShape(shape);
-		shape.update(body.p, body.rot);
-		staticShapes.insert(shape, shape.hashid);
+		shape.update(body.transform);
+		cpSpatialIndexInsert(isStatic ? this.staticShapes : this.dynamicShapes, shape, shape.getHashId());
 		shape.space = this;
 
 		return shape;
@@ -455,20 +470,26 @@ public class Space {
 	 * Adds the given body to this space. Cannot be called from within a callback other than a {@link PostStepFunc}
 	 * callback (which is different than a {@link CollisionHandler#postSolve(Arbiter, Space)} callback!). Attempting to
 	 * add or remove objects from the space while {@link Space#step(float)} is still executing will throw an assertion.
-	 * 
+	 *
 	 * @param body the {@link Body} to add to this space
 	 * @return the added body
 	 */
 	public Body addBody(Body body) {
-		cpAssertHard(!cpBodyIsStatic(body),
-				"Do not add static bodies to a space. Static bodies do not move and should not be simulated.");
-		cpAssertHard(body.space != this,
-				"You have already added this body to this space. You must not add it a second time.");
-		cpAssertHard(body.space == null,
-				"You have already added this body to another space. You cannot add it to a second.");
+		if (body.space == this) {
+			throw new IllegalArgumentException(
+					"You have already added this body to this space. You must not add it a second time.");
+		}
+		if (body.space != null) {
+			throw new IllegalArgumentException(
+					"You have already added this body to another space. You cannot add it to a second.");
+		}
 		assertSpaceUnlocked();
 
-		bodies.add(body);
+		if (body.isDynamic()) {
+			dynamicBodies.add(body);
+		} else {
+			otherBodies.add(body);
+		}
 		body.space = this;
 
 		return body;
@@ -479,22 +500,26 @@ public class Space {
 	 * {@link PostStepFunc} callback (which is different than a {@link CollisionHandler#postSolve(Arbiter, Space)}
 	 * callback!). Attempting to add or remove objects from the space while {@link Space#step(float)} is still executing
 	 * will throw an assertion.
-	 * 
+	 *
 	 * @param constraint the {@link Constraint} to add to this space
 	 * @return the added constraint
 	 */
 	public <T extends Constraint> T addConstraint(T constraint) {
-		cpAssertHard(constraint.space == null, "This shape is already added to a space and cannot be added to "
-				+ "another.");
+		cpAssertHard(constraint.space == null,
+					 "This shape is already added to a space and cannot be added to " + "another.");
 		cpAssertHard(constraint.a != null && constraint.b != null, "Constraint is attached to a NULL body.");
-		assertSpaceUnlocked();
 
-		cpBodyActivate(constraint.a);
-		cpBodyActivate(constraint.b);
+		Body a = constraint.a, b = constraint.b;
+		if (a == null || b == null) {
+			throw new IllegalArgumentException("Constraint is attached to a null body.");
+		}
+
+		assertSpaceUnlocked();
+		a.activate();
+		b.activate();
 		cpArrayPush(this.constraints, constraint);
 
-		// Push onto the heads of the bodies' constraint lists
-		Body a = constraint.a, b = constraint.b;
+		// Push onto the heads of the dynamicBodies' constraint lists
 		constraint.next_a = a.constraintList;
 		a.constraintList = constraint;
 		constraint.next_b = b.constraintList;
@@ -509,47 +534,27 @@ public class Space {
 	 * {@link PostStepFunc} callback (which is different than a {@link CollisionHandler#postSolve(Arbiter, Space)}
 	 * callback!). Attempting to add or remove objects from the space while {@link Space#step(float)} is still executing
 	 * will throw an assertion.
-	 * 
+	 *
 	 * @param shape the {@link Shape} to be removed to this space
 	 */
 	public void removeShape(Shape shape) {
 		if (shape.space != this) {
-			throw new IllegalArgumentException("Cannot remove a shape that was not added to the space. (Removed "
-					+ "twice maybe?)");
+			throw new IllegalArgumentException(
+					"Cannot remove a shape that was not added to the space. (Removed " + "twice maybe?)");
 		}
 		Body body = shape.body;
-		if (cpBodyIsStatic(body)) {
-			removeStaticShape(shape);
-		} else {
-			assert containsShape(shape) : "Cannot remove a shape that was not added to the space. (Removed twice "
-					+ "maybe?)";
-			assertSpaceUnlocked();
+		cpAssertSpaceUnlocked(this);
 
-			cpBodyActivate(body);
-			body.removeShape(shape);
-			filterArbiters(body, shape);
-			cpSpatialIndexRemove(this.activeShapes, shape, shape.hashid);
-			shape.space = null;
-			revokeShapeId(shape);
-		}
-	}
-
-	private void removeStaticShape(Shape shape) {
-		cpAssertSoft(containsShape(shape),
-				"Cannot remove a static or sleeping shape that was not added to the space. (Removed twice maybe?)");
-		assertSpaceUnlocked();
-		if (shape.space != this) {
-			throw new IllegalArgumentException("Cannot remove a shape that was not added to the space. (Removed "
-					+ "twice maybe?)");
-		}
-
-		Body body = shape.body;
-		if (body.isStatic()) {
+		boolean isStatic = cpBodyIsStatic(body);
+		if (isStatic) {
 			cpBodyActivateStatic(body, shape);
+		} else {
+			cpBodyActivate(body);
 		}
+
 		body.removeShape(shape);
 		filterArbiters(body, shape);
-		cpSpatialIndexRemove(this.staticShapes, shape, shape.hashid);
+		cpSpatialIndexRemove(isStatic ? staticShapes : dynamicShapes, shape, shape.getHashId());
 		shape.space = null;
 		revokeShapeId(shape);
 	}
@@ -558,20 +563,21 @@ public class Space {
 	 * Removes the given body from this space. Cannot be called from within a callback other than a {@link PostStepFunc}
 	 * callback (which is different than a {@link CollisionHandler#postSolve(Arbiter, Space)} callback!). Attempting to
 	 * add or remove objects from the space while {@link Space#step(float)} is still executing will throw an assertion.
-	 * 
+	 *
 	 * @param body the {@link Body} to be removed to this space
 	 */
 	public void removeBody(Body body) {
-		cpAssertHard(containsBody(body), "Cannot remove a body that was not added to the space. (Removed twice maybe?)");
+		cpAssertHard(containsBody(body),
+					 "Cannot remove a body that was not added to the space. (Removed twice maybe?)");
 		assertSpaceUnlocked();
 		if (body.space != this) {
-			throw new IllegalArgumentException("Cannot remove a body that was not added to the space. "
-					+ "(Removed twice maybe?)");
+			throw new IllegalArgumentException(
+					"Cannot remove a body that was not added to the space. " + "(Removed twice maybe?)");
 		}
 
 		cpBodyActivate(body);
 		// filterArbiters(body, null);
-		cpArrayDeleteObj(this.bodies, body);
+		cpArrayDeleteObj(body.isDynamic() ? this.dynamicBodies : this.otherBodies, body);
 		body.space = null;
 	}
 
@@ -580,12 +586,12 @@ public class Space {
 	 * {@link PostStepFunc} callback (which is different than a {@link CollisionHandler#postSolve(Arbiter, Space)}
 	 * callback!). Attempting to add or remove objects from the space while {@link Space#step(float)} is still executing
 	 * will throw an assertion.
-	 * 
+	 *
 	 * @param constraint the {@link Constraint} to be removed to this space
 	 */
 	public void removeConstraint(Constraint constraint) {
 		cpAssertWarn(containsConstraint(constraint),
-				"Cannot remove a constraint that was not added to the space. (Removed twice maybe?)");
+					 "Cannot remove a constraint that was not added to the space. (Removed twice maybe?)");
 		assertSpaceUnlocked();
 
 		cpBodyActivate(constraint.a);
@@ -599,7 +605,7 @@ public class Space {
 
 	/**
 	 * Checks if this space contains the given shape.
-	 * 
+	 *
 	 * @param shape the {@link Shape} to check
 	 * @return <code>true</code> if this space contains the shape
 	 */
@@ -609,7 +615,7 @@ public class Space {
 
 	/**
 	 * Checks if this space contains the given body.
-	 * 
+	 *
 	 * @param body the {@link Body} to check
 	 * @return <code>true</code> if this space contains the body
 	 */
@@ -619,7 +625,7 @@ public class Space {
 
 	/**
 	 * Checks if this space contains the given constraint.
-	 * 
+	 *
 	 * @param constraint the {@link Constraint} to check
 	 * @return <code>true</code> if this space contains the constraint
 	 */
@@ -629,33 +635,26 @@ public class Space {
 
 	/** Reindex all static shapes. Generally updating only the shapes that changed is faster. */
 	public void reindexStatic() {
-		staticShapes.each(new SpatialIndexIteratorFunc<Shape>() {
-			@Override
-			public void visit(Shape obj) {
-				Body body = obj.body;
-				obj.update(body.p, body.rot);
-			}
-		});
+		staticShapes.each(Shape::cacheBB);
 		staticShapes.reindex();
 	}
 
 	/**
 	 * Update the collision detection data for a specific shape in the space.
-	 * 
+	 *
 	 * @param shape the shape to update
 	 */
 	public void reindexShape(Shape shape) {
-		Body body = shape.body;
-		shape.update(body.p, body.rot);
+		shape.cacheBB();
 
 		// attempt to rehash the shape in both hashes
-		activeShapes.reindexObject(shape, shape.hashid);
-		staticShapes.reindexObject(shape, shape.hashid);
+		dynamicShapes.reindexObject(shape, shape.getHashId());
+		staticShapes.reindexObject(shape, shape.getHashId());
 	}
 
 	/**
 	 * Reindex all the shapes for a certain body.
-	 * 
+	 *
 	 * @param body the body for which to reindex the shapes
 	 */
 	public void reindexShapesForBody(Body body) {
@@ -665,15 +664,15 @@ public class Space {
 	}
 
 	/**
-	 * Call {@link SpaceBodyIteratorFunc#visit(Body)} for each body in the space. Sleeping bodies are included, but
-	 * static and rogue bodies are not as they aren’t added to the space.
-	 * 
+	 * Call {@link SpaceBodyIteratorFunc#visit(Body)} for each body in the space. Sleeping dynamicBodies are included, but
+	 * static and rogue dynamicBodies are not as they aren’alpha added to the space.
+	 *
 	 * @param func {@link SpaceBodyIteratorFunc} callback
 	 */
 	public void eachBody(final SpaceBodyIteratorFunc func) {
 		cpSpaceLock(this);
 		{
-			for (Body body : bodies) {
+			for (Body body : dynamicBodies) {
 				func.visit(body);
 			}
 			for (Body root : sleepingComponents) {
@@ -688,31 +687,21 @@ public class Space {
 	/**
 	 * Call {@link SpaceShapeIteratorFunc#visit(Shape)} for each shape in the space. Sleeping and static shapes are
 	 * included.
-	 * 
+	 *
 	 * @param func {@link SpaceShapeIteratorFunc} callback
 	 */
 	public void eachShape(final SpaceShapeIteratorFunc func) {
 		cpSpaceLock(this);
 		{
-			activeShapes.each(new SpatialIndexIteratorFunc<Shape>() {
-				@Override
-				public void visit(Shape obj) {
-					func.visit(obj);
-				}
-			});
-			staticShapes.each(new SpatialIndexIteratorFunc<Shape>() {
-				@Override
-				public void visit(Shape obj) {
-					func.visit(obj);
-				}
-			});
+			dynamicShapes.each(func::visit);
+			staticShapes.each(func::visit);
 		}
 		cpSpaceUnlock(this, true);
 	}
 
 	/**
 	 * Call {@link SpaceConstraintIteratorFunc#visit(Constraint)} for each constraint in the space.
-	 * 
+	 *
 	 * @param func {@link SpaceConstraintIteratorFunc} callback
 	 */
 	public void eachConstraint(final SpaceConstraintIteratorFunc func) {
@@ -725,16 +714,13 @@ public class Space {
 		cpSpaceUnlock(this, true);
 	}
 
-	CollisionHandler lookupHandler(int collision_type_a, int collision_type_b) {
-		long key = (((long) collision_type_a) << 32) | collision_type_b;
-		CollisionHandlerEntry entry = collisionHandlers.get(key);
-		return entry != null ? entry.handler : defaultCollisionHandlerEntry.handler;
-	}
+	private final CollisionHandlerMapKey collisionHandlerMapKey = new CollisionHandlerMapKey(null, null);
 
-	CollisionHandlerEntry lookupHandlerEntry(int collision_type_a, int collision_type_b) {
-		long key = (((long) collision_type_a) << 32) | collision_type_b;
-		CollisionHandlerEntry handler = collisionHandlers.get(key);
-		return handler == null ? defaultCollisionHandlerEntry : handler;
+	CollisionHandler lookupHandler(CollisionType typeA, CollisionType typeB, CollisionHandler defaultHandler) {
+		collisionHandlerMapKey.typeA = typeA;
+		collisionHandlerMapKey.typeB = typeB;
+		CollisionHandler handler = collisionHandlers.get(collisionHandlerMapKey);
+		return handler != null ? handler : defaultHandler;
 	}
 
 	static class ArbiterFilterContext {
@@ -764,11 +750,14 @@ public class Space {
 		Body body = context.body;
 
 		// Match on the filter shape, or if it's NULL the filter body
-		if ((body == arb.body_a && (shape == arb.a || shape == null))
-				|| (body == arb.body_b && (shape == arb.b || shape == null))) {
+		if ((body == arb.body_a && (shape == arb.a || shape == null)) || (body == arb.body_b && (shape == arb.b
+				|| shape == null))) {
 			// Call separate when removing shapes.
-			if (shape != null && arb.state != ArbiterState.cpArbiterStateCached) cpArbiterCallSeparate(arb,
-					context.space);
+			if (shape != null && arb.state != ArbiterState.CACHED) {
+				arb.state = ArbiterState.INVALIDATED;
+				CollisionHandler handler = arb.handler;
+				handler.separateFunc.apply(arb, context.space);
+			}
 
 			arb.unthread();
 			context.space.arbiters.remove(arb);
@@ -780,199 +769,209 @@ public class Space {
 		return true;
 	}
 
-	static long hashPair(int a, int b) {
-		return (((long) a) << 32) | b;
+	private static long cachedArbitersHashKey(Shape a, Shape b) {
+		return (((long) a.getHashId()) << 32L) | ((long) b.getHashId());
 	}
 
 	void uncacheArbiter(Arbiter arb) {
 		Shape a = arb.a, b = arb.b;
-		// Shape[] shape_pair = {a, b};
-		long arbHashID = hashPair(a.hashid, b.hashid);
-		// cpHashSetRemove(this.cachedArbiters, arbHashID, shape_pair);
-		cachedArbiters.remove(arbHashID);
+		cachedArbiters.remove(cachedArbitersHashKey(a, b));
 		arbiters.remove(arb);
 	}
 
 	void filterArbiters(Body body, Shape filter) {
 		final ArbiterFilterContext context = new ArbiterFilterContext(this, body, filter);
-		cpHashSetFilter(cachedArbiters, new HashSetFilterFunc<Arbiter>() {
-			@Override
-			public boolean filter(Arbiter value) {
-				return cachedArbitersFilter(value, context);
-			}
-		});
+		cpHashSetFilter(cachedArbiters, value -> cachedArbitersFilter(value, context));
 	}
 
 	void activateBody(Body body) {
-		assert !body.isRogue() : "Internal error: Attempting to activate a rogue body.";
+		if (!body.isDynamic()) {
+			throw new IllegalArgumentException("Internal error: Attempting to activate a non-dynamic body.");
+		}
 
-		if (locked != 0) {
+		if (this.locked != 0) {
 			// cpSpaceActivateBody() is called again once the space is unlocked
-			if (!rousedBodies.contains(body)) {
-				rousedBodies.add(body);
+			if (!this.rousedBodies.contains(body)) {
+				cpArrayPush(this.rousedBodies, body);
 			}
 		} else {
-			cpAssertSoft(body.node.root == null && body.node.next == null,
-					"Internal error: Activating body non-NULL node pointers.");
-			bodies.add(body);
+			if (body.sleeping.root != null || body.sleeping.next != null) {
+				throw new IllegalStateException("Internal error: Activating body non-NULL node pointers.");
+			}
+			cpArrayPush(this.dynamicBodies, body);
 
 			for (Shape shape : body.shapes()) {
-				cpSpatialIndexRemove(this.staticShapes, shape, shape.hashid);
-				cpSpatialIndexInsert(this.activeShapes, shape, shape.hashid);
+				cpSpatialIndexRemove(this.staticShapes, shape, shape.getHashId());
+				cpSpatialIndexInsert(this.dynamicShapes, shape, shape.getHashId());
 			}
 
 			for (Arbiter arb : body.arbiters()) {
-				Body bodyA = arb.body_a;
+				Body bodyA = arb.getBodyA();
 
 				// Arbiters are shared between two bodies that are always woken up together.
 				// You only want to restore the arbiter once, so bodyA is arbitrarily chosen to own the arbiter.
 				// The edge case is when static bodies are involved as the static bodies never actually sleep.
-				// If the static body is bodyB then all is good. If the static body is bodyA, that can easily be
-				// checked.
+				// If the static body is bodyB then all is good. If the static body is bodyA, that can easily be checked.
 				if (body == bodyA || cpBodyIsStatic(bodyA)) {
 					/*
-					 * TODO int numContacts = arb.numContacts; Contact[] contacts = arb.contacts;
-					 * 
-					 * // Restore contact data back to the space's contact buffer memory arb.contacts =
-					 * Arrays.copyOf(contacts, numContacts);
-					 */
+					int numContacts = arb.getCount();
+					List<Contact> contacts = arb.getContacts();
+
+					// Restore contact values back to the space's contact buffer memory
+					arb -> contacts = cpContactBufferGetArray(space);
+					memcpy(arb -> contacts, contacts, numContacts * sizeof(struct cpContact));
+					cpSpacePushContacts(space, numContacts);
+					*/
 
 					// Reinsert the arbiter into the arbiter cache
-					Shape a = arb.a, b = arb.b;
-					// Shape[] shape_pair = {a, b};
-
-					long arbHashID = hashPair(a.hashid, b.hashid);
-					// cpHashSetInsert(this.cachedArbiters, arbHashID, shape_pair, arb, NULL);
-					cachedArbiters.put(arbHashID, arb);
+					Shape a = arb.getShapeA(), b = arb.getShapeB();
+					this.cachedArbiters.put(cachedArbitersHashKey(a, b), arb);
 
 					// Update the arbiter's state
 					arb.stamp = this.stamp;
-					arb.handler = lookupHandlerEntry(a.collision_type, b.collision_type);
-					this.arbiters.add(arb);
+					cpArrayPush(this.arbiters, arb);
+
+					// cpfree(contacts);
 				}
 			}
 
-			// CP_BODY_FOREACH_CONSTRAINT(body, constraint)
 			for (Constraint constraint : body.constraints()) {
-				Body bodyA = constraint.a;
-				if (body == bodyA || cpBodyIsStatic(bodyA)) cpArrayPush(this.constraints, constraint);
+				Body bodyA = constraint.getBodyA();
+				if (body == bodyA || cpBodyIsStatic(bodyA)) {
+					cpArrayPush(this.constraints, constraint);
+				}
 			}
 		}
+	}
+
+	void deactivateBody(Body body) {
+		if (body.isRogue()) {
+			throw new IllegalStateException("Internal error: Attempting to deactivate a rouge body.");
+		}
+
+		cpArrayDeleteObj(this.dynamicBodies, body);
+
+		//CP_BODY_FOREACH_SHAPE(body, shape){
+		for (Shape shape : body.shapes()) {
+			cpSpatialIndexRemove(this.dynamicShapes, shape, shape.getHashId());
+			cpSpatialIndexInsert(this.staticShapes, shape, shape.getHashId());
+		}
+
+		//CP_BODY_FOREACH_ARBITER(body, arb){
+		for (Arbiter arb : body.arbiters()) {
+			Body bodyA = arb.body_a;
+			if (body == bodyA || cpBodyIsStatic(bodyA)) {
+				uncacheArbiter(arb);
+
+				// Save contact data to a new block of memory so they won'alpha time out
+				/*TODO size_t bytes = arb.numContacts*sizeof(cpContact);
+								cpContact *contacts = (cpContact *)cpcalloc(1, bytes);
+								memcpy(contacts, arb.contacts, bytes);
+								arb.contacts = contacts;*/
+			}
+		}
+
+		for (Constraint constraint : body.constraints()) {
+			Body bodyA = constraint.a;
+			if (body == bodyA || cpBodyIsStatic(bodyA))
+				cpArrayDeleteObj(this.constraints, constraint);
+		}
+	}
+
+	static boolean queryRejectConstraint(Body a, Body b) {
+		for (Constraint constraint : a.constraints()) {
+			if (!constraint.collideBodies && ((constraint.a == a && constraint.b == b) || (constraint.a == b
+					&& constraint.b == a)))
+				return true;
+		}
+
+		return false;
 	}
 
 	private boolean queryReject(Shape a, Shape b) {
 		return (
-		// Don't collide shapes attached to the same body.
-		a.body == b.body
-		// Don't collide objects in the same non-zero group
-				|| (a.group != 0 && a.group == b.group)
-				// Don't collide objects that don't share at least on layer.
-				|| (a.layers & b.layers) == 0
-		// BBoxes must overlap
-		|| !a.bb.intersects(b.bb));
+				// BBoxes must overlap
+				!a.bb.intersects(b.bb)
+						// Don't collide shapes attached to the same body.
+						|| a.body == b.body
+						// Don't collide shapes that are filtered.
+						|| a.filter.reject(b.filter)
+						// Don't collide bodies if they have a constraint with collideBodies == cpFalse.
+						|| queryRejectConstraint(a.body, b.body));
 	}
 
-	CollisionHandler defaultCollisionHandler = new CollisionHandler() {
-		@Override
-		public boolean begin(Arbiter arb, Space space) {
-			return true;
-		}
-
-		@Override
-		public boolean preSolve(Arbiter arb, Space space) {
-			return true;
-		}
-
-		@Override
-		public void postSolve(Arbiter arb, Space space) {}
-
-		@Override
-		public void separate(Arbiter arb, Space space) {}
-	};
-
-	CollisionHandlerEntry defaultCollisionHandlerEntry = new CollisionHandlerEntry(defaultCollisionHandler, 0, 0);
-
-	private ContactList contactList = new ContactList();
-
 	// Callback from the spatial hash.
-	void collideShapes(Shape a, Shape b) {
+	CollisionID collideShapes(Shape a, Shape b, CollisionID id) {
 		// Reject any of the simple cases
 		if (queryReject(a, b)) {
-			return;
-		}
-
-		CollisionHandlerEntry handler = lookupHandlerEntry(a.collision_type, b.collision_type);
-
-		boolean sensor = a.sensor || b.sensor;
-		if (sensor && handler == defaultCollisionHandler) {
-			return;
-		}
-
-		// Shape 'a' should have the lower shape type. (required by cpCollideShapes() )
-		if (a.getType().ordinal() > b.getType().ordinal()) {
-			Shape temp = a;
-			a = b;
-			b = temp;
+			return id;
 		}
 
 		// Narrow-phase collision detection.
-		// Contact contacts = cpContactBufferGetArray(space);
-		// ContactList contacts = new ContactList();
-		ContactList contacts = contactList;
-		int numContacts = cpCollideShapes(a, b, contacts);
-		assert numContacts == contacts.size();
-		if (numContacts == 0) return; // Shapes are not colliding.
+		CollisionInfo info = Collision.collide(a, b, id);
 
-		// cpSpacePushContacts(space, numContacts);
+		if (info.isEmpty()) {
+			return info.getId(); // Shapes are not colliding.
+		}
+		//cpSpacePushContacts(space, info.count);
 
 		// Get an arbiter from this.arbiterSet for the two shapes.
 		// This is where the persistant contact magic comes from.
-		// Shape shape_pair[] = {a, b};
-		long arbHashID = hashPair(a.hashid, b.hashid);
+		long arbHashID = cachedArbitersHashKey(info.getA(), info.getB());
 		Arbiter arb = cachedArbiters.get(arbHashID);
 		if (arb == null) {
 			arb = pooledArbiters.alloc();
 			arb.init(a, b);
 			cachedArbiters.put(arbHashID, arb);
 		}
-		arb.update(contacts, numContacts, handler, a, b);
-		contacts.clear();
+
+		// cpArbiterUpdate(arb, & info, space);
+		arb.update(info, this);
+
+		CollisionHandler handler = arb.handler;
 
 		// Call the begin function first if it's the first step
-		if (arb.state == ArbiterState.cpArbiterStateFirstColl && !handler.begin(arb, this)) {
+		if (arb.state == ArbiterState.FIRST_COLLISION && !handler.begin(arb, this)) {
 			arb.ignore(); // permanently ignore the collision until separation
 		}
 
 		if (
-		// Ignore the arbiter if it has been flagged
-		(arb.state != ArbiterState.cpArbiterStateIgnore) &&
-		// Call preSolve
-				handler.preSolve(arb, this) &&
-				// Process, but don't add collisions for sensors.
-				!sensor) {
-			cpArrayPush(arbiters, arb);
+			// Ignore the arbiter if it has been flagged
+				(arb.state != ArbiterState.IGNORE) &&
+						// Call preSolve
+						handler.preSolve(arb, this) &&
+						// Check (again) in case the pre-solve() callback called cpArbiterIgnored().
+						arb.state != ArbiterState.IGNORE &&
+						// Process, but don't add collisions for sensors.
+						!(a.sensor || b.sensor) &&
+						// Don't process collisions between two infinite mass bodies.
+						!(a.body.m == Float.POSITIVE_INFINITY && b.body.m == Float.POSITIVE_INFINITY)) {
+			cpArrayPush(this.arbiters, arb);
 		} else {
-			// cpSpacePopContacts(space, numContacts);
+			// cpSpacePopContacts(space, info.count);
 
 			arb.contacts = null;
-			arb.numContacts = 0;
 
 			// Normally arbiters are set as used after calling the post-solve callback.
-			// However, post-solve callbacks are not called for sensors or arbiters rejected from pre-solve.
-			if (arb.state != ArbiterState.cpArbiterStateIgnore) arb.state = ArbiterState.cpArbiterStateNormal;
+			// However, post-solve() callbacks are not called for sensors or arbiters rejected from pre-solve.
+			if (arb.state != ArbiterState.IGNORE) {
+				arb.state = ArbiterState.NORMAL;
+			}
 		}
 
 		// Time stamp the arbiter so we know it was used recently.
 		arb.stamp = this.stamp;
+		return info.getId();
 	}
 
 	// Hashset filter func to throw away old arbiters.
+
 	boolean arbiterSetFilter(Arbiter arb) {
 		int ticks = this.stamp - arb.stamp;
 
 		Body a = arb.body_a, b = arb.body_b;
 
-		// TODO should make an arbiter state for this so it doesn't require filtering arbiters for dangling body
+		// TODO should make an arbiter state for this so it doesn'alpha require filtering arbiters for dangling body
 		// pointers on body removal.
 		// Preserve arbiters on sensors and rejected arbiters for sleeping objects.
 		if ((cpBodyIsStatic(a) || cpBodyIsSleeping(a)) && (cpBodyIsStatic(b) || cpBodyIsSleeping(b))) {
@@ -980,14 +979,14 @@ public class Space {
 		}
 
 		// Arbiter was used last frame, but not this one
-		if (ticks >= 1 && arb.state != ArbiterState.cpArbiterStateCached) {
-			cpArbiterCallSeparate(arb, this);
-			arb.state = ArbiterState.cpArbiterStateCached;
+		if (ticks >= 1 && arb.state != ArbiterState.CACHED) {
+			arb.state = ArbiterState.CACHED;
+			CollisionHandler handler = arb.handler;
+			handler.separateFunc.apply(arb, this);
 		}
 
 		if (ticks >= this.collisionPersistence) {
 			arb.contacts = null;
-			arb.numContacts = 0;
 
 			// cpArrayPush(pooledArbiters, arb);
 			pooledArbiters.free(arb);
@@ -997,27 +996,37 @@ public class Space {
 		return true;
 	}
 
+	static void shapeUpdateFunc(Shape shape) {
+		shape.cacheBB();
+	}
+
 	/**
 	 * Update the space for the given time step. Using a fixed time step is highly recommended. Doing so can greatly
 	 * increase the quality of the simulation. The easiest way to do constant timesteps is to simple step forward by
 	 * 1/60th of a second (or whatever your target framerate is) for each frame regardless of how long it took to
 	 * render. This works fine for many games, but a better way to do it is to separate your physics timestep and
 	 * rendering. This is a good article on how to do that.
-	 * 
+	 *
 	 * @param dt the time step to be used for updating the space
 	 */
 	public void step(float dt) {
-		if (dt == 0.0f) return; // don't step if the timestep is 0!
+		// don't step if the timestep is 0!
+		if (dt == 0.0f) {
+			return;
+		}
 
 		this.stamp++;
 
 		float prev_dt = this.curr_dt;
 		this.curr_dt = dt;
 
-		// Reset and empty the arbiter list.
-		// cpArray *arbiters = this.arbiters;
+		List<Body> bodies = this.dynamicBodies;
+		List<Constraint> constraints = this.constraints;
+		List<Arbiter> arbiters = this.arbiters;
+
+		// Reset and empty the arbiter lists.
 		for (Arbiter arb : arbiters) {
-			arb.state = ArbiterState.cpArbiterStateNormal;
+			arb.state = ArbiterState.NORMAL;
 
 			// If both bodies are awake, unthread the arbiter from the contact graph.
 			if (!cpBodyIsSleeping(arb.body_a) && !cpBodyIsSleeping(arb.body_b)) {
@@ -1030,54 +1039,52 @@ public class Space {
 		{
 			// Integrate positions
 			for (Body body : bodies) {
-				body.positionFunc.position(body, dt);
+				body.positionFunc.apply(body, dt);
 			}
 
 			// Find colliding pairs.
-			// cpSpacePushFreshContactBuffer(space);
-			cpSpatialIndexEach(this.activeShapes, activeShapeSpatialIndexIteratorFunc);
-			this.activeShapes.reindexQuery(activeShapesSpatialReIndexQueryFunc);
+			// TODO cpSpacePushFreshContactBuffer(space);
+			this.dynamicShapes.each(Space::shapeUpdateFunc);
+			this.dynamicShapes.reindexQuery(this::collideShapes);
 		}
 		cpSpaceUnlock(this, false);
 
-		// If body sleeping is enabled, do that now.
+		// Rebuild the contact graph (and detect sleeping components if sleeping is enabled)
 		cpSpaceProcessComponents(this, dt);
 
 		cpSpaceLock(this);
 		{
 			// Clear out old cached arbiters and call separate callbacks
-			cpHashSetFilter(this.cachedArbiters, new HashSetFilterFunc<Arbiter>() {
-				@Override
-				public boolean filter(Arbiter value) {
-					return arbiterSetFilter(value);
-				}
-			});
+			cpHashSetFilter(this.cachedArbiters, this::arbiterSetFilter);
 
 			// Prestep the arbiters and constraints.
 			float slop = this.collisionSlop;
 			float biasCoef = 1.0f - cpfpow(this.collisionBias, dt);
-			for (Arbiter arbiter : arbiters) {
-				cpArbiterPreStep(arbiter, dt, slop, biasCoef);
+			for (Arbiter arb : arbiters) {
+				arb.preStep(dt, slop, biasCoef);
 			}
 
 			for (Constraint constraint : constraints) {
-				ConstraintPreSolveFunc preSolve = constraint.getPreSolveFunc();
+
+				ConstraintPreSolveFunc preSolve = constraint.preSolveFunc;
 				if (preSolve != null) {
-					preSolve.preSolve(constraint, this);
+					preSolve.apply(constraint, this);
 				}
+
 				constraint.preStep(dt);
 			}
 
 			// Integrate velocities.
 			float damping = cpfpow(this.damping, dt);
+			Vector2f gravity = this.gravity;
 			for (Body body : bodies) {
-				body.velocityFunc.velocity(body, gravity, damping, dt);
+				body.velocityFunc.apply(body, gravity, damping, dt);
 			}
 
 			// Apply cached impulses
 			float dt_coef = (prev_dt == 0.0f ? 0.0f : dt / prev_dt);
-			for (Arbiter arbiter : arbiters) {
-				cpArbiterApplyCachedImpulse(arbiter, dt_coef);
+			for (Arbiter arb : arbiters) {
+				arb.applyCachedImpulse(dt_coef);
 			}
 
 			for (Constraint constraint : constraints) {
@@ -1086,9 +1093,10 @@ public class Space {
 
 			// Run the impulse solver.
 			for (int i = 0; i < this.iterations; i++) {
-				for (Arbiter arbiter : arbiters) {
-					cpArbiterApplyImpulse(arbiter);
+				for (Arbiter arb : arbiters) {
+					arb.applyImpulse();
 				}
+
 				for (Constraint constraint : constraints) {
 					constraint.applyImpulse(dt);
 				}
@@ -1096,22 +1104,17 @@ public class Space {
 
 			// Run the constraint post-solve callbacks
 			for (Constraint constraint : constraints) {
-				ConstraintPostSolveFunc postSolve = constraint.getPostSolveFunc();
+				ConstraintPostSolveFunc postSolve = constraint.postSolveFunc;
 				if (postSolve != null) {
-					postSolve.postSolve(constraint, this);
+					postSolve.apply(constraint, this);
 				}
-
 			}
 
 			// run the post-solve callbacks
-			// cpSpaceLock(this);
-			for (Arbiter arbiter : arbiters) {
-				CollisionHandlerEntry handler = arbiter.handler;
-				handler.postSolve(arbiter, this);
+			for (Arbiter arb : arbiters) {
+				CollisionHandler handler = arb.handler;
+				handler.postSolveFunc.apply(arb, this);
 			}
-			// cpSpaceUnlock(this, false);
-
-			// cpSpaceRunPostStepCallbacks(this);
 		}
 		cpSpaceUnlock(this, true);
 	}
@@ -1161,35 +1164,21 @@ public class Space {
 	 * Query <code>space</code> at <code>point</code> filtering out matches with the given <code>layers</code> and
 	 * <code>group</code>. <code>func</code> is called for each shape found along with the data argument passed to
 	 * pointQuery(). Sensor shapes are included.
-	 * 
-	 * @param point the query point
-	 * @param layers the layers to include
-	 * @param group the group to check
-	 * @param func the callback function
+	 *
+	 * @param point       the query point
+	 * @param maxDistance the max. distance to query
+	 * @param filter      the filter to use
+	 * @param func        the callback function
 	 */
-	public void pointQuery(final Vector2f point, int layers, int group, SpacePointQueryFunc func) {
-		cpSpacePointQuery(this, point, layers, group, func);
-	}
-
-	/**
-	 * Query <code>space</code> at <code>point</code> and return the first shape found matching the given
-	 * <code>layers</code> and <code>group</code>. Returns <code>null</code> if no shape was found. Sensor shapes are
-	 * ignored.
-	 * 
-	 * @param point the query point
-	 * @param layers the layers to include
-	 * @param group the group to check
-	 * @return the shape or <code>null</code>
-	 */
-	public Shape pointQueryFirst(final Vector2f point, int layers, int group) {
-		return cpSpacePointQueryFirst(this, point, layers, group);
+	public void pointQuery(Vector2f point, float maxDistance, ShapeFilter filter, SpacePointQueryFunc func) {
+		cpSpacePointQuery(this, point, maxDistance, filter, func);
 	}
 
 	/**
 	 * Add <code>func</code> to be called before {@link Space#step(float)} returns. You can add post step callbacks from
-	 * outside of other callback functions, but there isn?t a good reason to and they won?t be called until the next
+	 * outside of other callback functions, but there isn?alpha a good reason to and they won?alpha be called until the next
 	 * time {@link Space#step(float)} is finishing.
-	 * 
+	 *
 	 * @param func the post step callback to add
 	 */
 	public void addPostStepCallback(PostStepFunc func) {
@@ -1203,93 +1192,70 @@ public class Space {
 		postStepCallbacks.add(func);
 	}
 
-	public void setDefaultCollisionHandler(CollisionHandler handler) {
-		defaultCollisionHandlerEntry.handler = handler != null ? handler : defaultCollisionHandler;
-	}
-
 	/**
 	 * Perform a directed line segment query (like a raycast) against the space and return the first shape hit. Returns
 	 * <code>null</code> if no shapes were hit.
-	 * 
-	 * @param start the start point of the segment
-	 * @param end the end point of the segment
-	 * @param layers the layers to check
-	 * @param group the group to check
-	 * @param out a {@link SegmentQueryInfo} taking the result
-	 * @return the first {@link Shape} hit or <code>null</code> if no shape was hit
+	 *
+	 * @param start  the start point of the segment.
+	 * @param end    the end point of the segment.
+	 * @param filter the filter to use for the query.
+	 * @param out    a {@link SegmentQueryInfo} taking the result.
+	 * @return the first {@link Shape} hit or <code>null</code> if no shape was hit.
 	 */
-	public Shape segmentQueryFirst(Vector2f start, Vector2f end, int layers, int group, SegmentQueryInfo out) {
-		return cpSpaceSegmentQueryFirst(this, start, end, layers, group, out);
+	public SegmentQueryInfo segmentQueryFirst(Vector2f start, Vector2f end, float radius, ShapeFilter filter,
+			SegmentQueryInfo out) {
+		if (out == null) {
+			out = new SegmentQueryInfo();
+		}
+		return cpSpaceSegmentQueryFirst(this, start, end, radius, filter, out);
 	}
 
 	/**
 	 * Query this space along the line segment from <code>start</code> to <code>end</code> filtering out matches with
 	 * the given <code>layers</code> and <code>group</code>. <code>func</code> is called with the normalized distance
 	 * along the line and surface normal for each shape found along. Sensor shapes are included.
-	 * 
-	 * @param start the start point of the segment
-	 * @param end the end point of the segment
-	 * @param layers the layers to filter out
-	 * @param group the group to filter out
-	 * @param func a {@link SpaceSegmentQueryFunc} callback for each found shape
+	 *
+	 * @param start  the start point of the segment.
+	 * @param end    the end point of the segment.
+	 * @param filter the filter to use for the query.
+	 * @param func   a {@link SpaceSegmentQueryFunc} callback for each found shape.
 	 */
-	public void segmentQuery(Vector2f start, Vector2f end, int layers, int group, SpaceSegmentQueryFunc func) {
-		cpSpaceSegmentQuery(this, start, end, layers, group, func);
-	}
-
-	/**
-	 * Query this space at <code>point</code> for shapes within the given distance range filtering out matches with the
-	 * given layers and group. func is called for each shape found along with the distance to the closest point on the
-	 * shape’s surface, the distance to that point and the data argument passed to cpSpaceNearestPointQuery(). Sensor
-	 * shapes are included. If a maxDistance of 0.0 is used, the point must lie inside a shape. Negative maxDistance is
-	 * also allowed meaning that the point must be a under a certain depth within a shape to be considered a match.
-	 * 
-	 * @param point the query point
-	 * @param maxDistance the max. distance to query
-	 * @param layers the layers to include in the query
-	 * @param group the group to include in the query
-	 * @param func the callback called for each found shape
-	 */
-	public void nearestPointQuery(Vector2f point, float maxDistance, int layers, int group,
-			SpaceNearestPointQueryFunc func) {
-		cpSpaceNearestPointQuery(this, point, maxDistance, layers, group, func);
+	public void segmentQuery(Vector2f start, Vector2f end, float radius, ShapeFilter filter,
+			SpaceSegmentQueryFunc func) {
+		cpSpaceSegmentQuery(this, start, end, radius, filter, func);
 	}
 
 	/**
 	 * Query this space at <code>point</code> and return the closest shape within maxDistance units of distance. out is
 	 * an optional pointer to a cpNearestPointQueryInfo if you want additional information about the match.
-	 * 
-	 * @param point the query point
-	 * @param maxDistance the max. distance to query
-	 * @param layers the layers to include in the query
-	 * @param group the group to include in the query
-	 * @param out if not <code>null</code> use this object as return value, else a new instance will be created
-	 * @return a {@link NearestPointQueryInfo} object with information about the closest shape
+	 *
+	 * @param point       the query point.
+	 * @param maxDistance the max. distance to query.
+	 * @param filter      the filter to use for the query.
+	 * @param out         if not <code>null</code> use this object as return value, else a new instance will be created.
+	 * @return a {@link org.physics.jipmunk.constraints.PointQueryInfo} object with information about the closest shape.
 	 */
-	public NearestPointQueryInfo nearestPointQueryNearest(Vector2f point, float maxDistance, int layers, int group,
-			NearestPointQueryInfo out) {
-		return cpSpaceNearestPointQueryNearest(this, point, maxDistance, layers, group, out);
+	public PointQueryInfo pointQueryNearest(Vector2f point, float maxDistance, ShapeFilter filter, PointQueryInfo out) {
+		return cpSpacePointQueryNearest(this, point, maxDistance, filter, out);
+	}
+
+	public void bbQuery(BB bb, ShapeFilter filter, SpaceBBQueryFunc func) {
+		cpSpaceBBQuery(this, bb, filter, func);
+	}
+
+	public boolean shapeQuery(Shape shape, SpaceShapeQueryFunc func) {
+		return cpSpaceShapeQuery(this, shape, func);
 	}
 
 	public List<Shape> getShapes() {
 		final List<Shape> shapes = new ArrayList<>();
-		activeShapes.each(new SpatialIndexIteratorFunc<Shape>() {
-			@Override
-			public void visit(Shape obj) {
-				shapes.add(obj);
-			}
-		});
+		dynamicShapes.each(shapes::add);
 		return shapes;
 	}
 
 	public List<Shape> getStaticShapes() {
 		final List<Shape> shapes = new ArrayList<>();
-		staticShapes.each(new SpatialIndexIteratorFunc<Shape>() {
-			@Override
-			public void visit(Shape obj) {
-				shapes.add(obj);
-			}
-		});
+		staticShapes.each(shapes::add);
 		return shapes;
 	}
 
@@ -1297,8 +1263,8 @@ public class Space {
 		return constraints;
 	}
 
-	public List<Body> getBodies() {
-		return bodies;
+	public List<Body> getDynamicBodies() {
+		return dynamicBodies;
 	}
 
 	public List<Arbiter> getArbiters() {
@@ -1306,30 +1272,20 @@ public class Space {
 	}
 
 	public void useSpatialHash(float dim, int count) {
-		final SpatialIndex<Shape> staticShapes = new SpaceHash<>(dim, count, shapeGetBBFunc, null);
-		final SpatialIndex<Shape> activeShapes = new SpaceHash<>(dim, count, shapeGetBBFunc, staticShapes);
+		final SpatialIndex<Shape> staticShapes = new SpaceHash<>(dim, count, Shape::getBB, null);
+		final SpatialIndex<Shape> activeShapes = new SpaceHash<>(dim, count, Shape::getBB, staticShapes);
 
-		cpSpatialIndexEach(this.staticShapes, new SpatialIndexIteratorFunc<Shape>() {
-			@Override
-			public void visit(Shape obj) {
-				staticShapes.insert(obj, obj.hashid);
-			}
-		});
-		cpSpatialIndexEach(this.activeShapes, new SpatialIndexIteratorFunc<Shape>() {
-			@Override
-			public void visit(Shape obj) {
-				activeShapes.insert(obj, obj.hashid);
-			}
-		});
+		cpSpatialIndexEach(this.staticShapes, obj -> staticShapes.insert(obj, obj.getHashId()));
+		cpSpatialIndexEach(this.dynamicShapes, obj -> activeShapes.insert(obj, obj.getHashId()));
 
 		this.staticShapes = staticShapes;
-		this.activeShapes = activeShapes;
+		this.dynamicShapes = activeShapes;
 	}
 
 	/**
 	 * Convert a dynamic rogue body to a static one. This will convert any shapes attached to the body into static
 	 * shapes, but does not handle constraints. If the body is active, you must remove it from the space first.
-	 * 
+	 *
 	 * @param body the {@link Body} to convert
 	 */
 	public void convertBodyToStatic(Body body) {
@@ -1343,10 +1299,10 @@ public class Space {
 		body.setVelocity(cpvzero());
 		body.setAngVel(0.0f);
 
-		body.node.idleTime = Float.POSITIVE_INFINITY;
+		body.sleeping.idleTime = Float.POSITIVE_INFINITY;
 		for (Shape shape : body.shapes()) {
-			cpSpatialIndexRemove(this.activeShapes, shape, shape.hashid);
-			cpSpatialIndexInsert(this.staticShapes, shape, shape.hashid);
+			cpSpatialIndexRemove(this.dynamicShapes, shape, shape.getHashId());
+			cpSpatialIndexInsert(this.staticShapes, shape, shape.getHashId());
 		}
 
 	}
@@ -1354,9 +1310,9 @@ public class Space {
 	/**
 	 * Convert a body to a dynamic rogue body. This will convert any static shapes attached to the body into regular
 	 * ones. If you want the body to be active after the transition, you must add it to the space also.
-	 * 
-	 * @param body the {@link Body} to convert
-	 * @param mass the mass to use for the body
+	 *
+	 * @param body   the {@link Body} to convert
+	 * @param mass   the mass to use for the body
 	 * @param moment the moment to use for the body
 	 */
 	public void convertBodyToDynamic(Body body, float mass, float moment) {
@@ -1368,11 +1324,26 @@ public class Space {
 		body.setMass(mass);
 		body.setMoment(moment);
 
-		body.node.idleTime = 0.0f;
+		body.sleeping.idleTime = 0.0f;
 		for (Shape shape : body.shapes()) {
-			cpSpatialIndexRemove(this.staticShapes, shape, shape.hashid);
-			cpSpatialIndexInsert(this.activeShapes, shape, shape.hashid);
+			cpSpatialIndexRemove(this.staticShapes, shape, shape.getHashId());
+			cpSpatialIndexInsert(this.dynamicShapes, shape, shape.getHashId());
 		}
 	}
 
+	public CollisionHandler getDefaultHandler() {
+		return defaultHandler;
+	}
+
+	public void setDefaultHandler(CollisionHandler defaultHandler) {
+		this.defaultHandler = defaultHandler;
+	}
+
+	public boolean isUseWildcards() {
+		return useWildcards;
+	}
+
+	public void setUseWildcards(boolean useWildcards) {
+		this.useWildcards = useWildcards;
+	}
 }

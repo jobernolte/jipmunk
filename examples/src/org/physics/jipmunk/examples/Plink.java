@@ -72,16 +72,16 @@ public class Plink extends ExampleBase {
 			for (int j = 0; j < 6; j++) {
 				float stagger = (j % 2) * 40f;
 				Vector2f offset = cpv(i * 80f - 320f + stagger, j * 70f - 240f);
-				shape = space.addShape(new PolyShape(staticBody, tris, offset));
+				shape = space.addShape(new PolyShape(staticBody, 0.0f, Transform.translate(offset), tris));
 				shape.setElasticity(1.0f);
-				shape.setFrictionCoefficient(0.1f);
-				shape.setLayers(NOT_GRABABLE_MASK);
+				shape.setFriction(0.1f);
+				shape.setFilter(NOT_GRABABLE_FILTER);
 			}
 		}
 
 		// Create vertexes for a pentagon shape.
 		final int NUM_VERTS = 5;
-		Vector2f[] verts = new DefaultVector2f[NUM_VERTS];
+		Vector2f[] verts = new Vector2f[NUM_VERTS];
 		for (int i = 0; i < NUM_VERTS; i++) {
 			float angle = -2f * (float) Math.PI * i / ((float) NUM_VERTS);
 			verts[i] = Util.cpv(10f * (float) Math.cos(angle), 10 * (float) Math.sin(angle));
@@ -89,13 +89,13 @@ public class Plink extends ExampleBase {
 
 		// Add lots of pentagons.
 		for (int i = 0; i < 300; i++) {
-			body = space.addBody(new Body(1.0f, Util.momentForPoly(1.0f, verts, Util.cpvzero())));
+			body = space.addBody(new Body(1.0f, Util.momentForPoly(1.0f, verts, Util.cpvzero(), 0.0f)));
 			float x = rgen.nextFloat() * 640f - 320f;
 			body.setPosition(Util.cpv(x, 350f));
 
-			shape = space.addShape(new PolyShape(body, verts, Util.cpvzero()));
+			shape = space.addShape(new PolyShape(body, 0.0f, verts));
 			shape.setElasticity(0.1f);
-			shape.setFrictionCoefficient(0.4f);
+			shape.setFriction(0.4f);
 		}
 
 		return space;
@@ -109,8 +109,7 @@ public class Plink extends ExampleBase {
 		 * for (int i = 0; i < steps; i++) { space.step(dt); space.eachBody(checkBodies); }
 		 */
 		if (chipmunkDemoRightDown) {
-			Shape nearest = space.nearestPointQueryNearest(mousePoint, 0.0f, GRABABLE_MASK_BIT, Constants.NO_GROUP,
-					null).shape;
+			Shape nearest = space.pointQueryNearest(mousePoint, 0.0f, GRAB_FILTER, null).shape;
 			if (nearest != null) {
 				Body body = nearest.getBody();
 				if (body.isStatic()) {

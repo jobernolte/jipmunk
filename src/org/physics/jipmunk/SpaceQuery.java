@@ -22,387 +22,224 @@
 
 package org.physics.jipmunk;
 
-import org.physics.jipmunk.constraints.NearestPointQueryInfo;
+import org.physics.jipmunk.constraints.PointQueryInfo;
 
-import static org.physics.jipmunk.Collision.cpCollideShapes;
-import static org.physics.jipmunk.Shape.cpShapePointQuery;
-import static org.physics.jipmunk.Shape.cpShapeSegmentQuery;
-import static org.physics.jipmunk.Shape.cpShapeUpdate;
 import static org.physics.jipmunk.Space.cpSpaceLock;
 import static org.physics.jipmunk.Space.cpSpaceUnlock;
 import static org.physics.jipmunk.SpatialIndex.cpSpatialIndexQuery;
-import static org.physics.jipmunk.SpatialIndex.cpSpatialIndexSegmentQuery;
-import static org.physics.jipmunk.Util.cpvneg;
 import static org.physics.jipmunk.Util.cpvzero;
 
 /** @author jobernolte */
 class SpaceQuery {
-	static class PointQueryHelper implements SpatialIndexQueryFunc<Shape> {
-		Vector2f point;
-		int layers;
-		int group;
-		SpacePointQueryFunc func;
 
-		void init(Vector2f point, int layers, int group, SpacePointQueryFunc func) {
-			this.point = point;
-			this.layers = layers;
-			this.group = group;
-			this.func = func;
-		}
-
-		void reset() {
-			this.func = null;
-		}
-
-		@Override
-		public void apply(Shape shape) {
-			if (!(shape.group != 0 && group == shape.group) && (layers & shape.layers) != 0 && cpShapePointQuery
-					(shape, point)) {
-				func.apply(shape);
-			}
-		}
-	}
-
-	static PointQueryHelper pointQueryHelper = new PointQueryHelper();
-
-	static void cpSpacePointQuery(Space space, Vector2f point, int layers, int group, SpacePointQueryFunc func) {
-		pointQueryHelper.init(point, layers, group, func);
-		BB bb = BB.forCircle(point, 0.0f);
-
-		cpSpaceLock(space);
-		{
-			pointQueryHelper.point = point;
-			cpSpatialIndexQuery(space.activeShapes, bb, pointQueryHelper);
-			cpSpatialIndexQuery(space.staticShapes, bb, pointQueryHelper);
-		}
-		cpSpaceUnlock(space, true);
-
-		pointQueryHelper.reset();
-	}
-
-	static class RememberLastPointQuery implements SpacePointQueryFunc {
-
-		Shape outShape;
-
-		@Override
-		public void apply(Shape shape) {
-			if (!shape.sensor) outShape = shape;
-		}
-	}
-
-	static RememberLastPointQuery rememberLastPointQuery = new RememberLastPointQuery();
-
-	static Shape cpSpacePointQueryFirst(Space space, Vector2f point, int layers, int group) {
-		cpSpacePointQuery(space, point, layers, group, rememberLastPointQuery);
-		Shape shape = rememberLastPointQuery.outShape;
-		rememberLastPointQuery.outShape = null;
-
-		return shape;
-	}
-
-	static class SegQueryFunc implements SpatialIndexSegmentQueryFunc<Shape> {
+	static class SegmentQueryContext {
 		Vector2f start, end;
-		int layers;
-		int group;
+		float radius;
+		ShapeFilter filter;
 		SpaceSegmentQueryFunc func;
 
-		void init(Vector2f start, Vector2f end, int layers, int group, SpaceSegmentQueryFunc func) {
+		void init(Vector2f start, Vector2f end, float radius, ShapeFilter filter, SpaceSegmentQueryFunc func) {
 			this.start = start;
 			this.end = end;
-			this.layers = layers;
-			this.group = group;
+			this.radius = radius;
+			this.filter = filter;
 			this.func = func;
 		}
 
-		void reset() {
-			func = null;
-		}
-
-		@Override
-		public float apply(Shape shape) {
-			SegmentQueryInfo info = new SegmentQueryInfo();
-
-			if (!(shape.group != 0 && group == shape.group) && (layers & shape.layers) != 0 &&
-					cpShapeSegmentQuery(shape, start, end, info)) {
-				func.apply(shape, info.t, info.n);
-			}
-
-			return 1.0f;
+		public SegmentQueryContext(Vector2f start, Vector2f end, float radius, ShapeFilter filter,
+				SpaceSegmentQueryFunc func) {
+			init(start, end, radius, filter, func);
 		}
 	}
 
-	static SegQueryFunc segQueryFunc = new SegQueryFunc();
+	static float SegmentQuery(SegmentQueryContext context, Shape shape) {
+		SegmentQueryInfo info = new SegmentQueryInfo();
 
-	static void cpSpaceSegmentQuery(Space space, Vector2f start, Vector2f end, int layers, int group,
+		if (!shape.filter.reject(context.filter) && shape
+				.segmentQuery(context.start, context.end, context.radius, info)) {
+			context.func.apply(shape, info.point, info.normal, info.alpha);
+		}
+
+		return 1.0f;
+	}
+
+	static void cpSpaceSegmentQuery(Space space, Vector2f start, Vector2f end, float radius, ShapeFilter filter,
 			SpaceSegmentQueryFunc func) {
-		segQueryFunc.init(start, end, layers, group, func);
+		SegmentQueryContext context = new SegmentQueryContext(start, end, radius, filter, func);
 
 		cpSpaceLock(space);
 		{
-			cpSpatialIndexSegmentQuery(space.staticShapes, start, end, 1.0f, segQueryFunc);
-			cpSpatialIndexSegmentQuery(space.activeShapes, start, end, 1.0f, segQueryFunc);
+			space.staticShapes.segmentQuery(null, start, end, 1.0f, (shape1, shape2) -> SegmentQuery(context, shape2));
+			space.dynamicShapes.segmentQuery(null, start, end, 1.0f, (shape1, shape2) -> SegmentQuery(context, shape2));
 		}
 		cpSpaceUnlock(space, true);
-
-		segQueryFunc.reset();
 	}
 
-	static class SegQueryFirst implements SpatialIndexSegmentQueryFunc<Shape> {
-		Vector2f start, end;
-		int layers;
-		int group;
+	static float SegmentQueryFirst(SegmentQueryContext context, Shape shape, SegmentQueryInfo out) {
 		SegmentQueryInfo info = new SegmentQueryInfo();
-		SegmentQueryInfo out;
 
-		void init(Vector2f start, Vector2f end, int layers, int group, SegmentQueryInfo out) {
-			this.start = start;
-			this.end = end;
-			this.layers = layers;
-			this.group = group;
-			this.out = out;
+		if (!shape.filter.reject(context.filter) && !shape.isSensor() &&
+				shape.segmentQuery(context.start, context.end, context.radius, info) &&
+				info.alpha < out.alpha) {
+			out.set(info);
 		}
 
-		void reset() {
-			this.out = null;
-			this.info.reset();
-		}
-
-		@Override
-		public float apply(Shape shape) {
-			info.reset();
-			if (!(shape.group != 0 && group == shape.group) && (layers & shape.layers) != 0 &&
-					!shape.sensor && shape.segmentQuery(start, end, info) && info.t < out.t) {
-				out.set(info.shape, info.t, info.n);
-			}
-
-			return out.t;
-		}
+		return out.alpha;
 	}
 
-	static SegQueryFirst segQueryFirst = new SegQueryFirst();
-	static final SegmentQueryInfo dummyOut = new SegmentQueryInfo();
+	static SegmentQueryInfo cpSpaceSegmentQueryFirst(Space space, Vector2f start, Vector2f end, float radius,
+			ShapeFilter filter, final SegmentQueryInfo out) {
+		out.set(null, end, cpvzero(), 1.0f);
+		SegmentQueryContext context = new SegmentQueryContext(start, end, radius, filter, null);
 
-	static Shape cpSpaceSegmentQueryFirst(Space space, Vector2f start, Vector2f end, int layers, int group,
-			SegmentQueryInfo out) {
-		/*SegmentQueryInfo info = new SegmentQueryInfo(null, 1.0f, cpvzero());
-				if(out != null){
-					(*out) = info;
-			  } else {
-					out = &info;
-				} */
-		if (out == null) {
-			out = dummyOut;
-		}
-		out.set(null, 1.0f, cpvzero());
+		space.staticShapes
+				.segmentQuery(null, start, end, 1.0f, (shape1, shape2) -> SegmentQueryFirst(context, shape2, out));
+		space.dynamicShapes
+				.segmentQuery(null, start, end, out.alpha, (shape1, shape2) -> SegmentQueryFirst(context, shape2, out));
 
-		segQueryFirst.init(start, end, layers, group, out);
-
-		cpSpatialIndexSegmentQuery(space.staticShapes, start, end, 1.0f, segQueryFirst);
-		cpSpatialIndexSegmentQuery(space.activeShapes, start, end, out.t, segQueryFirst);
-
-		segQueryFirst.reset();
-
-		return out.shape;
+		return out;
 	}
 
-	static class BBQueryHelper implements SpatialIndexQueryFunc<Shape> {
-
+	static class BBQueryContext {
 		BB bb;
-		int layers;
-		int group;
+		ShapeFilter filter;
 		SpaceBBQueryFunc func;
 
-		void init(BB bb, int layers, int group, SpaceBBQueryFunc func) {
+		BBQueryContext(BB bb, ShapeFilter filter, SpaceBBQueryFunc func) {
 			this.bb = bb;
-			this.layers = layers;
-			this.group = group;
+			this.filter = filter;
 			this.func = func;
-		}
-
-		void reset() {
-			func = null;
-		}
-
-		@Override
-		public void apply(Shape shape) {
-			if (!(shape.group != 0 && group == shape.group) && (layers & shape.layers) != 0
-					&& bb.intersects(shape.bb)) {
-				func.apply(shape);
-			}
 		}
 	}
 
-	static BBQueryHelper bbQueryHelper = new BBQueryHelper();
+	static CollisionID BBQuery(BBQueryContext context, Shape shape, CollisionID id) {
+		if (!shape.filter.reject(context.filter) && context.bb.intersects(shape.bb)) {
+			context.func.apply(shape);
+		}
 
-	void cpSpaceBBQuery(Space space, BB bb, int layers, int group, SpaceBBQueryFunc func) {
-		bbQueryHelper.init(bb, layers, group, func);
+		return id;
+	}
+
+	static void cpSpaceBBQuery(Space space, BB bb, ShapeFilter filter, SpaceBBQueryFunc func) {
+		BBQueryContext context = new BBQueryContext(bb, filter, func);
 
 		cpSpaceLock(space);
 		{
-			cpSpatialIndexQuery(space.activeShapes, bb, bbQueryHelper);
-			cpSpatialIndexQuery(space.staticShapes, bb, bbQueryHelper);
+			cpSpatialIndexQuery(space.dynamicShapes, null, bb, (shape1, shape2, id) -> BBQuery(context, shape2, id));
+			cpSpatialIndexQuery(space.staticShapes, null, bb, (shape1, shape2, id) -> BBQuery(context, shape2, id));
 		}
 		cpSpaceUnlock(space, true);
-
-		bbQueryHelper.reset();
 	}
 
-	static ContactList contacts = new ContactList();
-
-	static class ShapeQueryHelper implements SpatialIndexQueryFunc<Shape> {
-
-		Shape a;
-		SpaceShapeQueryFunc func;
-		boolean anyCollision;
-
-		void init(Shape a, SpaceShapeQueryFunc func, boolean anyCollision) {
-			this.a = a;
-			this.func = func;
-			this.anyCollision = anyCollision;
-		}
-
-		boolean reset() {
-			a = null;
-			func = null;
-			return anyCollision;
-		}
-
-		@Override
-		public void apply(Shape b) {
-			// Reject any of the simple cases
-			if ((a.group != 0 && a.group == b.group) || (a.layers & b.layers) == 0 || a == b) return;
-
-			//cpContact contacts[CP_MAX_CONTACTS_PER_ARBITER];
-			int numContacts;
-
-			// Shape 'a' should have the lower shape type. (required by cpCollideShapes() )
-			if (a.getType().ordinal() <= b.getType().ordinal()) {
-				numContacts = cpCollideShapes(a, b, contacts);
-			} else {
-				numContacts = cpCollideShapes(b, a, contacts);
-				for (int i = 0; i < numContacts; i++) contacts.get(i).n = cpvneg(contacts.get(i).n);
-			}
-
-			if (numContacts > 0) {
-				anyCollision = !(a.sensor || b.sensor);
-
-				if (func != null) {
-					ContactPointSet set = new ContactPointSet(numContacts);
-					for (int i = 0; i < numContacts; i++) {
-						Contact contact = contacts.get(i);
-						set.add(contact.p, contact.n, contact.dist);
-					}
-
-					func.apply(b, set);
-				}
-				contacts.clear();
-			}
-		}
-	}
-
-	static ShapeQueryHelper shapeQueryHelper = new ShapeQueryHelper();
-
-	static boolean cpSpaceShapeQuery(Space space, Shape shape, SpaceShapeQueryFunc func) {
-		Body body = shape.body;
-		BB bb = (body != null ? cpShapeUpdate(shape, body.p, body.rot) : shape.bb);
-		shapeQueryHelper.init(shape, func, false);
-
-		cpSpaceLock(space);
-		{
-			cpSpatialIndexQuery(space.activeShapes, bb, shapeQueryHelper);
-			cpSpatialIndexQuery(space.staticShapes, bb, shapeQueryHelper);
-		}
-		cpSpaceUnlock(space, true);
-
-		return shapeQueryHelper.reset();
-	}
-
-	private static class NearestPointQueryContext {
+	private static class PointQueryContext {
 		Vector2f point;
 		float maxDistance;
-		int layers;
-		int group;
-		SpaceNearestPointQueryFunc func;
+		ShapeFilter filter;
+		SpacePointQueryFunc func;
 
-		private NearestPointQueryContext(Vector2f point, float maxDistance, int layers, int group,
-				SpaceNearestPointQueryFunc func) {
+		private PointQueryContext(Vector2f point, float maxDistance, ShapeFilter filter, SpacePointQueryFunc func) {
 			this.point = point;
 			this.maxDistance = maxDistance;
-			this.layers = layers;
-			this.group = group;
+			this.filter = filter;
 			this.func = func;
 		}
 	}
 
-	static void nearestPointQuery(NearestPointQueryContext context, Shape shape) {
-		if (!(shape.group != 0 && context.group == shape.group) && (context.layers & shape.layers) != 0) {
-			NearestPointQueryInfo info = shape.nearestPointQuery(context.point, null);
+	static CollisionID nearestPointQuery(PointQueryContext context, Shape shape, CollisionID id) {
+		if (!shape.filter.reject(context.filter)) {
+			PointQueryInfo info;
+			info = shape.pointQuery(context.point, null);
 
-			if (info.shape != null && info.d < context.maxDistance) {
-				context.func.apply(shape, info.d, info.p);
+			if (info.shape != null && info.distance < context.maxDistance) {
+				context.func.apply(shape, info.point, info.distance, info.gradient);
 			}
 		}
+		return id;
 	}
 
-	static void cpSpaceNearestPointQuery(Space space, Vector2f point, float maxDistance, int layers, int group,
-			SpaceNearestPointQueryFunc func) {
-		final NearestPointQueryContext context = new NearestPointQueryContext(point, maxDistance, layers, group, func);
+	static void cpSpacePointQuery(Space space, Vector2f point, float maxDistance, ShapeFilter filter,
+			SpacePointQueryFunc func) {
+		final PointQueryContext context = new PointQueryContext(point, maxDistance, filter, func);
 		BB bb = BB.forCircle(point, Util.cpfmax(maxDistance, 0.0f));
 
 		cpSpaceLock(space);
 		{
-			cpSpatialIndexQuery(space.activeShapes, bb, new SpatialIndexQueryFunc<Shape>() {
-				@Override
-				public void apply(Shape shape) {
-					nearestPointQuery(context, shape);
-				}
-			});
-			cpSpatialIndexQuery(space.staticShapes, bb, new SpatialIndexQueryFunc<Shape>() {
-				@Override
-				public void apply(Shape shape) {
-					nearestPointQuery(context, shape);
-				}
-			});
+			cpSpatialIndexQuery(space.dynamicShapes, null, bb,
+								(shape1, shape2, id) -> nearestPointQuery(context, shape2, id));
+			cpSpatialIndexQuery(space.staticShapes, null, bb,
+								(shape1, shape2, id) -> nearestPointQuery(context, shape2, id));
 		}
 		cpSpaceUnlock(space, true);
 	}
 
-	static void nearestPointQueryNearest(NearestPointQueryContext context, Shape shape, NearestPointQueryInfo out) {
-		if (!(shape.group != 0 && context.group == shape.group) && (context.layers & shape.layers) != 0
-				&& !shape.sensor) {
-			NearestPointQueryInfo info = shape.nearestPointQuery(context.point, null);
+	static CollisionID nearestPointQueryNearest(PointQueryContext context, Shape shape, CollisionID id,
+			PointQueryInfo out) {
+		if (!shape.filter.reject(context.filter) && !shape.isSensor()) {
+			PointQueryInfo info = shape.pointQuery(context.point, null);
 
-			if (info.d < out.d) {
+			if (info.distance < out.distance) {
 				out.set(info);
 			}
 		}
+		return id;
 	}
 
-	static NearestPointQueryInfo cpSpaceNearestPointQueryNearest(Space space, Vector2f point, float maxDistance,
-			int layers, int group, NearestPointQueryInfo out) {
-		final NearestPointQueryInfo info = out == null ? new NearestPointQueryInfo(null, Util.cpvzero(), maxDistance)
-				: out;
+	static PointQueryInfo cpSpacePointQueryNearest(Space space, Vector2f point, float maxDistance, ShapeFilter filter,
+			PointQueryInfo out) {
+		final PointQueryInfo info = out == null ? new PointQueryInfo(null, Util.cpvzero(), maxDistance) : out;
 
-		final NearestPointQueryContext context = new NearestPointQueryContext(
-				point, maxDistance,
-				layers, group,
-				null
-		);
+		final PointQueryContext context = new PointQueryContext(point, maxDistance, filter, null);
 
 		BB bb = BB.forCircle(point, Util.cpfmax(maxDistance, 0.0f));
-		cpSpatialIndexQuery(space.activeShapes, bb, new SpatialIndexQueryFunc<Shape>() {
-			@Override
-			public void apply(Shape shape) {
-				nearestPointQueryNearest(context, shape, info);
-			}
-		});
-		cpSpatialIndexQuery(space.staticShapes, bb, new SpatialIndexQueryFunc<Shape>() {
-			@Override
-			public void apply(Shape shape) {
-				nearestPointQueryNearest(context, shape, info);
-			}
-		});
+		cpSpatialIndexQuery(space.dynamicShapes, null, bb,
+							(shape1, shape2, id) -> nearestPointQueryNearest(context, shape2, id, info));
+		cpSpatialIndexQuery(space.staticShapes, null, bb,
+							(shape1, shape2, id) -> nearestPointQueryNearest(context, shape2, id, info));
 
 		return info;
+	}
+
+	static class ShapeQueryContext {
+		SpaceShapeQueryFunc func;
+		boolean anyCollision;
+
+		ShapeQueryContext(SpaceShapeQueryFunc func, boolean anyCollision) {
+			this.func = func;
+			this.anyCollision = anyCollision;
+		}
+	}
+
+	// Callback from the spatial hash.
+	static CollisionID ShapeQuery(Shape a, Shape b, CollisionID id, ShapeQueryContext context) {
+		if (a.filter.reject(b.filter) || a == b) {
+			return id;
+		}
+
+		ContactPointSet set = Shape.shapesCollide(a, b);
+		if (set.getCount() > 0) {
+			if (context.func != null) {
+				context.func.apply(b, set);
+			}
+			context.anyCollision = !(a.isSensor() || b.isSensor());
+		}
+
+		return id;
+	}
+
+	static boolean cpSpaceShapeQuery(Space space, Shape shape, SpaceShapeQueryFunc func) {
+		Body body = shape.body;
+		BB bb = (body != null ? shape.update(body.transform) : shape.getBB());
+		ShapeQueryContext context = new ShapeQueryContext(func, false);
+
+		cpSpaceLock(space);
+		{
+			cpSpatialIndexQuery(space.dynamicShapes, shape, bb,
+								(shape1, shape2, id) -> ShapeQuery(shape1, shape2, id, context));
+			cpSpatialIndexQuery(space.staticShapes, shape, bb,
+								(shape1, shape2, id) -> ShapeQuery(shape1, shape2, id, context));
+		}
+		cpSpaceUnlock(space, true);
+
+		return context.anyCollision;
 	}
 }

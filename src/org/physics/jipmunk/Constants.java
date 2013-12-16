@@ -26,4 +26,8 @@ package org.physics.jipmunk;
 public class Constants {
 	public final static int NO_GROUP = 0;
 	public final static int ALL_LAYERS = ~0;
+	public final static int ALL_CATEGORIES = ~0;
+	// TODO: Eww. Magic numbers.
+	public final static float MAGIC_EPSILON = 1e-5f;
+
 }

@@ -51,20 +51,37 @@ abstract class SpatialIndex<T> {
 
 	public abstract void reindexObject(T obj, int hashValue);
 
-	public abstract void reindexQuery(SpatialReIndexQueryFunc<T> func);
+	/**
+	 * Simultaneously reindex and find all colliding objects.
+	 * <point/>
+	 * The func will be called once for each potentially overlapping pair of objects found. + If the spatial index was
+	 * initialized with a static index, it will collide it's objects against that as well.
+	 *
+	 * @param func the func to use
+	 */
+	public abstract void reindexQuery(SpatialIndexQueryFunc<T> func);
 
-	public abstract void segmentQuery(final Vector2f a, final Vector2f b, float exit,
+	public abstract void query(T obj, final BB bb, SpatialIndexQueryFunc<T> func);
+
+	/**
+	 * Perform a segment query against the spatial index, calling <code>func</code> for each potential match.
+	 *
+	 * @param obj  the obj to query.
+	 * @param a    the start of the query.
+	 * @param b    the end of the query.
+	 * @param exit the exit value.
+	 * @param func the func to call.
+	 */
+	public abstract void segmentQuery(T obj, final Vector2f a, final Vector2f b, float exit,
 			SpatialIndexSegmentQueryFunc<T> func);
-
-	public abstract void query(final BB bb, SpatialIndexQueryFunc<T> func);
 
 	static class DynamicToStaticContext<T> {
 		SpatialIndexBBFunc<T> bbfunc;
 		SpatialIndex<T> staticIndex;
-		SpatialReIndexQueryFunc<T> queryFunc;
+		SpatialIndexQueryFunc<T> queryFunc;
 
 		DynamicToStaticContext(SpatialIndexBBFunc<T> bbfunc, SpatialIndex<T> staticIndex,
-				SpatialReIndexQueryFunc<T> queryFunc) {
+				SpatialIndexQueryFunc<T> queryFunc) {
 			this.bbfunc = bbfunc;
 			this.staticIndex = staticIndex;
 			this.queryFunc = queryFunc;
@@ -72,21 +89,11 @@ abstract class SpatialIndex<T> {
 	}
 
 	static <T> void collideStatic(SpatialIndex<T> dynamicIndex, SpatialIndex<T> staticIndex,
-			SpatialReIndexQueryFunc<T> func) {
+			SpatialIndexQueryFunc<T> func) {
 		if (staticIndex.count() > 0) {
-			final DynamicToStaticContext<T> context = new DynamicToStaticContext<T>(dynamicIndex.bbfunc, staticIndex,
-					func);
-			dynamicIndex.each(new SpatialIndexIteratorFunc<T>() {
-				@Override
-				public void visit(final T obj1) {
-					context.staticIndex.query(context.bbfunc.apply(obj1), new SpatialIndexQueryFunc<T>() {
-						@Override
-						public void apply(T obj2) {
-							context.queryFunc.apply(obj1, obj2);
-						}
-					});
-				}
-			});
+			final DynamicToStaticContext<T> context =
+					new DynamicToStaticContext<>(dynamicIndex.bbfunc, staticIndex, func);
+			dynamicIndex.each(obj1 -> context.staticIndex.query(obj1, context.bbfunc.apply(obj1), context.queryFunc));
 		}
 	}
 
@@ -102,31 +109,12 @@ abstract class SpatialIndex<T> {
 		index.each(func);
 	}
 
-	/**
-	 * Simultaneously reindex and find all colliding objects.
-	 * <p/>
-	 * The func will be called once for each potentially overlapping pair of objects found. + If the spatial index was
-	 * initialized with a static index, it will collide it's objects against that as well.
-	 *
-	 * @param index the index to reindex
-	 * @param func  the func to use
-	 */
-	static <T> void cpSpatialIndexReindexQuery(SpatialIndex<T> index, SpatialReIndexQueryFunc<T> func) {
-		index.reindexQuery(func);
-	}
-
-	/// Perform a segment query against the spatial index, calling @c func for each potential match.
-	static <T> void cpSpatialIndexSegmentQuery(SpatialIndex<T> index, Vector2f a, Vector2f b, float t_exit,
-			SpatialIndexSegmentQueryFunc<T> func) {
-		index.segmentQuery(a, b, t_exit, func);
-	}
-
-	static <T> void cpSpatialIndexQuery(SpatialIndex<T> index, final BB bb, SpatialIndexQueryFunc<T> func) {
-		index.query(bb, func);
+	static <T> void cpSpatialIndexQuery(SpatialIndex<T> index, T obj, final BB bb, SpatialIndexQueryFunc<T> func) {
+		index.query(obj, bb, func);
 	}
 
 	static <T> void cpSpatialIndexCollideStatic(SpatialIndex<T> dynamicIndex, SpatialIndex<T> staticIndex,
-			SpatialReIndexQueryFunc<T> func) {
+			SpatialIndexQueryFunc<T> func) {
 		collideStatic(dynamicIndex, staticIndex, func);
 	}
 }

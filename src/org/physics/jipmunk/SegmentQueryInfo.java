@@ -26,7 +26,7 @@ import static org.physics.jipmunk.Util.cpvzero;
 
 /**
  * Segment queries return more information than just a simple yes or no, they also return where a shape was hit and it’s
- * surface normal at the hit point. {@link SegmentQueryInfo#t} is the percentage between the query start and end points.
+ * surface normal at the hit point. {@link SegmentQueryInfo#alpha} is the percentage between the query start and end points.
  * If you need the hit point in world space or the absolute distance from start, see the segment query helper functions
  * farther down.
  *
@@ -35,25 +35,43 @@ import static org.physics.jipmunk.Util.cpvzero;
 public class SegmentQueryInfo {
 	/** The shape that was hit, <code>null</code> if no collision occured. */
 	public Shape shape;
-	/** The normalized distance along the query segment in the range [0, 1]. */
-	public float t = 1.0f;
+	/** The point of impact. */
+	public Vector2f point = Util.cpvzero();
 	/** The normal of the surface hit. */
-	public Vector2f n = cpvzero();
+	public Vector2f normal = cpvzero();
+	/** The normalized distance along the query segment in the range [0, 1]. */
+	public float alpha = 1.0f;
 
 	public SegmentQueryInfo() {
 
 	}
 
-	public void set(Shape shape, float t, Vector2f n) {
+	public SegmentQueryInfo(Shape shape, Vector2f point, Vector2f normal, float alpha) {
 		this.shape = shape;
-		this.t = t;
-		this.n.set(n);
+		this.point.set(point);
+		this.normal.set(normal);
+		this.alpha = alpha;
+	}
+
+	public void set(Shape shape, Vector2f point, Vector2f normal, float alpha) {
+		this.shape = shape;
+		this.point.set(point);
+		this.normal.set(normal);
+		this.alpha = alpha;
+	}
+
+	public void set(SegmentQueryInfo info) {
+		this.shape = info.shape;
+		this.point.set(info.point);
+		this.normal.set(info.normal);
+		this.alpha = info.alpha;
 	}
 
 	public void reset() {
 		shape = null;
-		t = 1;
-		n.set(0, 0);
+		point.set(0, 0);
+		alpha = 1;
+		normal.set(0, 0);
 	}
 
 	/**
@@ -64,7 +82,7 @@ public class SegmentQueryInfo {
 	 * @return
 	 */
 	public Vector2f getHitPoint(final Vector2f start, final Vector2f end) {
-		return Util.cpvlerp(start, end, this.t);
+		return Util.cpvlerp(start, end, this.alpha);
 	}
 
 	/**
@@ -75,7 +93,6 @@ public class SegmentQueryInfo {
 	 * @return
 	 */
 	public float getHitDist(final Vector2f start, final Vector2f end) {
-		return Util.cpvdist(start, end) * this.t;
+		return Util.cpvdist(start, end) * this.alpha;
 	}
-
 }

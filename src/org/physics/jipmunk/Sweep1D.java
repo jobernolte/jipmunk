@@ -31,9 +31,6 @@ class Sweep1D<T> extends SpatialIndex<T> {
 	static class Bounds {
 		float min, max;
 
-		Bounds() {
-		}
-
 		Bounds(BB bb) {
 			this.min = bb.l;
 			this.max = bb.r;
@@ -124,7 +121,7 @@ class Sweep1D<T> extends SpatialIndex<T> {
 	}
 
 	@Override
-	public void query(BB bb, SpatialIndexQueryFunc<T> func) {
+	public void query(T obj, BB bb, SpatialIndexQueryFunc<T> func) {
 		// Implementing binary search here would allow you to find an upper limit
 		// but not a lower limit. Probably not worth the hassle.
 
@@ -132,27 +129,27 @@ class Sweep1D<T> extends SpatialIndex<T> {
 
 		for (int i = 0; i < num; i++) {
 			TableCell<T> cell = table[i];
-			if (Bounds.overlap(bounds, cell.bounds) /*&& obj != cell.obj*/) {
-				func.apply(/*obj, */cell.obj);
+			if (Bounds.overlap(bounds, cell.bounds) && obj != cell.obj) {
+				func.apply(obj, cell.obj, new CollisionID(0));
 			}
 		}
 	}
 
 	@Override
-	public void segmentQuery(Vector2f a, Vector2f b, float exit, SpatialIndexSegmentQueryFunc<T> func) {
+	public void segmentQuery(T obj, Vector2f a, Vector2f b, float exit, SpatialIndexSegmentQueryFunc<T> func) {
 		BB bb = BB.expand(new BB(a.getX(), a.getY(), a.getX(), a.getY()), b);
 		Bounds bounds = new Bounds(bb);
 
 		for (int i = 0; i < num; i++) {
 			TableCell<T> cell = table[i];
 			if (Bounds.overlap(bounds, cell.bounds)) {
-				func.apply(/*obj, */cell.obj);
+				func.apply(obj, cell.obj);
 			}
 		}
 	}
 
 	@Override
-	public void reindexQuery(SpatialReIndexQueryFunc<T> func) {
+	public void reindexQuery(SpatialIndexQueryFunc<T> func) {
 		// Update bounds and sort
 		for (int i = 0; i < num; i++) {
 			table[i] = new TableCell<T>(table[i].obj, this);
@@ -168,7 +165,7 @@ class Sweep1D<T> extends SpatialIndex<T> {
 			float max = cell.bounds.max;
 
 			for (int j = i + 1; table[j].bounds.min < max && j < num; j++) {
-				func.apply(cell.obj, table[j].obj);
+				func.apply(cell.obj, table[j].obj, new CollisionID(0));
 			}
 		}
 		// Reindex query is also responsible for colliding against the static index.

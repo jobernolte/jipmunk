@@ -22,18 +22,77 @@
 
 package org.physics.jipmunk;
 
-import java.util.ArrayList;
+import org.physics.jipmunk.impl.Contact;
+
+import java.util.Iterator;
+import java.util.List;
+
+import static org.physics.jipmunk.Util.cpvdot;
+import static org.physics.jipmunk.Util.cpvneg;
+import static org.physics.jipmunk.Util.cpvsub;
 
 /** @author jobernolte */
-public class ContactPointSet extends ArrayList<ContactPoint> {
-	public ContactPointSet() {
+public class ContactPointSet implements Iterable<ContactPoint> {
+
+	/** The normal of the collision. */
+	private final Vector2f normal;
+	private final ContactPoint[] points;
+
+	public ContactPointSet(Vector2f normal, ContactPoint[] points) {
+		this.normal = normal;
+		this.points = points;
 	}
 
-	public ContactPointSet(int i) {
-		super(i);
+	ContactPointSet(CollisionInfo info, boolean swapped) {
+		this(info.getN(), info.getContacts(), swapped);
 	}
 
-	public void add(Vector2f point, Vector2f normal, float dist) {
-		add(new ContactPoint(point, normal, dist));
+	ContactPointSet(Vector2f normal, List<Contact> contacts, boolean swapped) {
+		// cpCollideShapes() may have swapped the contact order. Flip the normal.
+		this.normal = (swapped ? cpvneg(normal) : normal);
+		this.points = new ContactPoint[contacts != null ? contacts.size() : 0];
+
+		if (contacts != null) {
+			int i = 0;
+			for (Contact contact : contacts) {
+				// cpCollideShapesInfo() returns contacts with absolute positions.
+				Vector2f p1 = contact.getR1();
+				Vector2f p2 = contact.getR2();
+
+				this.points[i].point1 = (swapped ? p2 : p1);
+				this.points[i].point2 = (swapped ? p1 : p2);
+				this.points[i].distance = cpvdot(cpvsub(p2, p1), this.normal);
+				i++;
+			}
+		}
+	}
+
+	public Vector2f getNormal() {
+		return normal;
+	}
+
+	public ContactPoint[] getPoints() {
+		return points;
+	}
+
+	public int getCount() {
+		return points != null ? points.length : 0;
+	}
+
+	@Override
+	public Iterator<ContactPoint> iterator() {
+		return new Iterator<ContactPoint>() {
+			int index;
+
+			@Override
+			public boolean hasNext() {
+				return points != null && index < points.length;
+			}
+
+			@Override
+			public ContactPoint next() {
+				return points[index++];
+			}
+		};
 	}
 }

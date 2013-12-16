@@ -22,57 +22,52 @@
 
 package org.physics.jipmunk;
 
-/** @author jobernolte */
-class Contact {
-	/** The position of the contact. */
-	Vector2f p = Util.cpvzero();
-	/** The normal of the contact. */
-	Vector2f n = Util.cpvzero();
-	/** The depth of the contact. */
-	float dist;
+/**
+ * @author jobernolte
+ */
+public class CollisionID {
+	private int value;
 
-	Vector2f r1 = Util.cpvzero(), r2 = Util.cpvzero();
-	float nMass, tMass, bounce;
-
-	float jnAcc, jtAcc, jBias;
-	float bias;
-
-	long hash;
-
-	Contact init(Vector2f p, Vector2f n, float dist, long hash) {
-		this.p.set(p);
-		this.n.set(n);
-		this.dist = dist;
-
-		this.jnAcc = 0.0f;
-		this.jtAcc = 0.0f;
-		this.jBias = 0.0f;
-
-		this.hash = hash;
-
-		return this;
+	public CollisionID(int value) {
+		this.value = value;
 	}
 
-	static void cpContactInit(Contact con, Vector2f p, Vector2f n, float dist, long hash) {
-		con.init(p, n, dist, hash);
+	public CollisionID(final CollisionID id) {
+		this.value = id.value;
 	}
 
-	public Vector2f getPoint() {
-		return p;
+	public int getValue() {
+		return value;
 	}
 
-	public Vector2f getNormal() {
-		return n;
+	public void setValue(int value) {
+		this.value = value;
 	}
 
-	public float getDistance() {
-		return dist;
+	@Override
+	public boolean equals(Object o) {
+		if (this == o) {
+			return true;
+		}
+		if (o == null || getClass() != o.getClass()) {
+			return false;
+		}
+
+		CollisionID that = (CollisionID) o;
+
+		return value == that.value;
+
 	}
 
-	public Contact set(ContactPoint contactPoint) {
-		this.p.set(contactPoint.point);
-		this.n.set(contactPoint.normal);
-		this.dist = contactPoint.dist;
-		return this;
+	@Override
+	public int hashCode() {
+		return value;
+	}
+
+	@Override
+	public String toString() {
+		return "CollisionID{" +
+				"value=" + value +
+				'}';
 	}
 }

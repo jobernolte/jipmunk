@@ -23,7 +23,15 @@
 package org.physics.jipmunk;
 
 /** @author jobernolte */
-class SplittingPlane {
-	Vector2f n;
-	float d;
+public class SplittingPlane {
+	public Vector2f v0;
+	public Vector2f n;
+
+	@Override
+	public String toString() {
+		return "SplittingPlane{" +
+				"v0=" + v0 +
+				", n=" + n +
+				'}';
+	}
 }

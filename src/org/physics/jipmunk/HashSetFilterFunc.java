@@ -23,6 +23,7 @@
 package org.physics.jipmunk;
 
 /** @author jobernolte */
+@FunctionalInterface
 interface HashSetFilterFunc<T> {
 
 	boolean filter(T value);

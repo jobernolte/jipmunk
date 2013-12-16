@@ -23,6 +23,7 @@
 package org.physics.jipmunk;
 
 /** @author jobernolte */
+@FunctionalInterface
 interface SpatialIndexBBFunc<T> {
 	BB apply(T obj);
 }

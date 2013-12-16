@@ -1,13 +1,6 @@
 package org.physics.jipmunk.examples;
 
-import org.physics.jipmunk.Body;
-import org.physics.jipmunk.CircleShape;
-import org.physics.jipmunk.PolyShape;
-import org.physics.jipmunk.SegmentShape;
-import org.physics.jipmunk.Shape;
-import org.physics.jipmunk.Space;
-import org.physics.jipmunk.Util;
-import org.physics.jipmunk.Vector2f;
+import org.physics.jipmunk.*;
 import org.physics.jipmunk.constraints.GearJoint;
 import org.physics.jipmunk.constraints.PinJoint;
 import org.physics.jipmunk.constraints.PivotJoint;
@@ -20,7 +13,6 @@ import static org.physics.jipmunk.Util.cpvzero;
 public class Pump extends ExampleBase {
 	private Space space;
 	private SimpleMotor motor;
-
 	private final static float M_PI_2 = (float) (Math.PI / 2);
 	private final static int numBalls = 5;
 	private Body[] balls = new Body[numBalls];
@@ -31,7 +23,7 @@ public class Pump extends ExampleBase {
 
 		Shape shape = space.addShape(new CircleShape(body, 30, cpvzero()));
 		shape.setElasticity(0.0f);
-		shape.setFrictionCoefficient(0.5f);
+		shape.setFriction(0.5f);
 
 		return body;
 	}
@@ -47,53 +39,48 @@ public class Pump extends ExampleBase {
 		// beveling all of the line segments slightly helps prevent things from getting stuck on cracks
 		shape = space.addShape(new SegmentShape(staticBody, cpv(-256, 16), cpv(-256, 300), 2.0f));
 		shape.setElasticity(0.0f);
-		shape.setFrictionCoefficient(0.5f);
-		shape.setLayers(NOT_GRABABLE_MASK);
+		shape.setFriction(0.5f);
+		shape.setFilter(NOT_GRABABLE_FILTER);
 
 		shape = space.addShape(new SegmentShape(staticBody, cpv(-256, 16), cpv(-192, 0), 2.0f));
 		shape.setElasticity(0.0f);
-		shape.setFrictionCoefficient(0.5f);
-		shape.setLayers(NOT_GRABABLE_MASK);
+		shape.setFriction(0.5f);
+		shape.setFilter(NOT_GRABABLE_FILTER);
 
 		shape = space.addShape(new SegmentShape(staticBody, cpv(-192, 0), cpv(-192, -64), 2.0f));
 		shape.setElasticity(0.0f);
-		shape.setFrictionCoefficient(0.5f);
-		shape.setLayers(NOT_GRABABLE_MASK);
+		shape.setFriction(0.5f);
+		shape.setFilter(NOT_GRABABLE_FILTER);
 
 		shape = space.addShape(new SegmentShape(staticBody, cpv(-128, -64), cpv(-128, 144), 2.0f));
 		shape.setElasticity(0.0f);
-		shape.setFrictionCoefficient(0.5f);
-		shape.setLayers(NOT_GRABABLE_MASK);
+		shape.setFriction(0.5f);
+		shape.setFilter(NOT_GRABABLE_FILTER);
 
 		shape = space.addShape(new SegmentShape(staticBody, cpv(-192, 80), cpv(-192, 176), 2.0f));
 		shape.setElasticity(0.0f);
-		shape.setFrictionCoefficient(0.5f);
-		shape.setLayers(NOT_GRABABLE_MASK);
+		shape.setFriction(0.5f);
+		shape.setFilter(NOT_GRABABLE_FILTER);
 
 		shape = space.addShape(new SegmentShape(staticBody, cpv(-192, 176), cpv(-128, 240), 2.0f));
 		shape.setElasticity(0.0f);
-		shape.setFrictionCoefficient(0.5f);
-		shape.setLayers(NOT_GRABABLE_MASK);
+		shape.setFriction(0.5f);
+		shape.setFilter(NOT_GRABABLE_FILTER);
 
 		shape = space.addShape(new SegmentShape(staticBody, cpv(-128, 144), cpv(192, 64), 2.0f));
 		shape.setElasticity(0.0f);
-		shape.setFrictionCoefficient(0.5f);
-		shape.setLayers(NOT_GRABABLE_MASK);
+		shape.setFriction(0.5f);
+		shape.setFilter(NOT_GRABABLE_FILTER);
 
-		Vector2f verts[] = {
-				cpv(-30, -80),
-				cpv(-30, 80),
-				cpv(30, 64),
-				cpv(30, -80),
-		};
+		Vector2f verts[] = { cpv(-30, -80), cpv(-30, 80), cpv(30, 64), cpv(30, -80), };
 
 		Body plunger = space.addBody(new Body(1.0f, Float.POSITIVE_INFINITY));
 		plunger.setPosition(cpv(-160, -80));
 
-		shape = space.addShape(new PolyShape(plunger, verts, 0, 4, cpvzero()));
+		shape = space.addShape(new PolyShape(plunger, 0.0f, verts, 0, 4));
 		shape.setElasticity(1.0f);
-		shape.setFrictionCoefficient(0.5f);
-		shape.setLayers(1);
+		shape.setFriction(0.5f);
+		shape.setFilter(new ShapeFilter(Constants.NO_GROUP, 1, 1));
 
 		// add balls to hopper
 		for (int i = 0; i < numBalls; i++) {
@@ -106,7 +93,7 @@ public class Pump extends ExampleBase {
 		smallGear.setAngleInRadians(-M_PI_2);
 
 		shape = space.addShape(new CircleShape(smallGear, 80.0f, cpvzero()));
-		shape.setLayers(0);
+		shape.setFilter(ShapeFilter.NONE);
 
 		space.addConstraint(new PivotJoint(staticBody, smallGear, cpv(-160, -160), cpvzero()));
 
@@ -116,7 +103,7 @@ public class Pump extends ExampleBase {
 		bigGear.setAngleInRadians(M_PI_2);
 
 		shape = space.addShape(new CircleShape(bigGear, 160.0f, cpvzero()));
-		shape.setLayers(0);
+		shape.setFilter(ShapeFilter.NONE);
 
 		space.addConstraint(new PivotJoint(staticBody, bigGear, cpv(80, -160), cpvzero()));
 
@@ -128,15 +115,15 @@ public class Pump extends ExampleBase {
 		// feeder mechanism
 		float bottom = -300.0f;
 		float top = 32.0f;
-		Body feeder = space.addBody(new Body(1.0f, Util.momentForSegment(1.0f, cpv(-224.0f, bottom), cpv(-224.0f,
-				top))));
+		Body feeder = space.addBody(
+				new Body(1.0f, Util.momentForSegment(1.0f, cpv(-224.0f, bottom), cpv(-224.0f, top), 0.0f)));
 		feeder.setPosition(cpv(-224, (bottom + top) / 2.0f));
 
 		float len = top - bottom;
 		space.addShape(new SegmentShape(feeder, cpv(0.0f, len / 2.0f), cpv(0.0f, -len / 2.0f), 20.0f));
 
 		space.addConstraint(new PivotJoint(staticBody, feeder, cpv(-224.0f, bottom), cpv(0.0f, -len / 2.0f)));
-		Vector2f anchr = feeder.world2Local(cpv(-224.0f, -160.0f));
+		Vector2f anchr = feeder.worldToLocal(cpv(-224.0f, -160.0f));
 		space.addConstraint(new PinJoint(feeder, smallGear, anchr, cpv(0.0f, 80.0f)));
 
 		// motorize the second gear

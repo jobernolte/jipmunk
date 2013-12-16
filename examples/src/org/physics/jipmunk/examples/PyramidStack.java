@@ -31,6 +31,7 @@ import org.physics.jipmunk.Space;
 import org.physics.jipmunk.Util;
 
 import static org.physics.jipmunk.Util.cpv;
+import static org.physics.jipmunk.Util.cpvzero;
 
 /** @author jobernolte */
 public class PyramidStack extends ExampleBase {
@@ -56,39 +57,43 @@ public class PyramidStack extends ExampleBase {
 
 		shape = space.addShape(new SegmentShape(staticBody, cpv(-hw, -hh), cpv(-hw, hh), 0.0f));
 		shape.setElasticity(1.0f);
-		shape.setFrictionCoefficient(1.0f);
-		shape.setLayers(NOT_GRABABLE_MASK);
+		shape.setFriction(1.0f);
+		shape.setFilter(NOT_GRABABLE_FILTER);
 
 		shape = space.addShape(new SegmentShape(staticBody, cpv(hw, -hh), cpv(hw, hh), 0.0f));
 		shape.setElasticity(1.0f);
-		shape.setFrictionCoefficient(1.0f);
-		shape.setLayers(NOT_GRABABLE_MASK);
+		shape.setFriction(1.0f);
+		shape.setFilter(NOT_GRABABLE_FILTER);
 
 		shape = space.addShape(new SegmentShape(staticBody, cpv(-hw, -hh), cpv(hw, -hh), 0.0f));
 		shape.setElasticity(1.0f);
-		shape.setFrictionCoefficient(1.0f);
-		shape.setLayers(NOT_GRABABLE_MASK);
+		shape.setFriction(1.0f);
+		shape.setFilter(NOT_GRABABLE_FILTER);
 
 		// Add lots of boxes.
-		for (int i = 0; i < 14; i++) {
+		for (int i = 0; i < 1; i++) {
 			for (int j = 0; j <= i; j++) {
 				body = space.addBody(new Body(1.0f, Util.momentForBox(1.0f, 30.0f, 30.0f)));
+				//body = space.addBody(new Body(1.0f, Util.momentForCircle(1.0f, 30.0f, 30.0f, cpvzero())));
 				body.setPosition(cpv(j * 32 - i * 16, 300 - i * 32));
 
-				shape = space.addShape(PolyShape.createBox(body, 30.0f, 30.0f));
+				shape = space.addShape(PolyShape.createBox(body, 30.0f, 30.0f, 0.5f));
+				//shape = space.addShape(new CircleShape(body, 30.0f, cpvzero()));
 				shape.setElasticity(0.0f);
-				shape.setFrictionCoefficient(0.8f);
+				shape.setFriction(0.8f);
 			}
 		}
 
 		// Add a ball to make things more interesting
 		float radius = 15.0f;
-		body = space.addBody(new Body(10.0f, Util.momentForCircle(10.0f, 0.0f, radius, Util.cpvzero())));
+		// body = space.addBody(new Body(10.0f, Util.momentForCircle(10.0f, 0.0f, radius, Util.cpvzero())));
+		body = space.addBody(new Body(1.0f, Util.momentForBox(1.0f, 30.0f, 30.0f)));
 		body.setPosition(cpv(0, -hh + radius + 5));
 
-		shape = space.addShape(new CircleShape(body, radius, Util.cpvzero()));
+		//shape = space.addShape(new CircleShape(body, radius, Util.cpvzero()));
+		shape = space.addShape(PolyShape.createBox(body, 30.0f, 30.0f, 0.5f));
 		shape.setElasticity(0.0f);
-		shape.setFrictionCoefficient(0.9f);
+		shape.setFriction(0.9f);
 
 		return space;
 	}

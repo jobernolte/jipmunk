@@ -25,23 +25,17 @@ package org.physics.jipmunk;
 import java.util.Arrays;
 
 import static org.physics.jipmunk.Assert.cpAssertSoft;
-import static org.physics.jipmunk.Util.cpBBArea;
-import static org.physics.jipmunk.Util.cpBBIntersectsSegment;
-import static org.physics.jipmunk.Util.cpBBMergedArea;
-import static org.physics.jipmunk.Util.cpfmax;
-import static org.physics.jipmunk.Util.cpfmin;
-import static org.physics.jipmunk.Util.cpvmult;
+import static org.physics.jipmunk.Util.*;
 
 /** @author jobernolte */
 class BBTree<T> extends SpatialIndex<T> {
+
 	static class Node<T> {
 		T obj;
 		BB bb;
 		Node<T> parent;
-
 		// Internal nodes
 		Node<T> a, b;
-
 		int stamp;
 		Pair<T> pairs;
 
@@ -68,38 +62,38 @@ class BBTree<T> extends SpatialIndex<T> {
 
 	static class Pair<T> {
 		Thread<T> a, b;
+		CollisionID id;
 
-		void init(Thread<T> a, Thread<T> b) {
+		void init(Thread<T> a, Thread<T> b, CollisionID id) {
 			this.a = a;
 			this.b = b;
+			this.id = id;
 		}
 
 		void reset() {
 			this.a = this.b = null;
+			this.id = null;
 		}
 	}
 
 	BBTreeVelocityFunc<T> velocityFunc;
-
 	//cpHashSet *leaves;
-	IntHashMap<Node<T>> leaves = new IntHashMap<Node<T>>();
+	IntHashMap<Node<T>> leaves = new IntHashMap<>();
 	Node<T> root;
-
 	Pool<Node<T>> pooledNodes = new Pool<Node<T>>(10000) {
 		@Override
 		protected Node<T> create() {
-			return new Node<T>();
+			return new Node<>();
 		}
 	};
 	Pool<Pair<T>> pooledPairs = new Pool<Pair<T>>(10000) {
 		@Override
 		protected Pair<T> create() {
-			return new Pair<T>();
+			return new Pair<>();
 		}
 	};
 	//cpArray*allocatedBuffers;
 	// List<Pair<T>> allocatedBuffers = new ArrayList<Pair<T>>();
-
 	int stamp;
 
 	static <T> BB GetBB(BBTree<T> tree, T obj) {
@@ -111,11 +105,9 @@ class BBTree<T> extends SpatialIndex<T> {
 			float x = (bb.r - bb.l) * coef;
 			float y = (bb.t - bb.b) * coef;
 
-			Vector2f v = cpvmult(velocityFunc.velocity(obj), 0.1f);
-			return new BB(bb.l + cpfmin(-x, v.getX()),
-					bb.b + cpfmin(-y, v.getY()),
-					bb.r + cpfmax(x, v.getX()),
-					bb.t + cpfmax(y, v.getY()));
+			Vector2f v = cpvmult(velocityFunc.apply(obj), 0.1f);
+			return new BB(bb.l + cpfmin(-x, v.getX()), bb.b + cpfmin(-y, v.getY()), bb.r + cpfmax(x, v.getX()),
+						  bb.t + cpfmax(y, v.getY()));
 		} else {
 			return bb;
 		}
@@ -172,13 +164,17 @@ class BBTree<T> extends SpatialIndex<T> {
 		Pair<T> prev = thread.prev;
 
 		if (next != null) {
-			if (next.a.leaf == thread.leaf) next.a.prev = prev;
-			else next.b.prev = prev;
+			if (next.a.leaf == thread.leaf)
+				next.a.prev = prev;
+			else
+				next.b.prev = prev;
 		}
 
 		if (prev != null) {
-			if (prev.a.leaf == thread.leaf) prev.a.next = next;
-			else prev.b.next = next;
+			if (prev.a.leaf == thread.leaf)
+				prev.a.next = next;
+			else
+				prev.b.next = next;
 		} else {
 			thread.leaf.pairs = next;
 		}
@@ -206,36 +202,39 @@ class BBTree<T> extends SpatialIndex<T> {
 	static <T> void PairInsert(Node<T> a, Node<T> b, BBTree<T> tree) {
 		Pair<T> nextA = a.pairs, nextB = b.pairs;
 		Pair<T> pair = PairFromPool(tree);
-		//Pair temp = new Pair(new Thread(null, a, nextA), new Thread(null, b, nextB));
-		pair.init(new Thread<T>(null, a, nextA), new Thread<T>(null, b, nextB));
+		pair.init(new Thread<>(null, a, nextA), new Thread<>(null, b, nextB), new CollisionID(0));
 
 		a.pairs = b.pairs = pair;
 		//*pair = temp;
 
 		if (nextA != null) {
-			if (nextA.a.leaf == a) nextA.a.prev = pair;
-			else nextA.b.prev = pair;
+			if (nextA.a.leaf == a)
+				nextA.a.prev = pair;
+			else
+				nextA.b.prev = pair;
 		}
 
 		if (nextB != null) {
-			if (nextB.a.leaf == b) nextB.a.prev = pair;
-			else nextB.b.prev = pair;
+			if (nextB.a.leaf == b)
+				nextB.a.prev = pair;
+			else
+				nextB.b.prev = pair;
 		}
 	}
 
 	static <T> void NodeRecycle(BBTree<T> tree, Node<T> node) {
-		/*node.parent = tree.pooledNodes;
-			  tree.pooledNodes = node;*/
+		/*sleeping.parent = tree.pooledNodes;
+			  tree.pooledNodes = sleeping;*/
 		node.reset();
 		tree.pooledNodes.free(node);
 	}
 
 	static <T> Node<T> NodeFromPool(BBTree<T> tree) {
-		/*Node node = tree.pooledNodes;
+		/*Node sleeping = tree.pooledNodes;
 		
-			  if(node){
-				  tree.pooledNodes = node.parent;
-				  return node;
+			  if(sleeping){
+				  tree.pooledNodes = sleeping.parent;
+				  return sleeping;
 			  } else {
 				  // Pool is exhausted, make more
 				  int count = CP_BUFFER_BYTES/sizeof(Node);
@@ -299,7 +298,11 @@ class BBTree<T> extends SpatialIndex<T> {
 		}
 	}
 
-	static <T> Node<T> SubtreeInsert(Node<T> subtree, Node<T> leaf, BBTree<T> tree) {
+	static float cpBBProximity(BB a, BB b) {
+		return cpfabs(a.l + a.r - b.l - b.r) + cpfabs(a.b + a.t - b.b - b.t);
+	}
+
+	Node<T> SubtreeInsert(Node<T> subtree, Node<T> leaf, BBTree<T> tree) {
 		if (subtree == null) {
 			return leaf;
 		} else if (NodeIsLeaf(subtree)) {
@@ -308,8 +311,10 @@ class BBTree<T> extends SpatialIndex<T> {
 			float cost_a = cpBBArea(subtree.b.bb) + cpBBMergedArea(subtree.a.bb, leaf.bb);
 			float cost_b = cpBBArea(subtree.a.bb) + cpBBMergedArea(subtree.b.bb, leaf.bb);
 
-//		float cost_a = cpBBProximity(subtree.a.bb, leaf.bb);
-//		float cost_b = cpBBProximity(subtree.b.bb, leaf.bb);
+			if (cost_a == cost_b) {
+				cost_a = cpBBProximity(subtree.a.bb, leaf.bb);
+				cost_b = cpBBProximity(subtree.b.bb, leaf.bb);
+			}
 
 			if (cost_b < cost_a) {
 				NodeSetB(subtree, SubtreeInsert(subtree.b, leaf, tree));
@@ -322,26 +327,25 @@ class BBTree<T> extends SpatialIndex<T> {
 		}
 	}
 
-	static <T> void SubtreeQuery(Node<T> subtree, BB bb, SpatialIndexQueryFunc<T> func) {
+	void SubtreeQuery(Node<T> subtree, T obj, BB bb, SpatialIndexQueryFunc<T> func) {
 		if (subtree.bb.intersects(bb)) {
 			if (NodeIsLeaf(subtree)) {
-				func.apply(subtree.obj);
+				func.apply(obj, subtree.obj, new CollisionID(0));
 			} else {
-				SubtreeQuery(subtree.a, bb, func);
-				SubtreeQuery(subtree.b, bb, func);
+				SubtreeQuery(subtree.a, obj, bb, func);
+				SubtreeQuery(subtree.b, obj, bb, func);
 			}
 		}
 	}
 
 	// TODO Needs early exit optimization for ray queries
-	static <T> void SubtreeSegmentQuery(Node<T> subtree, Vector2f a, Vector2f b,
-			SpatialIndexSegmentQueryFunc<T> func) {
+	void SubtreeSegmentQuery(Node<T> subtree, T obj, Vector2f a, Vector2f b, SpatialIndexSegmentQueryFunc<T> func) {
 		if (cpBBIntersectsSegment(subtree.bb, a, b)) {
 			if (NodeIsLeaf(subtree)) {
-				func.apply(subtree.obj);
+				func.apply(obj, subtree.obj);
 			} else {
-				SubtreeSegmentQuery(subtree.a, a, b, func);
-				SubtreeSegmentQuery(subtree.b, a, b, func);
+				SubtreeSegmentQuery(subtree.a, obj, a, b, func);
+				SubtreeSegmentQuery(subtree.b, obj, a, b, func);
 			}
 		}
 	}
@@ -374,9 +378,9 @@ class BBTree<T> extends SpatialIndex<T> {
 	static class MarkContext<V> {
 		BBTree<V> tree;
 		Node<V> staticRoot;
-		SpatialReIndexQueryFunc<V> func;
+		SpatialIndexQueryFunc<V> func;
 
-		MarkContext(BBTree<V> tree, Node<V> staticRoot, SpatialReIndexQueryFunc<V> func) {
+		MarkContext(BBTree<V> tree, Node<V> staticRoot, SpatialIndexQueryFunc<V> func) {
 			this.tree = tree;
 			this.staticRoot = staticRoot;
 			this.func = func;
@@ -389,8 +393,10 @@ class BBTree<T> extends SpatialIndex<T> {
 				if (left) {
 					PairInsert(leaf, subtree, context.tree);
 				} else {
-					if (subtree.stamp < leaf.stamp) PairInsert(subtree, leaf, context.tree);
-					context.func.apply(leaf.obj, subtree.obj);
+					if (subtree.stamp < leaf.stamp) {
+						PairInsert(subtree, leaf, context.tree);
+					}
+					context.func.apply(leaf.obj, subtree.obj, new CollisionID(0));
 				}
 			} else {
 				MarkLeafQuery(subtree.a, leaf, left, context);
@@ -403,7 +409,9 @@ class BBTree<T> extends SpatialIndex<T> {
 		BBTree<T> tree = context.tree;
 		if (leaf.stamp == GetStamp(tree)) {
 			Node<T> staticRoot = context.staticRoot;
-			if (staticRoot != null) MarkLeafQuery(staticRoot, leaf, false, context);
+			if (staticRoot != null) {
+				MarkLeafQuery(staticRoot, leaf, false, context);
+			}
 
 			for (Node<T> node = leaf; node.parent != null; node = node.parent) {
 				if (node == node.parent.a) {
@@ -416,7 +424,7 @@ class BBTree<T> extends SpatialIndex<T> {
 			Pair<T> pair = leaf.pairs;
 			while (pair != null) {
 				if (leaf == pair.b.leaf) {
-					context.func.apply(pair.a.leaf.obj, leaf.obj);
+					pair.id = context.func.apply(pair.a.leaf.obj, leaf.obj, pair.id);
 					pair = pair.b.next;
 				} else {
 					pair = pair.a.next;
@@ -434,7 +442,7 @@ class BBTree<T> extends SpatialIndex<T> {
 		}
 	}
 
-	static <T> Node<T> LeafNew(BBTree<T> tree, T obj, BB bb) {
+	static <T> Node<T> LeafNew(BBTree<T> tree, T obj) {
 		Node<T> node = NodeFromPool(tree);
 		node.obj = obj;
 		node.bb = GetBB(tree, obj);
@@ -446,7 +454,7 @@ class BBTree<T> extends SpatialIndex<T> {
 		return node;
 	}
 
-	static <T> boolean LeafUpdate(Node<T> leaf, BBTree<T> tree) {
+	boolean LeafUpdate(Node<T> leaf, BBTree<T> tree) {
 		Node<T> root = tree.root;
 		BB bb = tree.bbfunc.apply(leaf.obj);
 
@@ -460,9 +468,9 @@ class BBTree<T> extends SpatialIndex<T> {
 			leaf.stamp = GetStamp(tree);
 
 			return true;
+		} else {
+			return false;
 		}
-
-		return false;
 	}
 
 	/*static SpatialIndexQueryFunc<T> voidQueryFunc = new SpatialIndexQueryFunc<T>() {
@@ -471,22 +479,18 @@ class BBTree<T> extends SpatialIndex<T> {
 			}
 		};*/
 
-	static <T> void LeafAddPairs(Node<T> leaf, BBTree<T> tree) {
+	void LeafAddPairs(Node<T> leaf, BBTree<T> tree) {
 		SpatialIndex<T> dynamicIndex = tree.dynamicIndex;
 		if (dynamicIndex != null) {
 			Node<T> dynamicRoot = GetRootIfTree(dynamicIndex);
 			if (dynamicRoot != null) {
 				BBTree<T> dynamicTree = GetTree(dynamicIndex);
-				MarkContext<T> context = new MarkContext<T>(dynamicTree, null, null);
+				MarkContext<T> context = new MarkContext<>(dynamicTree, null, null);
 				MarkLeafQuery(dynamicRoot, leaf, true, context);
 			}
 		} else {
 			Node<T> staticRoot = GetRootIfTree(tree.staticIndex);
-			MarkContext<T> context = new MarkContext<T>(tree, staticRoot, new SpatialReIndexQueryFunc<T>() {
-				@Override
-				public void apply(T obj1, T obj2) {
-				}
-			});
+			MarkContext<T> context = new MarkContext<>(tree, staticRoot, (obj1, obj2, id) -> id);
 			MarkLeaf(leaf, context);
 		}
 	}
@@ -503,9 +507,9 @@ class BBTree<T> extends SpatialIndex<T> {
  }
  
  static int
- leafSetEql(Object obj, Node node)
+ leafSetEql(Object obj, Node sleeping)
  {
-	 return (obj == node.obj);
+	 return (obj == sleeping.obj);
  }
  
  static Object 
@@ -552,11 +556,11 @@ cpBBTreeDestroy(BBTree tree)
 	cpArrayFree(tree.allocatedBuffers);
 } */
 
-	static <T> void cpBBTreeInsert(BBTree<T> tree, T obj, int hashid) {
+	void cpBBTreeInsert(BBTree<T> tree, T obj, int hashid) {
 		//Node leaf = (Node) cpHashSetInsert(tree.leaves, hashid, obj, tree, (cpHashSetTransFunc) leafSetTrans);
 		Node<T> leaf = tree.leaves.get(hashid);
 		if (leaf == null) {
-			leaf = LeafNew(tree, obj, tree.bbfunc.apply(obj));
+			leaf = LeafNew(tree, obj);
 			tree.leaves.put(hashid, leaf);
 		}
 
@@ -582,10 +586,12 @@ cpBBTreeDestroy(BBTree tree)
 		return tree.leaves.containsKey(hashid);
 	}
 
-	static <T> void cpBBTreeReindexQuery(BBTree<T> tree, SpatialReIndexQueryFunc<T> func) {
-		if (tree.root == null) return;
+	void cpBBTreeReindexQuery(BBTree<T> tree, SpatialIndexQueryFunc<T> func) {
+		if (tree.root == null) {
+			return;
+		}
 
-		// LeafUpdate() may modify tree.root. Don't cache it.
+		// LeafUpdate() may modify tree.root. Don'alpha cache it.
 		// cpHashSetEach(tree.leaves, (HashSetIteratorFunc) LeafUpdate, tree);
 		for (Node<T> node : tree.leaves.values()) {
 			LeafUpdate(node, tree);
@@ -594,7 +600,7 @@ cpBBTreeDestroy(BBTree tree)
 		SpatialIndex<T> staticIndex = tree.staticIndex;
 		Node<T> staticRoot = GetRootIfTree(staticIndex);
 
-		MarkContext<T> context = new MarkContext<T>(tree, staticRoot, func);
+		MarkContext<T> context = new MarkContext<>(tree, staticRoot, func);
 		MarkSubtree(tree.root, context);
 		if (staticIndex != null && staticRoot == null) {
 			collideStatic(tree, staticIndex, func);
@@ -603,44 +609,32 @@ cpBBTreeDestroy(BBTree tree)
 		IncrementStamp(tree);
 	}
 
-	static <T> void cpBBTreeReindex(BBTree<T> tree) {
-		cpBBTreeReindexQuery(tree, new SpatialReIndexQueryFunc<T>() {
-			@Override
-			public void apply(T obj1, T obj2) {
-			}
-		});
+	void cpBBTreeReindex(BBTree<T> tree) {
+		cpBBTreeReindexQuery(tree, (obj1, obj2, id) -> id);
 	}
 
-	static <T> void cpBBTreeReindexObject(BBTree<T> tree, T obj, int hashid) {
-		//Node leaf = (Node )cpHashSetFind(tree.leaves, hashid, obj);
+	void cpBBTreeReindexObject(BBTree<T> tree, T obj, int hashid) {
 		Node<T> leaf = tree.leaves.get(hashid);
 		if (leaf != null) {
-			if (LeafUpdate(leaf, tree)) LeafAddPairs(leaf, tree);
+			if (LeafUpdate(leaf, tree)) {
+				LeafAddPairs(leaf, tree);
+			}
 			IncrementStamp(tree);
 		}
 	}
 
-	static <T> void cpBBTreePointQuery(BBTree<T> tree, Vector2f point, SpatialIndexQueryFunc<T> func) {
-		Node<T> root = tree.root;
-		if (root != null) SubtreeQuery(root, new BB(point.getX(), point.getY(), point.getX(), point.getY()), func);
+	void cpBBTreeQuery(BBTree<T> tree, T obj, BB bb, SpatialIndexQueryFunc<T> func) {
+		if (tree.root != null) {
+			SubtreeQuery(tree.root, obj, bb, func);
+		}
 	}
 
-	static <T> void cpBBTreeSegmentQuery(BBTree<T> tree, Vector2f a, Vector2f b, float t_exit,
-			SpatialIndexSegmentQueryFunc<T> func) {
-		Node<T> root = tree.root;
-		if (root != null) SubtreeSegmentQuery(root, a, b, func);
-	}
-
-	static <T> void cpBBTreeQuery(BBTree<T> tree, BB bb, SpatialIndexQueryFunc<T> func) {
-		if (tree.root != null) SubtreeQuery(tree.root, bb, func);
-	}
-
-	static <T> int cpBBTreeCount(BBTree<T> tree) {
+	int cpBBTreeCount(BBTree<T> tree) {
 		//return cpHashSetCount(tree.leaves);
 		return tree.leaves.size();
 	}
 
-	static <T> void cpBBTreeEach(BBTree<T> tree, final SpatialIndexIteratorFunc<T> func) {
+	void cpBBTreeEach(BBTree<T> tree, final SpatialIndexIteratorFunc<T> func) {
 		for (Node<T> leaf : tree.leaves.values()) {
 			func.visit(leaf.obj);
 		}
@@ -650,12 +644,12 @@ cpBBTreeDestroy(BBTree tree)
 		return (a < b ? -1 : (b < a ? 1 : 0));
 	}
 
-	/*static void fillNodeArray(Node node, Node **cursor) {
-			( **cursor)=node;
+	/*static void fillNodeArray(Node sleeping, Node **cursor) {
+			( **cursor)=sleeping;
 			( * cursor)++;
 		}*/
 
-	static <T> Node<T> partitionNodes(BBTree<T> tree, Node<T>[] nodes, int index, int count) {
+	Node<T> partitionNodes(BBTree<T> tree, Node<T>[] nodes, int index, int count) {
 		if (count == 1) {
 			return nodes[index + 0];
 		} else if (count == 2) {
@@ -664,7 +658,8 @@ cpBBTreeDestroy(BBTree tree)
 
 		// Find the AABB for these nodes
 		BB bb = nodes[index + 0].bb;
-		for (int i = 1; i < count; i++) bb = bb.merge(nodes[index + i].bb);
+		for (int i = 1; i < count; i++)
+			bb = bb.merge(nodes[index + i].bb);
 
 		// Split it on it's longest axis
 		boolean splitWidth = (bb.r - bb.l > bb.t - bb.b);
@@ -691,15 +686,17 @@ cpBBTreeDestroy(BBTree tree)
 
 		// Generate the child BBs
 		BB a = bb, b = bb;
-		if (splitWidth) a.r = b.l = split;
-		else a.t = b.b = split;
+		if (splitWidth)
+			a.r = b.l = split;
+		else
+			a.t = b.b = split;
 
 		// Partition the nodes
 		int right = count;
 		for (int left = 0; left < right; ) {
 			Node<T> node = nodes[index + left];
 			if (cpBBMergedArea(node.bb, b) < cpBBMergedArea(node.bb, a)) {
-//		if(cpBBProximity(node.bb, b) < cpBBProximity(node.bb, a)){
+				//		if(cpBBProximity(sleeping.bb, b) < cpBBProximity(sleeping.bb, a)){
 				right--;
 				nodes[index + left] = nodes[index + right];
 				nodes[index + right] = node;
@@ -716,40 +713,38 @@ cpBBTreeDestroy(BBTree tree)
 			return node;
 		}
 
-		// Recurse and build the node!
-		return NodeNew(tree,
-				partitionNodes(tree, nodes, index, right),
-				partitionNodes(tree, nodes, index + right, count - right)
-		);
+		// Recurse and build the sleeping!
+		return NodeNew(tree, partitionNodes(tree, nodes, index, right),
+					   partitionNodes(tree, nodes, index + right, count - right));
 	}
 
 	public static <T> T[] newArray(Class<T[]> type, int size) {
 		return type.cast(java.lang.reflect.Array.newInstance(type.getComponentType(), size));
 	}
 
-	static <T> void cpBBTreeOptimize(SpatialIndex<T> index) {
-		BBTree<T> tree = (BBTree<T>) index;
-		Node<T> root = tree.root;
-		if (root == null) return;
+	public void optimize() {
+		Node<T> root = this.root;
+		if (root == null) {
+			return;
+		}
 
-		int count = cpBBTreeCount(tree);
+		int count = cpBBTreeCount(this);
 		/*Node * nodes = (Node *)
 				cpcalloc(count, sizeof(Node));
 				Node * cursor = nodes;
 		
 				cpHashSetEach(tree.leaves, (cpHashSetIteratorFunc) fillNodeArray, & cursor);*/
 		//java.lang.reflect.Array.newInstance()
-		@SuppressWarnings("unchecked")
-		Node<T>[] nodes = (Node<T>[]) newArray(Node[].class, tree.leaves.size());
+		@SuppressWarnings("unchecked") Node<T>[] nodes = (Node<T>[]) newArray(Node[].class, this.leaves.size());
 		int i = 0;
-		for (Node<T> leaf : tree.leaves.values()) {
-			nodes[i] = tree.pooledNodes.alloc();
+		for (Node<T> leaf : this.leaves.values()) {
+			nodes[i] = this.pooledNodes.alloc();
 			nodes[i].bb = leaf.bb;
 			nodes[i].obj = leaf.obj;
 		}
 
-		SubtreeRecycle(tree, root);
-		tree.root = partitionNodes(tree, nodes, 0, count);
+		SubtreeRecycle(this, root);
+		this.root = partitionNodes(this, nodes, 0, count);
 		//cpfree(nodes);
 	}
 
@@ -793,17 +788,20 @@ cpBBTreeDestroy(BBTree tree)
 	}
 
 	@Override
-	public void reindexQuery(SpatialReIndexQueryFunc<T> func) {
+	public void reindexQuery(SpatialIndexQueryFunc<T> func) {
 		cpBBTreeReindexQuery(this, func);
 	}
 
 	@Override
-	public void segmentQuery(Vector2f a, Vector2f b, float exit, SpatialIndexSegmentQueryFunc<T> func) {
-		cpBBTreeSegmentQuery(this, a, b, exit, func);
+	public void segmentQuery(T obj, Vector2f a, Vector2f b, float exit, SpatialIndexSegmentQueryFunc<T> func) {
+		Node<T> root = this.root;
+		if (root != null) {
+			SubtreeSegmentQuery(root, obj, a, b, func);
+		}
 	}
 
 	@Override
-	public void query(BB bb, SpatialIndexQueryFunc<T> func) {
-		cpBBTreeQuery(this, bb, func);
+	public void query(T obj, BB bb, SpatialIndexQueryFunc<T> func) {
+		cpBBTreeQuery(this, obj, bb, func);
 	}
 }

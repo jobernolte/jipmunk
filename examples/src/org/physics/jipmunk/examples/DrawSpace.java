@@ -23,8 +23,6 @@
 package org.physics.jipmunk.examples;
 
 import java.awt.*;
-import java.nio.ByteBuffer;
-import java.nio.ByteOrder;
 import java.nio.FloatBuffer;
 import javax.media.opengl.GL;
 import javax.media.opengl.GL2;
@@ -260,7 +258,7 @@ public class DrawSpace {
 			gl.glPushMatrix();
 			{
 				Vector2f d = Util.cpvsub(b, a); // cpvsub(b, a);
-				Vector2f r = Util.cpvmult(d, seg.getRadius() / Util.cpvlength(d)); // cpvmult(d, seg->r/cpvlength(d));
+				Vector2f r = Util.cpvmult(d, seg.getRadius() / Util.cpvlength(d)); // cpvmult(distance, seg->r/cpvlength(distance));
 
 				float matrix[] = {
 						r.getX(), r.getY(), 0.0f, 0.0f,
@@ -300,9 +298,10 @@ public class DrawSpace {
 		gl.glVertexPointer(2, GL2.GL_FLOAT, 0, polyShapeBuffer);
 
 		gl.glPushMatrix();
-		Vector2f center = body.getPosition();
-		gl.glTranslatef(center.getX(), center.getY(), 0.0f);
-		gl.glRotatef((float) (body.getAngleInRadians() * 180.0f / Math.PI), 0.0f, 0.0f, 1.0f);
+		// No need to perform any transformation here, as poly.getVertices() already contains transformed vertices
+		// Vector2f center = body.getPosition();
+		// gl.glTranslatef(center.getX(), center.getY(), 0.0f);
+		// gl.glRotatef((float) (body.getAngleInRadians() * 180.0f / Math.PI), 0.0f, 0.0f, 1.0f);
 
 		if (!poly.isSensor()) {
 			glColorForShape(poly, space);
@@ -328,9 +327,9 @@ public class DrawSpace {
 
 	void drawSpring(DampedSpring spring, Body body_a, Body body_b) {
 		Vector2f a = Util.cpvadd(body_a.getPosition(), Util.cpvrotate(spring.getAnchr1(),
-				body_a.getRotation())); //   cpvadd(body_a->p, cpvrotate(spring->anchr1, body_a->rot));
+				body_a.getRotation())); //   cpvadd(body_a->point, cpvrotate(spring->anchr1, body_a->rot));
 		Vector2f b = Util.cpvadd(body_b.getPosition(), Util.cpvrotate(spring.getAnchr2(),
-				body_b.getRotation())); //  cpvadd(body_b->p, cpvrotate(spring->anchr2, body_b->rot));
+				body_b.getRotation())); //  cpvadd(body_b->point, cpvrotate(spring->anchr2, body_b->rot));
 
 		gl.glPointSize(5.0f);
 		gl.glBegin(GL.GL_POINTS);
@@ -373,9 +372,9 @@ public class DrawSpace {
 			PinJoint joint = (PinJoint) constraint;
 
 			Vector2f a = Util.cpvadd(body_a.getPosition(), Util.cpvrotate(joint.getAnchr1(),
-					body_a.getRotation())); // cpvadd(body_a->p, cpvrotate(joint->anchr1, body_a->rot));
+					body_a.getRotation())); // cpvadd(body_a->point, cpvrotate(joint->anchr1, body_a->rot));
 			Vector2f b = Util.cpvadd(body_b.getPosition(), Util.cpvrotate(joint.getAnchr2(),
-					body_b.getRotation())); // cpvadd(body_b->p, cpvrotate(joint->anchr2, body_b->rot));
+					body_b.getRotation())); // cpvadd(body_b->point, cpvrotate(joint->anchr2, body_b->rot));
 
 			gl.glPointSize(5.0f);
 			gl.glBegin(GL.GL_POINTS);
@@ -394,12 +393,12 @@ public class DrawSpace {
 		} else if (SlideJoint.class.isInstance(constraint)) {
 			SlideJoint joint = (SlideJoint) constraint;
 
-			//cpVect a = cpvadd(body_a->p, cpvrotate(joint->anchr1, body_a->rot));
-			//cpVect b = cpvadd(body_b->p, cpvrotate(joint->anchr2, body_b->rot));
+			//cpVect a = cpvadd(body_a->point, cpvrotate(joint->anchr1, body_a->rot));
+			//cpVect b = cpvadd(body_b->point, cpvrotate(joint->anchr2, body_b->rot));
 			Vector2f a = Util.cpvadd(body_a.getPosition(), Util.cpvrotate(joint.getAnchr1(),
-					body_a.getRotation())); // cpvadd(body_a->p, cpvrotate(joint->anchr1, body_a->rot));
+					body_a.getRotation())); // cpvadd(body_a->point, cpvrotate(joint->anchr1, body_a->rot));
 			Vector2f b = Util.cpvadd(body_b.getPosition(), Util.cpvrotate(joint.getAnchr2(),
-					body_b.getRotation())); // cpvadd(body_b->p, cpvrotate(joint->anchr2, body_b->rot));
+					body_b.getRotation())); // cpvadd(body_b->point, cpvrotate(joint->anchr2, body_b->rot));
 
 			gl.glPointSize(5.0f);
 			gl.glBegin(GL.GL_POINTS);
@@ -418,12 +417,12 @@ public class DrawSpace {
 		} else if (PivotJoint.class.isInstance(constraint)) {
 			PivotJoint joint = (PivotJoint) constraint;
 
-			//cpVect a = cpvadd(body_a->p, cpvrotate(joint->anchr1, body_a->rot));
-			//cpVect b = cpvadd(body_b->p, cpvrotate(joint->anchr2, body_b->rot));
+			//cpVect a = cpvadd(body_a->point, cpvrotate(joint->anchr1, body_a->rot));
+			//cpVect b = cpvadd(body_b->point, cpvrotate(joint->anchr2, body_b->rot));
 			Vector2f a = Util.cpvadd(body_a.getPosition(), Util.cpvrotate(joint.getAnchr1(),
-					body_a.getRotation())); // cpvadd(body_a->p, cpvrotate(joint->anchr1, body_a->rot));
+					body_a.getRotation())); // cpvadd(body_a->point, cpvrotate(joint->anchr1, body_a->rot));
 			Vector2f b = Util.cpvadd(body_b.getPosition(), Util.cpvrotate(joint.getAnchr2(),
-					body_b.getRotation())); // cpvadd(body_b->p, cpvrotate(joint->anchr2, body_b->rot));
+					body_b.getRotation())); // cpvadd(body_b->point, cpvrotate(joint->anchr2, body_b->rot));
 
 			gl.glPointSize(10.0f);
 			gl.glBegin(GL.GL_POINTS);
@@ -436,11 +435,11 @@ public class DrawSpace {
 			GrooveJoint joint = (GrooveJoint) constraint;
 
 			Vector2f a = Util.cpvadd(body_a.getPosition(), Util.cpvrotate(joint.getGrooveA(),
-					body_a.getRotation())); // cpvadd(body_a->p, cpvrotate(joint->grv_a, body_a->rot));
+					body_a.getRotation())); // cpvadd(body_a->point, cpvrotate(joint->grv_a, body_a->rot));
 			Vector2f b = Util.cpvadd(body_a.getPosition(), Util.cpvrotate(joint.getGrooveB(),
-					body_a.getRotation())); // cpvadd(body_a->p, cpvrotate(joint->grv_b, body_a->rot));
+					body_a.getRotation())); // cpvadd(body_a->point, cpvrotate(joint->grv_b, body_a->rot));
 			Vector2f c = Util.cpvadd(body_b.getPosition(), Util.cpvrotate(joint.getAnchr2(),
-					body_b.getRotation())); // cpvadd(body_b->p, cpvrotate(joint->anchr2, body_b->rot));
+					body_b.getRotation())); // cpvadd(body_b->point, cpvrotate(joint->anchr2, body_b->rot));
 
 			gl.glPointSize(5.0f);
 			gl.glBegin(GL.GL_POINTS);
@@ -458,7 +457,7 @@ public class DrawSpace {
 		} else if (DampedSpring.class.isInstance(constraint)) {
 			drawSpring((DampedSpring) constraint, body_a, body_b);
 		} else {
-//		printf("Cannot draw constraint\n");
+//		printf("Cannot draw constraint\normal");
 		}
 	}
 
@@ -509,7 +508,7 @@ public class DrawSpace {
 			gl.glBegin(GL.GL_POINTS);
 			{
 				gl.glColor4i(LINE_COLOR.getRed(), LINE_COLOR.getGreen(), LINE_COLOR.getBlue(), LINE_COLOR.getAlpha());
-				for (Body body : space.getBodies()) {
+				for (Body body : space.getDynamicBodies()) {
 					Vector2f position = body.getPosition();
 					gl.glVertex2f(position.getX(), position.getY());
 				}
@@ -522,7 +521,7 @@ public class DrawSpace {
 //				cpBody *body = root, *next;
 //				do {
 //					next = body->node.next;
-//					glVertex2f(body->p.getX(), body->p.getY());
+//					glVertex2f(body->point.getX(), body->point.getY());
 //				} while((body = next) != root);
 //			}
 			gl.glEnd();
@@ -535,8 +534,10 @@ public class DrawSpace {
 				for (Arbiter arb : space.getArbiters()) {
 					gl.glColor4i(COLLISION_COLOR.getRed(), COLLISION_COLOR.getGreen(), COLLISION_COLOR.getBlue(),
 							COLLISION_COLOR.getAlpha());
-					for (int i = 0; i < arb.getNumContacts(); i++) {
-						Vector2f contactPoint = arb.getPoint(i);
+					for (int i = 0; i < arb.getCount(); i++) {
+						Vector2f contactPoint = arb.getPoint1(i);
+						gl.glVertex2f(contactPoint.getX(), contactPoint.getY());
+						contactPoint = arb.getPoint2(i);
 						gl.glVertex2f(contactPoint.getX(), contactPoint.getY());
 					}
 				}

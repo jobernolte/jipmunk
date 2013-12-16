@@ -20,19 +20,104 @@
  * SOFTWARE.
  */
 
+/*
+ * To change this template, choose Tools | Templates
+ * and open the template in the editor.
+ */
 package org.physics.jipmunk;
 
 /** @author jobernolte */
-public interface Vector2f {
-	float getX();
+public class Vector2f {
 
-	void setX(float x);
+	public float x;
+	public float y;
 
-	float getY();
+	public Vector2f() {
+	}
 
-	void setY(float y);
+	public Vector2f(float x, float y) {
+		this.x = x;
+		this.y = y;
+	}
 
-	void set(final Vector2f vector2f);
+	public Vector2f(final Vector2f vector2f) {
+		this.x = vector2f.x;
+		this.y = vector2f.y;
+	}
 
-	void set(float x, float y);
+	public float getX() {
+		return x;
+	}
+
+	public void setX(float x) {
+		this.x = x;
+	}
+
+	public float getY() {
+		return y;
+	}
+
+	public void setY(float y) {
+		this.y = y;
+	}
+
+	public void set(Vector2f vector2f) {
+		this.x = vector2f.x;
+		this.y = vector2f.y;
+	}
+
+	public void set(float x, float y) {
+		this.x = x;
+		this.y = y;
+	}
+
+	public Vector2f sub(final Vector2f vector2f) {
+		this.x -= vector2f.getX();
+		this.y -= vector2f.getY();
+		return this;
+	}
+
+	public Vector2f add(final Vector2f vector2f) {
+		this.x += vector2f.x;
+		this.y += vector2f.y;
+		return this;
+	}
+
+	public Vector2f mult(float s) {
+		this.x *= s;
+		this.y *= s;
+		return this;
+	}
+
+	@Override
+	public boolean equals(Object o) {
+		if (this == o)
+			return true;
+		if (!(o instanceof Vector2f))
+			return false;
+
+		Vector2f vector2f = (Vector2f) o;
+
+		if (Float.compare(vector2f.x, x) != 0)
+			return false;
+		if (Float.compare(vector2f.y, y) != 0)
+			return false;
+
+		return true;
+	}
+
+	@Override
+	public int hashCode() {
+		int result = (x != +0.0f ? Float.floatToIntBits(x) : 0);
+		result = 31 * result + (y != +0.0f ? Float.floatToIntBits(y) : 0);
+		return result;
+	}
+
+	@Override
+	public String toString() {
+		return "Vector2f{" +
+				"x=" + x +
+				", y=" + y +
+				'}';
+	}
 }

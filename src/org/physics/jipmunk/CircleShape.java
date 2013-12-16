@@ -22,16 +22,9 @@
 
 package org.physics.jipmunk;
 
-import org.physics.jipmunk.constraints.NearestPointQueryInfo;
+import org.physics.jipmunk.constraints.PointQueryInfo;
 
-import static org.physics.jipmunk.Util.cpfsqrt;
-import static org.physics.jipmunk.Util.cpvadd;
-import static org.physics.jipmunk.Util.cpvdot;
-import static org.physics.jipmunk.Util.cpvlerp;
-import static org.physics.jipmunk.Util.cpvnear;
-import static org.physics.jipmunk.Util.cpvnormalize;
-import static org.physics.jipmunk.Util.cpvrotate;
-import static org.physics.jipmunk.Util.cpvsub;
+import static org.physics.jipmunk.Util.*;
 
 /** @author jobernolte */
 public class CircleShape extends Shape {
@@ -39,8 +32,13 @@ public class CircleShape extends Shape {
 	Vector2f tc;
 	float r;
 
+	static MassInfo createMassInfo(float mass, float radius, Vector2f center) {
+		return new MassInfo(mass, Util.momentForCircle(1.0f, 0.0f, radius, cpvzero()), center,
+							Util.areaForCircle(0.0f, radius));
+	}
+
 	public CircleShape(Body body, float radius, Vector2f offset) {
-		super(body);
+		super(body, createMassInfo(0.0f, radius, offset));
 		this.c.set(offset);
 		this.r = radius;
 	}
@@ -51,51 +49,50 @@ public class CircleShape extends Shape {
 	}
 
 	@Override
-	protected BB cacheData(Vector2f pos, Vector2f rot) {
-		Vector2f c = tc = cpvadd(pos, cpvrotate(this.c, rot));
-		return new BB(c.getX() - r, c.getY() - r, c.getX() + r, c.getY() + r);
+	protected BB cacheData(Transform transform) {
+		Vector2f c = this.tc = transform.transformPoint(this.c);
+		return BB.forCircle(c, this.r);
 	}
 
-	@Override
-	public boolean pointQuery(Vector2f p) {
-		return cpvnear(tc, p, r);
-	}
-
-	static void segmentQueryImpl(Shape shape, Vector2f center, float r, Vector2f a, Vector2f b,
+	protected static void circleSegmentQuery(Shape shape, Vector2f center, float r1, Vector2f a, Vector2f b, float r2,
 			SegmentQueryInfo info) {
-		// offset the line to be relative to the circle
 		Vector2f da = cpvsub(a, center);
 		Vector2f db = cpvsub(b, center);
+		float rsum = r1 + r2;
 
 		float qa = cpvdot(da, da) - 2.0f * cpvdot(da, db) + cpvdot(db, db);
-		float qb = -2.0f * cpvdot(da, da) + 2.0f * cpvdot(da, db);
-		float qc = cpvdot(da, da) - r * r;
-
-		float det = qb * qb - 4.0f * qa * qc;
+		float qb = cpvdot(da, db) - cpvdot(da, da);
+		float det = qb * qb - qa * (cpvdot(da, da) - rsum * rsum);
 
 		if (det >= 0.0f) {
-			float t = (-qb - cpfsqrt(det)) / (2.0f * qa);
+			float t = (-qb - cpfsqrt(det)) / (qa);
 			if (0.0f <= t && t <= 1.0f) {
-				info.set(shape, t, cpvnormalize(cpvlerp(da, db, t)));
+				Vector2f n = cpvnormalize(cpvlerp(da, db, t));
+
+				info.shape = shape;
+				info.point.set(cpvsub(cpvlerp(a, b, t), cpvmult(n, r2)));
+				info.normal.set(n);
+				info.alpha = t;
 			}
 		}
 	}
 
 	@Override
-	protected void segmentQueryImpl(Vector2f a, Vector2f b, SegmentQueryInfo info) {
-		segmentQueryImpl(this, tc, r, a, b, info);
+	protected void segmentQueryImpl(Vector2f a, Vector2f b, float radius, SegmentQueryInfo info) {
+		circleSegmentQuery(this, this.tc, this.r, a, b, radius, info);
 	}
 
 	@Override
-	public NearestPointQueryInfo nearestPointQuery(Vector2f p, NearestPointQueryInfo out) {
+	public PointQueryInfo pointQuery(Vector2f p, PointQueryInfo out) {
 		Vector2f delta = cpvsub(p, this.tc);
 		float d = Util.cpvlength(delta);
 		float r = this.r;
 
 		if (out == null) {
-			out = new NearestPointQueryInfo();
+			out = new PointQueryInfo();
 		}
-		out.set(this, cpvadd(this.tc, Util.cpvmult(delta, r / d)), d - r);
+		out.set(this, cpvadd(this.tc, cpvmult(delta, r / d)), d - r,
+				(d > Constants.MAGIC_EPSILON ? cpvmult(delta, 1.0f / d) : cpv(0.0f, 1.0f)));
 		return out;
 	}
 
@@ -117,5 +114,9 @@ public class CircleShape extends Shape {
 
 	public Vector2f getTransformedCenter() {
 		return tc;
+	}
+
+	public static MassInfo massInfo(float mass, float radius, Vector2f center) {
+		return new MassInfo(mass, momentForCircle(1.0f, 0.0f, radius, cpvzero()), center, areaForCircle(0.0f, radius));
 	}
 }

@@ -88,7 +88,7 @@ public class ConvexHullUtil {
 			//result[resultOffset + index++].set(pivot);
 
 			int right_count = QHullPartition(verts, offset + left_count, count - left_count, pivot, b, tol);
-			/*System.out.format("QHullReduce: offset: %d, left_count: %d, right_count: %d\n", offset, left_count,
+			/*System.out.format("QHullReduce: offset: %distance, left_count: %distance, right_count: %distance\normal", offset, left_count,
 					right_count);*/
 			if (right_count == 0) {
 				return index;

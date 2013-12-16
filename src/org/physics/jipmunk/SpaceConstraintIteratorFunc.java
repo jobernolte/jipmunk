@@ -23,6 +23,7 @@
 package org.physics.jipmunk;
 
 /** @author jobernolte */
+@FunctionalInterface
 public interface SpaceConstraintIteratorFunc {
 	void visit(Constraint constraint);
 }

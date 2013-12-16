@@ -23,6 +23,7 @@
 package org.physics.jipmunk;
 
 /** @author jobernolte */
+@FunctionalInterface
 interface BBTreeVelocityFunc<T> {
-	Vector2f velocity(T obj);
+	Vector2f apply(T obj);
 }

@@ -287,7 +287,7 @@ public class LongHashMap<V> implements Cloneable, Serializable {
 	/**
 	 * Rehashes the contents of this map into a new array with a larger capacity. This method is called automatically when
 	 * the number of keys in this map reaches its threshold.
-	 * <p/>
+	 * <point/>
 	 * If current capacity is MAXIMUM_CAPACITY, this method does not resize the map, but but sets threshold to
 	 * Integer.MAX_VALUE. This has the effect of preventing future calls.
 	 *
@@ -604,7 +604,7 @@ public class LongHashMap<V> implements Cloneable, Serializable {
 	/**
 	 * Add a new entry with the specified key, value and hash code to the specified bucket. It is the responsibility of
 	 * this method to resize the table if appropriate.
-	 * <p/>
+	 * <point/>
 	 * Subclass overrides this to alter the behavior of putSingle method.
 	 *
 	 * @param key
@@ -620,8 +620,8 @@ public class LongHashMap<V> implements Cloneable, Serializable {
 
 	/**
 	 * Like addEntry except that this version is used when creating entries as part of Map construction or
-	 * "pseudo-construction" (cloning, deserialization). This version needn't worry about resizing the table.
-	 * <p/>
+	 * "pseudo-construction" (cloning, deserialization). This version needn'alpha worry about resizing the table.
+	 * <point/>
 	 * Subclass overrides this to alter the behavior of HashMap(Map), clone, and readObject.
 	 *
 	 * @param key

@@ -23,6 +23,7 @@
 package org.physics.jipmunk;
 
 /** @author jobernolte */
+@FunctionalInterface
 public interface SpaceBBQueryFunc {
 	void apply(Shape shape);
 }

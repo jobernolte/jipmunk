@@ -20,40 +20,21 @@
  * SOFTWARE.
  */
 
-package org.physics.jipmunk;
+package org.physics.jipmunk.impl;
 
-import java.util.ArrayList;
+import org.physics.jipmunk.Shape;
 
-/** @author jobernolte */
-class ContactList extends ArrayList<Contact> {
+/**
+* @author jobernolte
+*/
+public class SupportContext {
+	final Shape shape1, shape2;
+	final SupportPointFunc func1, func2;
 
-	private Pool<Contact> contactPool = new Pool<Contact>() {
-		@Override
-		protected Contact create() {
-			return new Contact();
-		}
-	};
-
-	public Contact nextContactPoint() {
-		Contact con = contactPool.alloc();
-		add(con);
-		return con;
-	}
-
-	public void free(Contact contact) {
-		contactPool.free(contact);
-	}
-
-	@Override
-	public void clear() {
-		super.clear();
-	}
-
-	public void free(Contact[] contacts) {
-		if (contacts != null) {
-			for (Contact contact : contacts) {
-				contactPool.free(contact);
-			}
-		}
+	public SupportContext(Shape shape1, Shape shape2, SupportPointFunc func1, SupportPointFunc func2) {
+		this.shape1 = shape1;
+		this.shape2 = shape2;
+		this.func1 = func1;
+		this.func2 = func2;
 	}
 }

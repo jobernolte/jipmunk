@@ -22,9 +22,11 @@
 
 package org.physics.jipmunk;
 
-/** @author jobernolte */
-class ContactBuffer {
-	int stamp;
-	int numContacts;
-	Contact[] contacts;
+/**
+ * @author jobernolte
+ */
+public enum BodyType {
+	DYNAMIC,
+	KINEMATIC,
+	STATIC
 }

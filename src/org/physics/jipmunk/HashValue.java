@@ -22,31 +22,18 @@
 
 package org.physics.jipmunk;
 
-/** @author jobernolte */
-class CollisionHandlerEntry {
-	CollisionHandler handler;
-	int a;
-	int b;
+/**
+ * @author jobernolte
+ */
+public class HashValue {
+	public static int CP_HASH_COEF = 344921057;
 
-	protected CollisionHandlerEntry(CollisionHandler handler, int a, int b) {
-		this.handler = handler;
-		this.a = a;
-		this.b = b;
+	public static int hashPair(int A, int B) {
+		return (A * CP_HASH_COEF ^ B * CP_HASH_COEF);
 	}
 
-	boolean begin(Arbiter arb, Space space) {
-		return handler.begin(arb, space);
+	public static long hashPairL(int A, int B) {
+		return (((long) A) << 32) | ((long) B);
 	}
 
-	boolean preSolve(Arbiter arb, Space space) {
-		return handler.preSolve(arb, space);
-	}
-
-	void postSolve(Arbiter arb, Space space) {
-		handler.postSolve(arb, space);
-	}
-
-	void separate(Arbiter arb, Space space) {
-		handler.separate(arb, space);
-	}
 }

@@ -120,14 +120,14 @@ public class DampedRotarySpring extends Constraint {
 	@Override
 	protected void applyImpulse(float dt) {
 		// compute relative velocity
-		float wrn = a.getAngVel() - b.getAngVel();//normal_relative_velocity(a, b, r1, r2, n) - this.target_vrn;
+		float wrn = a.getAngVel() - b.getAngVel();//normal_relative_velocity(a, b, r1, r2, normal) - this.target_vrn;
 
 		// compute velocity loss from drag
 		// not 100% certain this is derived correctly, though it makes sense
 		float w_damp = (this.target_wrn - wrn) * this.w_coef;
 		this.target_wrn = wrn + w_damp;
 
-		//apply_impulses(a, b, this.r1, this.r2, cpvmult(this.n, v_damp*this.nMass));
+		//apply_impulses(a, b, this.r1, this.r2, cpvmult(this.normal, v_damp*this.nMass));
 		float j_damp = w_damp * this.iSum;
 		this.jAcc += j_damp;
 

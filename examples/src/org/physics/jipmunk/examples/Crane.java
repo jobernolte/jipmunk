@@ -1,23 +1,11 @@
 package org.physics.jipmunk.examples;
 
-import org.physics.jipmunk.Arbiter;
-import org.physics.jipmunk.Body;
-import org.physics.jipmunk.CircleShape;
-import org.physics.jipmunk.Constraint;
-import org.physics.jipmunk.DefaultCollisionHandler;
-import org.physics.jipmunk.PolyShape;
-import org.physics.jipmunk.PostStepFunc;
-import org.physics.jipmunk.SegmentShape;
-import org.physics.jipmunk.Shape;
-import org.physics.jipmunk.Space;
-import org.physics.jipmunk.Util;
+import org.physics.jipmunk.*;
 import org.physics.jipmunk.constraints.GrooveJoint;
 import org.physics.jipmunk.constraints.PivotJoint;
 import org.physics.jipmunk.constraints.SlideJoint;
 
-import static org.physics.jipmunk.Util.cpfmax;
-import static org.physics.jipmunk.Util.cpv;
-import static org.physics.jipmunk.Util.cpvzero;
+import static org.physics.jipmunk.Util.*;
 
 /** @author jobernolte */
 public class Crane extends ExampleBase {
@@ -25,15 +13,15 @@ public class Crane extends ExampleBase {
 	private Body dollyBody;
 	// Constraint used as a servo motor to move the dolly back and forth.
 	private PivotJoint dollyServo;
-
 	// Constraint used as a winch motor to lift the load.
 	private SlideJoint winchServo;
-
 	// Temporary joint used to hold the hook to the load.
 	private Constraint hookJoint;
 
-	private final static int HOOK_SENSOR = 1;
-	private final static int CRATE = 2;
+	private static enum CollisionTypes implements CollisionType {
+		HOOK_SENSOR,
+		CRATE
+	}
 
 	private void attachHook(Space space, Body hook, Body crate) {
 		hookJoint = space.addConstraint(new PivotJoint(hook, crate, hook.getPosition()));
@@ -47,7 +35,7 @@ public class Crane extends ExampleBase {
 			final Body hook = arb.getBodyA();
 			final Body crate = arb.getBodyB();
 
-			// additions and removals can't be done in a normal callback.
+			// additions and removals can'alpha be done in a normal callback.
 			// Schedule a post step callback to do it.
 			// Use the hook as the key and pass along the arbiter.
 			space.addPostStepCallback(new PostStepFunc() {
@@ -73,15 +61,15 @@ public class Crane extends ExampleBase {
 
 		shape = space.addShape(new SegmentShape(staticBody, cpv(-320, -240), cpv(320, -240), 0.0f));
 		shape.setElasticity(1.0f);
-		shape.setFrictionCoefficient(1.0f);
-		shape.setLayers(NOT_GRABABLE_MASK);
+		shape.setFriction(1.0f);
+		shape.setFilter(NOT_GRABABLE_FILTER);
 
 		// Add a body for the dolly.
 		this.dollyBody = space.addBody(new Body(10, Float.POSITIVE_INFINITY));
 		dollyBody.setPosition(cpv(0, 100));
 
 		// Add a block so you can see it.
-		space.addShape(PolyShape.createBox(dollyBody, 30, 30));
+		space.addShape(PolyShape.createBox(dollyBody, 30, 30, 0.0f));
 
 		// Add a groove joint for it to move back and forth on.
 		space.addConstraint(new GrooveJoint(staticBody, dollyBody, cpv(-250, 100), cpv(250, 100), cpvzero()));
@@ -103,12 +91,12 @@ public class Crane extends ExampleBase {
 		// Add a sensor shape for it. This will be used to figure out when the hook touches a box.
 		shape = space.addShape(new CircleShape(hookBody, 10, cpvzero()));
 		shape.setSensor(true);
-		shape.setCollisionType(HOOK_SENSOR);
+		shape.setCollisionType(CollisionTypes.HOOK_SENSOR);
 
 		// Add a slide joint to act as a winch motor
 		// By updating the max length of the joint you can make it pull up the load.
-		this.winchServo = space.addConstraint(new SlideJoint(dollyBody, hookBody, cpvzero(), cpvzero(), 0,
-				Float.POSITIVE_INFINITY));
+		this.winchServo = space.addConstraint(
+				new SlideJoint(dollyBody, hookBody, cpvzero(), cpvzero(), 0, Float.POSITIVE_INFINITY));
 		// Max force the dolly servo can generate.
 		winchServo.setMaxForce(30000);
 		// Max speed of the dolly servo
@@ -120,17 +108,12 @@ public class Crane extends ExampleBase {
 		boxBody.setPosition(cpv(200, -200));
 
 		// Add a block so you can see it.
-		shape = space.addShape(PolyShape.createBox(boxBody, 50, 50));
-		shape.setFrictionCoefficient(0.7f);
-		shape.setCollisionType(CRATE);
+		shape = space.addShape(PolyShape.createBox(boxBody, 50, 50, 0.0f));
+		shape.setFriction(0.7f);
+		shape.setCollisionType(CollisionTypes.CRATE);
 
-		space.addCollisionHandler(HOOK_SENSOR, CRATE, new DefaultCollisionHandler() {
-			@Override
-			public boolean begin(Arbiter arb, Space space) {
-				return hookCrate(arb, space);
-			}
-
-		});
+		CollisionHandler handler = space.addCollisionHandler(CollisionTypes.HOOK_SENSOR, CollisionTypes.CRATE);
+		handler.setBeginFunc(this::hookCrate);
 
 		return space;
 	}

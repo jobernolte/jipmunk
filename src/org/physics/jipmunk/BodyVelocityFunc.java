@@ -23,6 +23,7 @@
 package org.physics.jipmunk;
 
 /** @author jobernolte */
+@FunctionalInterface
 public interface BodyVelocityFunc {
-	void velocity(Body body, final Vector2f gravity, float damping, float dt);
+	void apply(Body body, final Vector2f gravity, float damping, float dt);
 }

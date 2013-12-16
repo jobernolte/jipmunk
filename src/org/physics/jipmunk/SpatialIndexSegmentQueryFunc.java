@@ -28,5 +28,5 @@ package org.physics.jipmunk;
  * @author jobernolte
  */
 interface SpatialIndexSegmentQueryFunc<T> {
-	float apply(T obj2);
+	float apply(T obj1, T obj2);
 }

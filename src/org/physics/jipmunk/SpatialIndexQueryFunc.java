@@ -28,5 +28,5 @@ package org.physics.jipmunk;
  * @author jobernolte
  */
 interface SpatialIndexQueryFunc<T> {
-	void apply(T obj2);
+	CollisionID apply(T obj1, T obj2, CollisionID id);
 }

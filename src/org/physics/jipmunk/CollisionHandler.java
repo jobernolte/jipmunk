@@ -23,12 +23,125 @@
 package org.physics.jipmunk;
 
 /** @author jobernolte */
-public interface CollisionHandler {
-	boolean begin(Arbiter arb, Space space);
+public class CollisionHandler {
 
-	boolean preSolve(Arbiter arb, Space space);
+	final CollisionType typeA;
+	final CollisionType typeB;
+	CollisionBeginFunc beginFunc;
+	CollisionPreSolveFunc preSolveFunc;
+	CollisionPostSolveFunc postSolveFunc;
+	CollisionSeparateFunc separateFunc;
 
-	void postSolve(Arbiter arb, Space space);
+	public CollisionHandler(CollisionType typeA, CollisionType typeB) {
+		this.typeA = typeA;
+		this.typeB = typeB;
+	}
 
-	void separate(Arbiter arb, Space space);
+	public CollisionHandler(CollisionType typeA, CollisionType typeB, CollisionBeginFunc beginFunc,
+			CollisionPreSolveFunc preSolveFunc, CollisionPostSolveFunc postSolveFunc,
+			CollisionSeparateFunc separateFunc) {
+		this.typeA = typeA;
+		this.typeB = typeB;
+		this.beginFunc = beginFunc;
+		this.preSolveFunc = preSolveFunc;
+		this.postSolveFunc = postSolveFunc;
+		this.separateFunc = separateFunc;
+	}
+
+	public CollisionType getTypeA() {
+		return typeA;
+	}
+
+	public CollisionType getTypeB() {
+		return typeB;
+	}
+
+	public CollisionBeginFunc getBeginFunc() {
+		return beginFunc;
+	}
+
+	public void setBeginFunc(CollisionBeginFunc beginFunc) {
+		this.beginFunc = beginFunc;
+	}
+
+	public CollisionPreSolveFunc getPreSolveFunc() {
+		return preSolveFunc;
+	}
+
+	public void setPreSolveFunc(CollisionPreSolveFunc preSolveFunc) {
+		this.preSolveFunc = preSolveFunc;
+	}
+
+	public CollisionPostSolveFunc getPostSolveFunc() {
+		return postSolveFunc;
+	}
+
+	public void setPostSolveFunc(CollisionPostSolveFunc postSolveFunc) {
+		this.postSolveFunc = postSolveFunc;
+	}
+
+	public CollisionSeparateFunc getSeparateFunc() {
+		return separateFunc;
+	}
+
+	public void setSeparateFunc(CollisionSeparateFunc separateFunc) {
+		this.separateFunc = separateFunc;
+	}
+
+	public boolean begin(Arbiter arb, Space space) {
+		return beginFunc.apply(arb, space);
+	}
+
+	public boolean preSolve(Arbiter arb, Space space) {
+		return preSolveFunc.apply(arb, space);
+	}
+
+	public void postSolve(Arbiter arb, Space space) {
+		postSolveFunc.apply(arb, space);
+	}
+
+	public void separate(Arbiter arb, Space space) {
+		separateFunc.apply(arb, space);
+	}
+
+	public static boolean defaultBegin(Arbiter arb, Space space) {
+		boolean retA = arb.callWildcardBeginA(space);
+		boolean retB = arb.callWildcardBeginB(space);
+		return retA && retB;
+	}
+
+	public static boolean defaultPreSolve(Arbiter arb, Space space) {
+		boolean retA = arb.callWildcardPreSolveA(space);
+		boolean retB = arb.callWildcardPreSolveB(space);
+		return retA && retB;
+	}
+
+	public static void defaultPostSolve(Arbiter arb, Space space) {
+		arb.callWildcardPostSolveA(space);
+		arb.callWildcardPostSolveB(space);
+	}
+
+	public static void defaultSeparate(Arbiter arb, Space space) {
+		arb.callWildcardSeparateA(space);
+		arb.callWildcardSeparateB(space);
+	}
+
+	public static boolean alwaysCollide(Arbiter arb, Space space) {
+		return true;
+	}
+
+	public static void doNothing(Arbiter arb, Space space) {
+	}
+
+	public static CollisionHandler createDefaultHandler() {
+		return new CollisionHandler(CollisionType.WILDCARD, CollisionType.WILDCARD, CollisionHandler::defaultBegin,
+									CollisionHandler::defaultPreSolve, CollisionHandler::defaultPostSolve,
+									CollisionHandler::defaultSeparate);
+	}
+
+	public static CollisionHandler createDoNothingHandler() {
+		return new CollisionHandler(CollisionType.WILDCARD, CollisionType.WILDCARD, CollisionHandler::alwaysCollide,
+									CollisionHandler::alwaysCollide, CollisionHandler::doNothing,
+									CollisionHandler::doNothing);
+	}
 }

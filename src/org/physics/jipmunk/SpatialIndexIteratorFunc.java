@@ -23,6 +23,7 @@
 package org.physics.jipmunk;
 
 /** @author jobernolte */
+@FunctionalInterface
 interface SpatialIndexIteratorFunc<T> {
 	void visit(T obj);
 }

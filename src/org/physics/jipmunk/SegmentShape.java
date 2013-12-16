@@ -22,21 +22,9 @@
 
 package org.physics.jipmunk;
 
-import org.physics.jipmunk.constraints.NearestPointQueryInfo;
+import org.physics.jipmunk.constraints.PointQueryInfo;
 
-import static org.physics.jipmunk.Util.cpBBNew;
-import static org.physics.jipmunk.Util.cpfabs;
-import static org.physics.jipmunk.Util.cpvadd;
-import static org.physics.jipmunk.Util.cpvcross;
-import static org.physics.jipmunk.Util.cpvdot;
-import static org.physics.jipmunk.Util.cpvlengthsq;
-import static org.physics.jipmunk.Util.cpvlerp;
-import static org.physics.jipmunk.Util.cpvmult;
-import static org.physics.jipmunk.Util.cpvneg;
-import static org.physics.jipmunk.Util.cpvnormalize;
-import static org.physics.jipmunk.Util.cpvperp;
-import static org.physics.jipmunk.Util.cpvrotate;
-import static org.physics.jipmunk.Util.cpvsub;
+import static org.physics.jipmunk.Util.*;
 
 /** @author jobernolte */
 public class SegmentShape extends Shape {
@@ -48,8 +36,14 @@ public class SegmentShape extends Shape {
 	float r;
 	Vector2f a_tangent, b_tangent;
 
+	static MassInfo createMassInfo(float mass, Vector2f a, Vector2f b, float r) {
+		return new MassInfo(mass, Util.momentForBox(1.0f, cpvdist(a, b) + 2.0f * r, 2.0f * r),
+							// TODO is an approximation.
+							cpvlerp(a, b, 0.5f), Util.areaForSegment(a, b, r));
+	}
+
 	public SegmentShape(Body body, Vector2f a, Vector2f b, float r) {
-		super(body);
+		super(body, createMassInfo(0.0f, a, b, r));
 		this.a = Util.cpv(a);
 		this.b = Util.cpv(b);
 		this.r = r;
@@ -74,6 +68,10 @@ public class SegmentShape extends Shape {
 		return r;
 	}
 
+	public void setRadius(float radius) {
+		this.r = radius;
+	}
+
 	public Vector2f getTa() {
 		return ta;
 	}
@@ -82,71 +80,49 @@ public class SegmentShape extends Shape {
 		return tb;
 	}
 
+	public Vector2f getTn() {
+		return tn;
+	}
+
+	public Vector2f getATangent() {
+		return a_tangent;
+	}
+
+	public Vector2f getBTangent() {
+		return b_tangent;
+	}
+
 	@Override
 	public ShapeType getType() {
 		return ShapeType.SEGMENT_SHAPE;
 	}
 
 	@Override
-	protected BB cacheData(Vector2f p, Vector2f rot) {
-		this.ta = cpvadd(p, cpvrotate(this.a, rot));
-		this.tb = cpvadd(p, cpvrotate(this.b, rot));
-		this.tn = cpvrotate(this.n, rot);
+	protected BB cacheData(Transform transform) {
+		this.ta = transform.transformPoint(this.a);
+		this.tb = transform.transformPoint(this.b);
+		this.tn = transform.transformVect(this.n);
 
 		float l, r, b, t;
 
-		if (this.ta.getX() < this.tb.getX()) {
-			l = this.ta.getX();
-			r = this.tb.getX();
+		if (this.ta.x < this.tb.x) {
+			l = this.ta.x;
+			r = this.tb.x;
 		} else {
-			l = this.tb.getX();
-			r = this.ta.getX();
+			l = this.tb.x;
+			r = this.ta.x;
 		}
 
-		if (this.ta.getY() < this.tb.getY()) {
-			b = this.ta.getY();
-			t = this.tb.getY();
+		if (this.ta.y < this.tb.y) {
+			b = this.ta.y;
+			t = this.tb.y;
 		} else {
-			b = this.tb.getY();
-			t = this.ta.getY();
+			b = this.tb.y;
+			t = this.ta.y;
 		}
 
 		float rad = this.r;
-		return cpBBNew(l - rad, b - rad, r + rad, t + rad);
-	}
-
-	@Override
-	public boolean pointQuery(Vector2f p) {
-		if (!this.bb.contains(p)) return false;
-
-		// Calculate normal distance from segment.
-		float dn = cpvdot(this.tn, p) - cpvdot(this.ta, this.tn);
-		float dist = cpfabs(dn) - this.r;
-		if (dist > 0.0f) return false;
-
-		// Calculate tangential distance along segment.
-		float dt = -cpvcross(this.tn, p);
-		float dtMin = -cpvcross(this.tn, this.ta);
-		float dtMax = -cpvcross(this.tn, this.tb);
-
-		// Decision tree to decide which feature of the segment to collide with.
-		if (dt <= dtMin) {
-			if (dt < (dtMin - this.r)) {
-				return false;
-			} else {
-				return cpvlengthsq(cpvsub(this.ta, p)) < (this.r * this.r);
-			}
-		} else {
-			if (dt < dtMax) {
-				return true;
-			} else {
-				if (dt < (dtMax + this.r)) {
-					return cpvlengthsq(cpvsub(this.tb, p)) < (this.r * this.r);
-				} else {
-					return false;
-				}
-			}
-		}
+		return new BB(l - rad, b - rad, r + rad, t + rad);
 	}
 
 	static boolean inUnitRange(float t) {
@@ -154,59 +130,60 @@ public class SegmentShape extends Shape {
 	}
 
 	@Override
-	protected void segmentQueryImpl(Vector2f a, Vector2f b, SegmentQueryInfo info) {
+	protected void segmentQueryImpl(Vector2f a, Vector2f b, float r2, SegmentQueryInfo info) {
 		Vector2f n = this.tn;
-		// flip n if a is behind the axis
-		if (cpvdot(a, n) < cpvdot(this.ta, n))
-			n = cpvneg(n);
+		float d = cpvdot(cpvsub(this.ta, a), n);
+		float r = this.r + r2;
 
-		float an = cpvdot(a, n);
-		float bn = cpvdot(b, n);
+		Vector2f flipped_n = (d > 0.0f ? cpvneg(n) : n);
+		Vector2f seg_offset = cpvsub(cpvmult(flipped_n, r), a);
 
-		if (an != bn) {
-			float d = cpvdot(this.ta, n) + this.r;
-			float t = (d - an) / (bn - an);
+		// Make the endpoints relative to 'a' and move them by the thickness of the segment.
+		Vector2f seg_a = cpvadd(this.ta, seg_offset);
+		Vector2f seg_b = cpvadd(this.tb, seg_offset);
+		Vector2f delta = cpvsub(b, a);
 
-			if (0.0f < t && t < 1.0f) {
-				Vector2f point = cpvlerp(a, b, t);
-				float dt = -cpvcross(this.tn, point);
-				float dtMin = -cpvcross(this.tn, this.ta);
-				float dtMax = -cpvcross(this.tn, this.tb);
+		if (cpvcross(delta, seg_a) * cpvcross(delta, seg_b) <= 0.0f) {
+			float d_offset = d + (d > 0.0f ? -r : r);
+			float ad = -d_offset;
+			float bd = cpvdot(delta, n) - d_offset;
 
-				if (dtMin < dt && dt < dtMax) {
-					info.set(this, t, n);
+			if (ad * bd < 0.0f) {
+				float t = ad / (ad - bd);
 
-					return; // don't continue on and check endcaps
-				}
+				info.shape = this;
+				info.point.set(cpvsub(cpvlerp(a, b, t), cpvmult(flipped_n, r2)));
+				info.normal.set(flipped_n);
+				info.alpha = t;
 			}
-		}
+		} else if (r != 0.0f) {
+			SegmentQueryInfo info1 = new SegmentQueryInfo(null, b, cpvzero(), 1.0f);
+			SegmentQueryInfo info2 = new SegmentQueryInfo(null, b, cpvzero(), 1.0f);
+			CircleShape.circleSegmentQuery(this, this.ta, this.r, a, b, r2, info1);
+			CircleShape.circleSegmentQuery(this, this.tb, this.r, a, b, r2, info2);
 
-		if (this.r != 0) {
-			SegmentQueryInfo info1 = new SegmentQueryInfo();
-			SegmentQueryInfo info2 = new SegmentQueryInfo();
-			CircleShape.segmentQueryImpl(this, this.ta, this.r, a, b, info1);
-			CircleShape.segmentQueryImpl(this, this.tb, this.r, a, b, info2);
-
-			if (info1.t < info2.t) {
-				info.set(info1.shape, info1.t, info1.n);
+			if (info1.alpha < info2.alpha) {
+				info.set(info1);
 			} else {
-				info.set(info2.shape, info2.t, info2.n);
+				info.set(info2);
 			}
 		}
 	}
 
 	@Override
-	public NearestPointQueryInfo nearestPointQuery(Vector2f p, NearestPointQueryInfo out) {
+	public PointQueryInfo pointQuery(Vector2f p, PointQueryInfo out) {
 		Vector2f closest = Util.closestPointOnSegment(p, this.ta, this.tb);
 
 		Vector2f delta = cpvsub(p, closest);
 		float d = Util.cpvlength(delta);
 		float r = this.r;
+		Vector2f g = cpvmult(delta, 1.0f / d);
 
 		if (out == null) {
-			out = new NearestPointQueryInfo();
+			out = new PointQueryInfo();
 		}
-		out.set(this, (d != 0 ? cpvadd(closest, cpvmult(delta, r / d)) : closest), d - r);
+		out.set(this, (d != 0 ? cpvadd(closest, cpvmult(delta, r / d)) : closest), d - r,
+				(d > Constants.MAGIC_EPSILON ? g : this.n));
 		return out;
 	}
 
@@ -216,12 +193,14 @@ public class SegmentShape extends Shape {
 		this.n = cpvperp(cpvnormalize(cpvsub(b, a)));
 	}
 
-	public void setRadius(float radius) {
-		this.r = radius;
-	}
-
 	public void setNeighbors(final Vector2f prev, final Vector2f next) {
 		this.a_tangent = cpvsub(prev, this.a);
 		this.b_tangent = cpvsub(next, this.b);
+	}
+
+	public static MassInfo massInfo(float mass, Vector2f a, Vector2f b, float r) {
+		// TODO is an approximation.
+		return new MassInfo(mass, momentForBox(1.0f, cpvdist(a, b) + 2.0f * r, 2.0f * r), cpvlerp(a, b, 0.5f),
+							areaForSegment(a, b, r));
 	}
 }

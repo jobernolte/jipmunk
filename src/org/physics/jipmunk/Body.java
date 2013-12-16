@@ -23,46 +23,38 @@
 package org.physics.jipmunk;
 
 import java.util.Iterator;
+import java.util.List;
 
 import static org.physics.jipmunk.Array.cpArrayDeleteObj;
 import static org.physics.jipmunk.Assert.cpAssertSoft;
-import static org.physics.jipmunk.Util.cpfclamp;
-import static org.physics.jipmunk.Util.cpvadd;
-import static org.physics.jipmunk.Util.cpvclamp;
-import static org.physics.jipmunk.Util.cpvcross;
-import static org.physics.jipmunk.Util.cpvdot;
-import static org.physics.jipmunk.Util.cpvforangle;
-import static org.physics.jipmunk.Util.cpvmult;
-import static org.physics.jipmunk.Util.cpvrotate;
-import static org.physics.jipmunk.Util.cpvsub;
-import static org.physics.jipmunk.Util.cpvunrotate;
-import static org.physics.jipmunk.Util.cpvzero;
+import static org.physics.jipmunk.SpaceComponent.ComponentRoot;
+import static org.physics.jipmunk.Util.*;
 
 /**
  * <b>Rogue and Static Bodies:</b>
- * <p/>
+ * <point/>
  * Normally when you create a rigid body, you add it to a space so the space will start simulating it. This means it
- * will update it’s position and velocity, apply forces to it, be affected by gravity, etc. A body that isn’t added to a
- * space (and not simulated) is called a rogue body. The most important use for rogue bodies are as static bodies, but
+ * will update it’s position and velocity, apply forces to it, be affected by gravity, etc. A body that isn’alpha added to a
+ * space (and not simulated) is called a rogue body. The most important use for rogue dynamicBodies are as static dynamicBodies, but
  * you can also use them to implement directly controlled objects such as moving platforms.
- * <p/>
- * Static bodies are rogue bodies, but with a special flag set on them to let Chipmunk know that they never move unless
- * you tell it. Static bodies have two purposes. Originally they were added for the sleeping feature. Because static
- * bodies don’t move, Chipmunk knows that it’s safe to let objects that are touching or jointed to them fall asleep.
- * Objects touching or jointed to regular rogue bodies are never allowed to sleep. The second purpose for static bodies
+ * <point/>
+ * Static dynamicBodies are rogue dynamicBodies, but with a special flag set on them to let Chipmunk know that they never move unless
+ * you tell it. Static dynamicBodies have two purposes. Originally they were added for the sleeping feature. Because static
+ * dynamicBodies don’alpha move, Chipmunk knows that it’s safe to let objects that are touching or jointed to them fall asleep.
+ * Objects touching or jointed to regular rogue dynamicBodies are never allowed to sleep. The second purpose for static dynamicBodies
  * is that Chipmunk knows shapes attached to them never need to have their collision detection data updated. Chipmunk
- * also doesn’t need to bother checking for collisions between static objects. Generally all of your level geometry will
+ * also doesn’alpha need to bother checking for collisions between static objects. Generally all of your level geometry will
  * be attached to a static body except for things like moving platforms or doors.
- * <p/>
+ * <point/>
  * In previous versions of Chipmunk before 5.3 you would create an infinite mass rogue body to attach static shapes to
- * using cpSpaceAddStaticShape(). You don’t need to do any of that anymore, and shouldn’t if you want to use the
+ * using cpSpaceAddStaticShape(). You don’alpha need to do any of that anymore, and shouldn’alpha if you want to use the
  * sleeping feature. Each space has a dedicated static body that you can use to attach your static shapes to. Chipmunk
- * also automatically adds shapes attached to static bodies as static shapes. *
- * <p/>
+ * also automatically adds shapes attached to static dynamicBodies as static shapes. *
+ * <point/>
  * <b>Creating Additional Static Bodies:</b>
- * <p/>
+ * <point/>
  * While every cpSpace has a built in static body that you can use, it can be convenient to make your own as well. One
- * potential use is in a level editor. By attaching chunks of your level to static bodies, you can still move and rotate
+ * potential use is in a level editor. By attaching chunks of your level to static dynamicBodies, you can still move and rotate
  * the chunks independently of each other. Then all you have to do is call cpSpaceRehashStatic() to rebuild the static
  * collision detection data when you are done.
  *
@@ -88,53 +80,40 @@ public class Body {
 		}
 
 		public static void add(Body root, Body body) {
-			body.node.root = root;
+			body.sleeping.root = root;
 			if (body != root) {
-				body.node.next = root.node.next;
-				root.node.next = body;
+				body.sleeping.next = root.sleeping.next;
+				root.sleeping.next = body;
 			}
 		}
 	}
 
-	private final static BodyVelocityFunc defaultBodyVelocityFunc = new BodyVelocityFunc() {
-		@Override
-		public void velocity(Body body, Vector2f gravity, float damping, float dt) {
-			updateVelocity(body, gravity, damping, dt);
-		}
-	};
-
-	private final static BodyPositionFunc defaultBodyPositionFunc = new BodyPositionFunc() {
-		@Override
-		public void position(Body body, float dt) {
-			updatePosition(body, dt);
-		}
-	};
-
+	private final static BodyVelocityFunc defaultBodyVelocityFunc = Body::updateVelocity;
+	private final static BodyPositionFunc defaultBodyPositionFunc = Body::updatePosition;
+	private static final boolean SANITY_CHECK = false;
 	/** Function that is called to integrate the body's velocity. (Defaults to cpBodyUpdateVelocity) */
 	BodyVelocityFunc velocityFunc = defaultBodyVelocityFunc;
 	/** Function that is called to integrate the body's position. (Defaults to cpBodyUpdatePosition) */
 	BodyPositionFunc positionFunc = defaultBodyPositionFunc;
-
 	/** Mass of the body. Must agree with cpBody.m_inv! Use cpBodySetMass() when changing the mass for this reason. */
 	float m;
 	/** Mass inverse. */
 	float m_inv;
-
 	/**
 	 * Moment of inertia of the body. Must agree with cpBody.i_inv! Use cpBodySetMoment() when changing the moment for this
 	 * reason.
 	 */
 	private float i;
-	/// Moment of inertia inverse.
+	/** Moment of inertia inverse. */
 	float i_inv;
-
+	/** Center of gravity. */
+	Vector2f cog = Util.cpvzero();
 	/** Position of the rigid body's center of gravity. */
 	Vector2f p = Util.cpvzero();
 	/** Velocity of the rigid body's center of gravity. */
 	Vector2f v = Util.cpvzero();
 	/** Force acting on the rigid body's center of gravity. */
 	private Vector2f f = Util.cpvzero();
-
 	/**
 	 * Rotation of the body around it's center of gravity in radians. Must agree with cpBody.rot! Use cpBodySetAngle() when
 	 * changing the angle for this reason.
@@ -144,19 +123,15 @@ public class Body {
 	float w = 0.0f;
 	/** Torque applied to the body around it's center of gravity. */
 	private float t = 0.0f;
-
-	/** Cached unit length vector representing the angle of the body. Used for fast rotations using cpvrotate(). */
-	Vector2f rot = Util.cpvzero();
-
-	/** Maximum velocity allowed when updating the velocity. */
-	private float v_limit = Float.POSITIVE_INFINITY;
-	/** Maximum rotational rate (in radians/second) allowed when updating the angular velocity. */
-	private float w_limit = Float.POSITIVE_INFINITY;
-
+	Transform transform = Transform.identity();
+	/**
+	 * "pseudo-velocities" used for eliminating overlap.
+	 * Erin Catto has some papers that talk about what these are.
+	 */
 	Vector2f v_bias = Util.cpvzero();
 	float w_bias = 0;
+	/** The space this body belongs to. */
 	Space space;
-	ComponentNode node = new ComponentNode();
 	private Shape shapeList;
 	Arbiter arbiterList;
 	Constraint constraintList;
@@ -165,6 +140,7 @@ public class Body {
 	 * reference in a callback.
 	 */
 	private Object data;
+	ComponentNode sleeping = new ComponentNode();
 
 	/**
 	 * Creates a new body with the given mass and moment.
@@ -180,7 +156,7 @@ public class Body {
 
 	public static Body createStatic() {
 		Body body = new Body(Float.POSITIVE_INFINITY, Float.POSITIVE_INFINITY);
-		body.node.idleTime = Float.POSITIVE_INFINITY;
+		body.sleeping.idleTime = Float.POSITIVE_INFINITY;
 		return body;
 	}
 
@@ -204,6 +180,11 @@ public class Body {
 		this.m_inv = 1.0f / mass;
 	}
 
+	/** @return the moment of inertia of the body */
+	public float getMoment() {
+		return i;
+	}
+
 	/**
 	 * Moment of inertia (MoI or sometimes just moment) of the body. The moment is like the rotational mass of a body. See
 	 * below for function to help calculate the moment.
@@ -211,19 +192,14 @@ public class Body {
 	 * @param moment the moment of inertia of the body
 	 * @see Util#momentForBox(float, float, float)
 	 * @see Util#momentForCircle(float, float, float, Vector2f)
-	 * @see Util#momentForPoly(float, Vector2f[], Vector2f)
-	 * @see Util#momentForPoly(float, Vector2f[], int, int, Vector2f)
-	 * @see Util#momentForSegment(float, Vector2f, Vector2f)
+	 * @see Util#momentForPoly(float, Vector2f[], int, int, Vector2f, float)
+	 * @see Util#momentForPoly(float, Vector2f[], Vector2f, float)
+	 * @see Util#momentForSegment(float, Vector2f, Vector2f, float)
 	 */
 	public void setMoment(float moment) {
 		activate();
 		this.i = moment;
 		this.i_inv = 1.0f / moment;
-	}
-
-	/** @return the moment of inertia of the body */
-	public float getMoment() {
-		return i;
 	}
 
 	/** @return the inverse moment of inertia of the body */
@@ -238,12 +214,17 @@ public class Body {
 
 	/** @return <code>true</code> if the body is sleeping */
 	public boolean isSleeping() {
-		return node.root != null;
+		return sleeping.root != null;
 	}
 
 	/** @return <code>true</code> if the body is idle */
 	public boolean isIdle() {
-		return node.idleTime > 0;
+		return sleeping.idleTime > 0;
+	}
+
+	/** @return position of the center of gravity of the body */
+	public Vector2f getPosition() {
+		return p;
 	}
 
 	/**
@@ -251,16 +232,24 @@ public class Body {
 	 * Space#reindexShapesForBody(Body)} to update the collision detection information for the attached shapes if plan to
 	 * make any queries against the space.
 	 *
-	 * @param pos position of the center of gravity of the body
+	 * @param position position of the center of gravity of the body
 	 */
-	public void setPosition(final Vector2f pos) {
+	public void setPosition(final Vector2f position) {
 		activate();
-		this.p.set(pos);
+		this.p.set(cpvadd(Transform.transformVect(this.transform, this.cog), position));
+		sanityCheck();
+
+		setTransform(this.p, this.a);
 	}
 
-	/** @return position of the center of gravity of the body */
-	public Vector2f getPosition() {
-		return p;
+	public Vector2f getCenterOfGravity() {
+		return this.cog;
+	}
+
+	public void setCenterOfGravity(final Vector2f cog) {
+		activate();
+		this.cog.set(cog);
+		sanityCheck();
 	}
 
 	/** @return linear velocity of the center of gravity of the body */
@@ -280,15 +269,30 @@ public class Body {
 
 	/**
 	 * @return The rotation vector for the body. Can be used with {@link Util#cpvrotate(Vector2f, Vector2f)} or {@link
-	 *         Util#cpvunrotate(Vector2f, Vector2f)} to perform fast rotations.
+	 * Util#cpvunrotate(Vector2f, Vector2f)} to perform fast rotations.
 	 */
 	public Vector2f getRotation() {
-		return rot;
+		return Util.cpv(this.transform.a, this.transform.b);
 	}
 
-	private void setAngle(float angle) {
+	// 'p' is the position of the CoG
+	public void setTransform(Vector2f p, float a) {
+		Vector2f rot = cpvforangle(a);
+		Vector2f c = this.cog;
+
+		this.transform = Transform.transpose(rot.x, -rot.y, p.x - (c.x * rot.x - c.y * rot.y), rot.y, rot.x,
+											 p.y - (c.x * rot.y + c.y * rot.x));
+	}
+
+	private float setAngle(float angle) {
 		this.a = angle;
-		this.rot = cpvforangle(angle);
+		sanityCheck();
+		return a;
+	}
+
+	/** @return the rotation angle in radians */
+	public float getAngleInRadians() {
+		return a;
 	}
 
 	/**
@@ -301,11 +305,6 @@ public class Body {
 	public void setAngleInRadians(float angle) {
 		activate();
 		setAngle(angle);
-	}
-
-	/** @return the rotation angle in radians */
-	public float getAngleInRadians() {
-		return a;
 	}
 
 	/** @return the force applied to the center of gravity of the body. */
@@ -362,31 +361,92 @@ public class Body {
 	}
 
 	/**
-	 * Add the force <code>force</code> to body at a relative offset <code>r</code> from the center of gravity.
+	 * Add the force <code>force</code> to body at a relative offset <code>point</code> from the center of gravity.
 	 *
 	 * @param force the force to apply
-	 * @param r     the relative offset
+	 * @param point the relative offset
 	 */
-	public void applyForce(final Vector2f force, final Vector2f r) {
+	public void applyForceAtWorldPoint(final Vector2f force, final Vector2f point) {
 		activate();
-		f = cpvadd(f, force);
-		t += cpvcross(r, force);
+		this.f = cpvadd(this.f, force);
+
+		Vector2f r = cpvsub(point, transform.transformPoint(this.cog));
+		this.t += cpvcross(r, force);
+	}
+
+	public void applyForceAtLocalPoint(final Vector2f force, final Vector2f point) {
+		applyForceAtWorldPoint(transform.transformVect(force), transform.transformPoint(point));
+	}
+
+	public void applyImpulse(Vector2f j, Vector2f r) {
+		this.v = cpvadd(this.v, cpvmult(j, this.m_inv));
+		this.w += this.i_inv * cpvcross(r, j);
 	}
 
 	/**
-	 * Add the impulse <code>i</code> to body at a relative offset <code>r</code> from the center of gravity.
+	 * Add the impulse <code>i</code> to body at a relative offset <code>point</code> from the center of gravity.
 	 *
-	 * @param j the impulse to apply
-	 * @param r the relative offset
+	 * @param impulse the impulse to apply
+	 * @param point   the relative offset
 	 */
-	public void applyImpulse(final Vector2f j, final Vector2f r) {
+	public void applyImpulseAtWorldPoint(final Vector2f impulse, final Vector2f point) {
 		activate();
-		v = cpvadd(v, cpvmult(j, m_inv));
-		w += i_inv * cpvcross(r, j);
+
+		Vector2f r = cpvsub(point, this.transform.transformPoint(this.cog));
+		applyImpulse(impulse, r);
 	}
 
-	private void sanityCheck() {
+	public void applyImpulseAtLocalPoint(Vector2f impulse, Vector2f point) {
+		applyImpulseAtWorldPoint(transform.transformVect(impulse), transform.transformPoint(point));
+	}
 
+	private static void cpv_assert_nan(Vector2f v, String message) {
+		if (!(v.x == v.x && v.y == v.y)) {
+			throw new IllegalStateException(message);
+		}
+	}
+
+	private static void cpv_assert_infinite(Vector2f v, String message) {
+		if (!(cpfabs(v.x) != Float.POSITIVE_INFINITY && cpfabs(v.y) != Float.POSITIVE_INFINITY)) {
+			throw new IllegalStateException(message);
+		}
+	}
+
+	private static void cpv_assert_sane(Vector2f v, String message) {
+		cpv_assert_nan(v, message);
+		cpv_assert_infinite(v, message);
+	}
+
+	void sanityCheck() {
+		if (!SANITY_CHECK) {
+			return;
+		}
+		if (!(this.m == this.m && this.m_inv == this.m_inv)) {
+			throw new IllegalStateException("Body's mass is NaN.");
+		}
+		if (!(this.i == this.i && this.i_inv == this.i_inv)) {
+			throw new IllegalStateException("Body's moment is NaN.");
+		}
+		if (!(this.m >= 0.0f)) {
+			throw new IllegalStateException("Body's mass is negative.");
+		}
+		if (!(this.i >= 0.0f)) {
+			throw new IllegalStateException("Body's moment is negative.");
+		}
+
+		cpv_assert_sane(this.p, "Body's position is invalid.");
+		cpv_assert_sane(this.v, "Body's velocity is invalid.");
+		cpv_assert_sane(this.f, "Body's force is invalid.");
+
+		if (!(this.a == this.a && cpfabs(this.a) != Float.POSITIVE_INFINITY)) {
+			throw new IllegalStateException("Body's angle is invalid.");
+		}
+		if (!(this.w == this.w && cpfabs(this.w) != Float.POSITIVE_INFINITY)) {
+			throw new IllegalStateException("Body's angular velocity is invalid.");
+		}
+		if (!(this.t == this.t && cpfabs(this.t) != Float.POSITIVE_INFINITY)) {
+			throw new IllegalStateException("Body's torque is invalid.");
+		}
 	}
 
 	static void componentActivate(Body root) {
@@ -397,11 +457,11 @@ public class Body {
 		Space space = root.space;
 		Body body = root;
 		while (body != null) {
-			Body next = body.node.next;
+			Body next = body.sleeping.next;
 
-			body.node.idleTime = 0;
-			body.node.root = null;
-			body.node.next = null;
+			body.sleeping.idleTime = 0;
+			body.sleeping.root = null;
+			body.sleeping.next = null;
 			space.activateBody(body);
 
 			body = next;
@@ -409,30 +469,65 @@ public class Body {
 		cpArrayDeleteObj(space.sleepingComponents, root);
 	}
 
-	/** Reset the idle timer on a body. If it was sleeping, wake it and any other bodies it was touching. */
+	/** Reset the idle timer on a body. If it was sleeping, wake it and any other dynamicBodies it was touching. */
 	public void activate() {
-		if (!isRogue()) {
-			node.idleTime = 0;
-			componentActivate(SpaceComponent.ComponentRoot(this));
-		}
-		for (Arbiter arb : arbiters()) {
-			// Reset the idle timer of things the body is touching as well.
-			// That way things don't get left hanging in the air.
-			Body other = (arb.body_a == this ? arb.body_b : arb.body_a);
-			if (!cpBodyIsStatic(other)) {
-				other.node.idleTime = 0.0f;
+		if (isDynamic()) {
+			this.sleeping.idleTime = 0.0f;
+
+			Body root = ComponentRoot(this);
+			if (root != null && cpBodyIsSleeping(root)) {
+				// TODO should cpBodyIsSleeping(root) be an assertion?
+				if (!root.isDynamic()) {
+					throw new IllegalStateException("Internal Error: Non-dynamic body component root detected.");
+				}
+
+				Space space = root.space;
+				Body body = root;
+				while (body != null) {
+					Body next = body.sleeping.next;
+
+					body.sleeping.idleTime = 0.0f;
+					body.sleeping.root = null;
+					body.sleeping.next = null;
+					space.activateBody(body);
+
+					body = next;
+				}
+
+				cpArrayDeleteObj(space.sleepingComponents, root);
+			}
+
+			for (Arbiter arb : arbiters()) {
+				// Reset the idle timer of things the body is touching as well.
+				// That way things don't get left hanging in the air.
+				Body other = (arb.body_a == this ? arb.body_b : arb.body_a);
+				if (!other.isStatic()) {
+					other.sleeping.idleTime = 0.0f;
+				}
 			}
 		}
 	}
 
 	/**
-	 * Similar in function to {@link #activate()}. Activates all bodies touching body. If filter is not <code>null</code>,
-	 * then only bodies touching through filter will be awoken.
+	 * Similar in function to {@link #activate()}. Activates all dynamicBodies touching body. If filter is not <code>null</code>,
+	 * then only dynamicBodies touching through filter will be awoken.
 	 *
-	 * @param filter if not <code>null</code> only bodies touching through filter will be awoken
+	 * @param filter if not <code>null</code> only dynamicBodies touching through filter will be awoken
 	 */
 	public void activateStatic(final Shape filter) {
-		SpaceComponent.cpBodyActivateStatic(this, filter);
+		if (!isStatic()) {
+			throw new IllegalStateException("cpBodyActivateStatic() called on a non-static body.");
+		}
+
+		for (Arbiter arb : arbiters()) {
+			if (filter == null || filter == arb.a || filter == arb.b) {
+				if (arb.body_a == this) {
+					arb.body_b.activate();
+				} else {
+					arb.body_a.activate();
+				}
+			}
+		}
 	}
 
 	/** Forces a body to fall asleep immediately even if it’s in midair. Cannot be called from a callback. */
@@ -460,9 +555,15 @@ public class Body {
 	 */
 	public void addShape(Shape shape) {
 		Shape next = shapeList;
-		if (next != null) next.prev = shape;
+		if (next != null) {
+			next.prev = shape;
+		}
 		shape.next = next;
 		shapeList = shape;
+
+		if (shape.massInfo.m > 0.0f) {
+			accumulateMassFromShapes();
+		}
 	}
 
 	/**
@@ -486,6 +587,10 @@ public class Body {
 
 		shape.prev = null;
 		shape.next = null;
+
+		if (isDynamic() && shape.massInfo.m > 0.0f) {
+			accumulateMassFromShapes();
+		}
 	}
 
 	private Iterator<Arbiter> eachArbiterIterator(final Body body) {
@@ -503,7 +608,7 @@ public class Body {
 				Arbiter next = Arbiter.arbiterNext(arb, body);
 				Arbiter result;
 
-				arb.swappedColl = (body == arb.body_b);
+				arb.swapped = (body == arb.body_b);
 				//func(body, arb, data);
 				result = arb;
 
@@ -530,77 +635,70 @@ public class Body {
 	 * @return {@link Iterable<Arbiter>} which can be used to iterate all collision pairs
 	 */
 	public Iterable<Arbiter> arbiters() {
-		return new Iterable<Arbiter>() {
-			@Override
-			public Iterator<Arbiter> iterator() {
-				return eachArbiterIterator(Body.this);
-			}
-		};
+		return () -> eachArbiterIterator(Body.this);
 	}
 
 	/** @return an {@link Iterable<Shape>} which can be used to iterate over all shapes of this body */
 	public Iterable<Shape> shapes() {
-		return new Iterable<Shape>() {
+		return () -> new Iterator<Shape>() {
+			Shape shape = shapeList;
+
 			@Override
-			public Iterator<Shape> iterator() {
-				return new Iterator<Shape>() {
-					Shape shape = shapeList;
+			public boolean hasNext() {
+				return shape != null;
+			}
 
-					@Override
-					public boolean hasNext() {
-						return shape != null;
-					}
+			@Override
+			public Shape next() {
+				Shape result = shape;
+				shape = shape.next;
+				return result;
+			}
 
-					@Override
-					public Shape next() {
-						Shape result = shape;
-						shape = shape.next;
-						return result;
-					}
-
-					@Override
-					public void remove() {
-						throw new UnsupportedOperationException("removal not allowed");
-					}
-				};
+			@Override
+			public void remove() {
+				throw new UnsupportedOperationException("removal not allowed");
 			}
 		};
 	}
 
 	Iterable<Body> components() {
-		return new Iterable<Body>() {
+		return () -> new Iterator<Body>() {
+			Body var = Body.this;
+
 			@Override
-			public Iterator<Body> iterator() {
-				return new Iterator<Body>() {
-					Body var = Body.this;
+			public boolean hasNext() {
+				return var != null;
+			}
 
-					@Override
-					public boolean hasNext() {
-						return var != null;
-					}
+			@Override
+			public Body next() {
+				Body result = var;
+				var = var.sleeping.next;
+				return result;
+			}
 
-					@Override
-					public Body next() {
-						Body result = var;
-						var = var.node.next;
-						return result;
-					}
-
-					@Override
-					public void remove() {
-						throw new UnsupportedOperationException("removal not allowed");
-					}
-				};
+			@Override
+			public void remove() {
+				throw new UnsupportedOperationException("removal not allowed");
 			}
 		};
 	}
 
 	/**
 	 * @return returns true if body is a static body. Either {@link Space#getStaticBody()} or a body created with {@link
-	 *         Body#createStatic()}.
+	 * Body#createStatic()}.
 	 */
 	public boolean isStatic() {
-		return node.idleTime == Float.POSITIVE_INFINITY;
+		return getType() == BodyType.STATIC;
+	}
+
+	public boolean isDynamic() {
+		return getType() == BodyType.DYNAMIC;
+	}
+
+	public boolean isKinematic() {
+		return getType() == BodyType.KINEMATIC;
 	}
 
 	static boolean cpBodyIsStatic(Body body) {
@@ -615,54 +713,53 @@ public class Body {
 		return body.isRogue();
 	}
 
-	/// Get the kinetic energy of a body.
-	static float cpBodyKineticEnergy(Body body) {
-		// Need to do some fudging to avoid NaNs
-		float vsq = cpvdot(body.v, body.v);
-		float wsq = body.w * body.w;
-		return (vsq != 0 ? vsq * body.m : 0.0f) + (wsq != 0 ? wsq * body.i : 0.0f);
-	}
-
+	/**
+	 * @return the kinetic energy of a body.
+	 */
 	public float getKineticEnergy() {
-		return cpBodyKineticEnergy(this);
-	}
-
-	private static void cpBodySanityCheck(Body body) {
-		body.sanityCheck();
+		// Need to do some fudging to avoid NaNs
+		float vsq = cpvdot(this.v, this.v);
+		float wsq = this.w * this.w;
+		return (vsq != 0 ? vsq * this.m : 0.0f) + (wsq != 0 ? wsq * this.i : 0.0f);
 	}
 
 	/**
 	 * The default integration function for updating the velocity of a body.
 	 *
-	 * @param body    the body for which to update the velocity
 	 * @param gravity the gravity to apply
 	 * @param damping the damping to apply
 	 * @param dt      the timestep to use
 	 */
-	public static void updateVelocity(Body body, Vector2f gravity, float damping, float dt) {
-		body.v = cpvclamp(cpvadd(cpvmult(body.v, damping), cpvmult(cpvadd(gravity, cpvmult(body.f, body.m_inv)),
-				dt)), body.v_limit);
+	public void updateVelocity(Vector2f gravity, float damping, float dt) {
+		if (!(this.m > 0.0f && this.i > 0.0f)) {
+			throw new IllegalStateException(
+					String.format("Body's mass and moment must be positive to simulate. (Mass: %f Moment: %f)", this.m,
+								  this.i));
+		}
+		this.v = cpvadd(cpvmult(this.v, damping), cpvmult(cpvadd(gravity, cpvmult(this.f, this.m_inv)), dt));
+		this.w = this.w * damping + this.t * this.i_inv * dt;
 
-		float w_limit = body.w_limit;
-		body.w = cpfclamp(body.w * damping + body.t * body.i_inv * dt, -w_limit, w_limit);
+		// Reset forces.
+		this.f.set(0, 0);
+		this.t = 0.0f;
 
-		cpBodySanityCheck(body);
+		sanityCheck();
 	}
 
 	/**
 	 * The default integration function updating the position of a body.
 	 *
-	 * @param body the body for which to update the position
-	 * @param dt   the timestep to use
+	 * @param dt the timestep to use
 	 */
-	public static void updatePosition(Body body, float dt) {
-		body.p = cpvadd(body.p, cpvmult(cpvadd(body.v, body.v_bias), dt));
-		body.setAngle(body.a + (body.w + body.w_bias) * dt);
+	public void updatePosition(float dt) {
+		this.p.set(cpvadd(this.p, cpvmult(cpvadd(this.v, this.v_bias), dt)));
+		float a = setAngle(this.a + (this.w + this.w_bias) * dt);
+		setTransform(p, a);
 
-		body.v_bias = cpvzero();
-		body.w_bias = 0.0f;
+		this.v_bias.set(0, 0);
+		this.w_bias = 0.0f;
 
-		cpBodySanityCheck(body);
+		sanityCheck();
 	}
 
 	static Constraint cpConstraintNext(Constraint node, Body body) {
@@ -686,29 +783,24 @@ public class Body {
 
 	/** @return an {@link Iterable<Constraint>} which can be used to iterate over all constraints of this body */
 	public Iterable<Constraint> constraints() {
-		return new Iterable<Constraint>() {
+		return () -> new Iterator<Constraint>() {
+			Constraint var = constraintList;
+
 			@Override
-			public Iterator<Constraint> iterator() {
-				return new Iterator<Constraint>() {
-					Constraint var = constraintList;
+			public boolean hasNext() {
+				return var != null;
+			}
 
-					@Override
-					public boolean hasNext() {
-						return var != null;
-					}
+			@Override
+			public Constraint next() {
+				Constraint next = var;
+				var = cpConstraintNext(var, Body.this);
+				return next;
+			}
 
-					@Override
-					public Constraint next() {
-						Constraint next = var;
-						var = cpConstraintNext(var, Body.this);
-						return next;
-					}
-
-					@Override
-					public void remove() {
-						throw new UnsupportedOperationException("removal not supported");
-					}
-				};
+			@Override
+			public void remove() {
+				throw new UnsupportedOperationException("removal not supported");
 			}
 		};
 	}
@@ -736,26 +828,35 @@ public class Body {
 	/**
 	 * Convert body relative/local coordinates to absolute/world coordinates.
 	 *
-	 * @param v the coordinates to convert
+	 * @param point the coordinates to convert
 	 * @return the converted coordinates
 	 */
-	public Vector2f local2World(final Vector2f v) {
-		return cpvadd(this.p, cpvrotate(v, this.rot));
+	public Vector2f localToWorld(final Vector2f point) {
+		return this.transform.transformPoint(point);
 	}
 
 	/**
 	 * Convert body absolute/world coordinates to  relative/local coordinates.
 	 *
-	 * @param v the coordinates to convert
+	 * @param point the coordinates to convert
 	 * @return the converted coordinates
 	 */
-	public Vector2f world2Local(final Vector2f v) {
-		return cpvunrotate(cpvsub(v, this.p), this.rot);
+	public Vector2f worldToLocal(final Vector2f point) {
+		return Transform.rigidInverse(this.transform).transformPoint(point);
 	}
 
 	/** @return the user data */
 	public Object getData() {
 		return data;
+	}
+
+	/**
+	 * Sets user data. Use this data to get a reference to the game object that owns this body from callbacks.
+	 *
+	 * @param data the user data to set
+	 */
+	public void setData(Object data) {
+		this.data = data;
 	}
 
 	/**
@@ -767,12 +868,123 @@ public class Body {
 		return clazz.cast(data);
 	}
 
-	/**
-	 * Sets user data. Use this data to get a reference to the game object that owns this body from callbacks.
-	 *
-	 * @param data the user data to set
-	 */
-	public void setData(Object data) {
-		this.data = data;
+	public BodyType getType() {
+		if (this.sleeping.idleTime == Float.POSITIVE_INFINITY) {
+			return BodyType.STATIC;
+		} else if (this.m == Float.POSITIVE_INFINITY) {
+			return BodyType.KINEMATIC;
+		} else {
+			return BodyType.DYNAMIC;
+		}
+	}
+
+	public void setType(BodyType type) {
+		BodyType oldType = getType();
+		if (oldType == type) {
+			return;
+		}
+
+		// Static dynamicBodies have their idle timers set to infinity.
+		// Non-static dynamicBodies should have their idle timer reset.
+		this.sleeping.idleTime = (type == BodyType.STATIC ? Float.POSITIVE_INFINITY : 0.0f);
+
+		if (type == BodyType.DYNAMIC) {
+			this.m = this.i = 0.0f;
+			this.m_inv = this.i_inv = Float.POSITIVE_INFINITY;
+
+			accumulateMassFromShapes();
+		} else {
+			this.m = this.i = Float.POSITIVE_INFINITY;
+			this.m_inv = this.i_inv = 0.0f;
+
+			this.v.set(0, 0);
+			this.w = 0.0f;
+		}
+
+		// If the body is added to a space already, we'll need to update some space data structures.
+		if (space != null) {
+			Assert.cpAssertSpaceUnlocked(space);
+
+			switch (oldType) {
+				case STATIC:
+					// TODO This is probably not necessary
+					//			cpBodyActivateStatic(body, NULL);
+					break;
+				default:
+					activate();
+					break;
+			}
+
+			// Move the dynamicBodies to the correct array.
+			List<Body> fromArray = (oldType == BodyType.DYNAMIC ? space.dynamicBodies : space.otherBodies);
+			List<Body> toArray = (type == BodyType.DYNAMIC ? space.dynamicBodies : space.otherBodies);
+			if (fromArray != toArray) {
+				fromArray.remove(this);
+				toArray.add(this);
+			}
+
+			// Move the body's shapes to the correct spatial index.
+			SpatialIndex<Shape> fromIndex = (oldType == BodyType.STATIC ? space.staticShapes : space.dynamicShapes);
+			SpatialIndex<Shape> toIndex = (type == BodyType.STATIC ? space.staticShapes : space.dynamicShapes);
+			if (fromIndex != toIndex) {
+				for (Shape shape : shapes()) {
+					fromIndex.remove(shape, shape.getHashId());
+					toIndex.insert(shape, shape.getHashId());
+				}
+			}
+		}
+	}
+
+	// Should *only* be called when shapes with mass info are modified, added or removed.
+	public void accumulateMassFromShapes() {
+		if (!isDynamic()) {
+			return;
+		}
+
+		// Reset the body's mass data.
+		this.m = this.i = 0.0f;
+		this.cog.set(0, 0);
+
+		// Cache the position to realign it at the end.
+		Vector2f pos = Util.cpv(this.getPosition());
+
+		// Accumulate mass from shapes.
+		for (Shape shape : shapes()) {
+			MassInfo info = shape.massInfo;
+			float m = info.m;
+
+			if (m > 0.0f) {
+				float msum = this.m + m;
+
+				this.i += m * info.i + Util.cpvdistsq(this.cog, info.cog) * (m * this.m) / msum;
+				this.cog = Util.cpvlerp(this.cog, info.cog, m / msum);
+				this.m = msum;
+			}
+		}
+
+		// Recalculate the inverses.
+		this.m_inv = 1.0f / this.m;
+		this.i_inv = 1.0f / this.i;
+
+		// Realign the body since the CoG has probably moved.
+		setPosition(pos);
+		sanityCheck();
+	}
+
+	Shape getShapeList() {
+		return shapeList;
+	}
+
+	@Override
+	public String toString() {
+		return "Body{" +
+				"p=" + p +
+				", v=" + v +
+				", f=" + f +
+				", a=" + a +
+				", w=" + w +
+				", t=" + t +
+				", transform=" + transform +
+				'}';
 	}
 }

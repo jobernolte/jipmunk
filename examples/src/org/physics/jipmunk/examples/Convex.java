@@ -1,16 +1,7 @@
 package org.physics.jipmunk.examples;
 
-import org.physics.jipmunk.Body;
-import org.physics.jipmunk.ConvexHullInfo;
-import org.physics.jipmunk.ConvexHullUtil;
-import org.physics.jipmunk.DefaultVector2f;
-import org.physics.jipmunk.PolyShape;
-import org.physics.jipmunk.SegmentShape;
-import org.physics.jipmunk.Shape;
-import org.physics.jipmunk.Space;
-import org.physics.jipmunk.Util;
-import org.physics.jipmunk.Vector2f;
-import org.physics.jipmunk.constraints.NearestPointQueryInfo;
+import org.physics.jipmunk.*;
+import org.physics.jipmunk.constraints.PointQueryInfo;
 
 /** @author jobernolte */
 public class Convex extends ExampleBase {
@@ -34,8 +25,8 @@ public class Convex extends ExampleBase {
 		float hh = getHeight() / 2.0f;
 		Shape shape = space.addShape(new SegmentShape(staticBody, Util.cpv(-hw, -hh), Util.cpv(hw, -hh), 0.0f));
 		shape.setElasticity(1.0f);
-		shape.setFrictionCoefficient(1.0f);
-		shape.setLayers(NOT_GRABABLE_MASK);
+		shape.setFriction(1.0f);
+		shape.setFilter(NOT_GRABABLE_FILTER);
 
 		float width = 50.0f;
 		float height = 70.0f;
@@ -44,8 +35,8 @@ public class Convex extends ExampleBase {
 
 		body = space.addBody(new Body(mass, moment));
 
-		shape = space.addShape(PolyShape.createBox(body, width, height));
-		shape.setFrictionCoefficient(0.6f);
+		shape = space.addShape(PolyShape.createBox(body, width, height, 0.0f));
+		shape.setFriction(0.6f);
 		this.shape = (PolyShape) shape;
 		return space;
 	}
@@ -54,20 +45,20 @@ public class Convex extends ExampleBase {
 	public void update(long delta) {
 		float tolerance = 2.0f;
 
-		NearestPointQueryInfo info = shape.nearestPointQuery(mousePoint, null);
-		if (chipmunkDemoRightClick && info.d > tolerance) {
+		PointQueryInfo info = shape.pointQuery(mousePoint, null);
+		if (chipmunkDemoRightClick && info.distance > tolerance) {
 			Body body = shape.getBody();
 			int count = shape.getNumVertices();
 
 			// Allocate the space for the new vertexes on the stack.
 			//cpVect * verts = (cpVect *) alloca((count + 1) * sizeof(cpVect));
-			Vector2f[] verts = new DefaultVector2f[count + 1];
+			Vector2f[] verts = new Vector2f[count + 1];
 
 			for (int i = 0; i < count; i++) {
-				verts[i] = new DefaultVector2f(shape.getVertices()[i]);
+				verts[i] = new Vector2f(shape.getVertexAt(i));
 			}
 
-			verts[count] = body.world2Local(mousePoint); //  cpBodyWorld2Local(body, ChipmunkDemoMouse);
+			verts[count] = body.worldToLocal(mousePoint); //  cpBodyWorld2Local(body, ChipmunkDemoMouse);
 
 			// System.out.println("adding point " + verts[count]);
 
@@ -77,21 +68,21 @@ public class Convex extends ExampleBase {
 			int hullCount = convexHullInfo.count;
 
 			/*for (int i = 0; i < hullCount; i++) {
-				System.out.format("%d: [%f,%f]\n", i, verts[i].getX(), verts[i].getY());
+				System.out.format("%distance: [%f,%f]\normal", i, verts[i].getX(), verts[i].getY());
 			}*/
 
 			// Figure out how much to shift the body by.
 			Vector2f centroid = Util.centroidForPoly(verts, 0, hullCount);
 
 			// Recalculate the body properties to match the updated shape.
-			float mass = Util.areaForPoly(verts, 0, hullCount) * DENSITY;
+			float mass = Util.areaForPoly(verts, 0, hullCount, 0.0f) * DENSITY;
 			body.setMass(mass);
-			body.setMoment(Util.momentForPoly(mass, verts, 0, hullCount, Util.cpvneg(centroid)));
-			body.setPosition(body.local2World(centroid));
+			body.setMoment(Util.momentForPoly(mass, verts, 0, hullCount, Util.cpvneg(centroid), 0.0f));
+			body.setPosition(body.localToWorld(centroid));
 
 			// Use the setter function from chipmunk_unsafe.h.
 			// You could also remove and recreate the shape if you wanted.
-			shape.setVertices(verts, 0, hullCount, Util.cpvneg(centroid));
+			shape.setVertices(verts, 0, hullCount, Transform.translate(Util.cpvneg(centroid)));
 		}
 
 		int steps = 1;

@@ -20,13 +20,29 @@
  * SOFTWARE.
  */
 
-package org.physics.jipmunk;
+package org.physics.jipmunk.impl;
+
+import org.physics.jipmunk.Vector2f;
+
+import static org.physics.jipmunk.Util.cpv;
 
 /**
- * Spatial query callback function type.
- *
  * @author jobernolte
  */
-interface SpatialReIndexQueryFunc<T> {
-	void apply(T obj1, T obj2);
+public class EdgePoint {
+	public EdgePoint(Vector2f p, int hash) {
+		this.p = new Vector2f(p);
+		this.hash = hash;
+	}
+
+	private final Vector2f p;
+	private final int hash;
+
+	public Vector2f getP() {
+		return p;
+	}
+
+	public int getHash() {
+		return hash;
+	}
 }

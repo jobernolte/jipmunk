@@ -66,8 +66,8 @@ public class PivotJoint extends Constraint {
 	 */
 	public PivotJoint(Body a, Body b, Vector2f pivot) {
 		super(a, b);
-		Vector2f anchr1 = (a != null ? a.world2Local(pivot) : Util.cpv(pivot));
-		Vector2f anchr2 = (b != null ? b.world2Local(pivot) : Util.cpv(pivot));
+		Vector2f anchr1 = (a != null ? a.worldToLocal(pivot) : Util.cpv(pivot));
+		Vector2f anchr2 = (b != null ? b.worldToLocal(pivot) : Util.cpv(pivot));
 		init(a, b, anchr1, anchr2);
 	}
 

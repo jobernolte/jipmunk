@@ -53,4 +53,8 @@ public class Assert {
 			throw new AssertionError("space is not unlocked");
 		}
 	}
+
+	public static void cpAssertSaneBody(Body body) {
+		body.sanityCheck();
+	}
 }

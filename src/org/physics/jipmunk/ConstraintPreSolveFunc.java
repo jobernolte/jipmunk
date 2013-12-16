@@ -23,6 +23,7 @@
 package org.physics.jipmunk;
 
 /** @author jobernolte */
+@FunctionalInterface
 public interface ConstraintPreSolveFunc {
-	void preSolve(Constraint constraint, Space space);
+	void apply(Constraint constraint, Space space);
 }

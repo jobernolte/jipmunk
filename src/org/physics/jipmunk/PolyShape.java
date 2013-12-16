@@ -22,72 +22,95 @@
 
 package org.physics.jipmunk;
 
-import org.physics.jipmunk.constraints.NearestPointQueryInfo;
+import org.physics.jipmunk.constraints.PointQueryInfo;
 
-import static org.physics.jipmunk.Util.cpBBNew;
-import static org.physics.jipmunk.Util.cpfmax;
-import static org.physics.jipmunk.Util.cpfmin;
-import static org.physics.jipmunk.Util.cpv;
-import static org.physics.jipmunk.Util.cpvadd;
-import static org.physics.jipmunk.Util.cpvcross;
-import static org.physics.jipmunk.Util.cpvdist;
-import static org.physics.jipmunk.Util.cpvdot;
-import static org.physics.jipmunk.Util.cpvlerp;
-import static org.physics.jipmunk.Util.cpvnormalize;
-import static org.physics.jipmunk.Util.cpvperp;
-import static org.physics.jipmunk.Util.cpvrotate;
-import static org.physics.jipmunk.Util.cpvsub;
-import static org.physics.jipmunk.Util.cpvzero;
+import java.util.Iterator;
+
+import static org.physics.jipmunk.Util.*;
 
 /** @author jobernolte */
 public class PolyShape extends Shape {
-	Vector2f[] verts;
-	Vector2f[] tVerts;
+	float r;
 	SplittingPlane[] planes;
-	SplittingPlane[] tPlanes;
+	SplittingPlane[] origPlanes;
 
-	public PolyShape(Body body, Vector2f[] verts, Vector2f offset) {
-		super(body);
-		setVertices(verts, 0, verts.length, offset);
+	static MassInfo createMassInfo(float mass, Vector2f[] verts, int offset, int count, float radius) {
+		// TODO moment is approximate due to radius.
+
+		Vector2f centroid = Util.centroidForPoly(verts, offset, count);
+		return new MassInfo(mass, Util.momentForPoly(1.0f, verts, offset, count, cpvneg(centroid), radius), centroid,
+							Util.areaForPoly(verts, offset, count, radius));
+
 	}
 
-	public PolyShape(Body body, Vector2f offset, Vector2f... verts) {
-		super(body);
-		setVertices(verts, 0, verts.length, offset);
+
+	public PolyShape(Body body, float radius, Vector2f... verts) {
+		this(body, radius, null, verts, 0, verts.length);
 	}
 
-	public PolyShape(Body body, Vector2f[] verts, int vertOffset, int vertLength, Vector2f offset) {
-		super(body);
-		setVertices(verts, vertOffset, vertLength, offset);
+	public PolyShape(Body body, float radius, Transform transform, Vector2f... verts) {
+		this(body, radius, transform, verts, 0, verts.length);
+	}
+
+	public PolyShape(Body body, float radius, Vector2f[] verts, int offset, int count) {
+		this(body, radius, null, verts, offset, count);
+	}
+
+	public PolyShape(Body body, float radius, Transform transform, Vector2f[] verts, int offset, int count) {
+		super(body, createMassInfo(0.0f, verts, offset, count, radius));
+		setVertices(verts, offset, count, transform);
+		this.r = radius;
 	}
 
 	public int getNumVertices() {
-		return verts.length;
+		return planes.length;
 	}
 
-	public Vector2f[] getVertices() {
-		return verts;
+	public Iterable<Vector2f> getVertices() {
+		return () -> new Iterator<Vector2f>() {
+			int index;
+
+			@Override
+			public boolean hasNext() {
+				return index < planes.length;
+			}
+
+			@Override
+			public Vector2f next() {
+				return planes[index++].v0;
+			}
+		};
 	}
 
-	public void setVertices(Vector2f[] verts, int vertOffset, int vertLength, Vector2f offset) {
-		if (!validate(verts, vertOffset, vertLength)) {
+	public Vector2f getVertexAt(int index) {
+		return planes[index].v0;
+	}
+
+	public void setVertices(Vector2f[] verts, int offset, int count, Transform transform) {
+		if (transform != null) {
+			Vector2f[] transformedVerts = new Vector2f[count];
+			for (int i = 0; i < count; i++) {
+				transformedVerts[i] = transform.transformPoint(verts[offset + i]);
+			}
+			verts = transformedVerts;
+			count = ConvexHullUtil.convexHull(count, transformedVerts, transformedVerts, 0.0f).count;
+			offset = 0;
+		}
+		if (!validate(verts, offset, count)) {
 			throw new IllegalArgumentException("Polygon is concave or has a reversed winding.");
 		}
-		this.verts = new Vector2f[vertLength];
-		this.tVerts = new Vector2f[vertLength];
-		this.planes = new SplittingPlane[vertLength];
-		this.tPlanes = new SplittingPlane[vertLength];
+		this.planes = new SplittingPlane[count];
+		this.origPlanes = new SplittingPlane[count];
 
-		for (int i = 0; i < vertLength; i++) {
-			Vector2f a = cpvadd(offset, verts[vertOffset + i]);
-			Vector2f b = cpvadd(offset, verts[vertOffset + ((i + 1) % vertLength)]);
-			Vector2f n = cpvnormalize(cpvperp(cpvsub(b, a)));
+		for (int i = 0; i < count; i++) {
+			Vector2f a = verts[(i - 1 + count) % count];
+			Vector2f b = verts[i];
+			Vector2f n = cpvnormalize(cpvrperp(cpvsub(b, a)));
 
-			this.verts[i] = a;
 			this.planes[i] = new SplittingPlane();
-			this.planes[i].n = n;
-			this.planes[i].d = cpvdot(n, a);
-			this.tPlanes[i] = new SplittingPlane();
+			this.origPlanes[i] = new SplittingPlane();
+			this.origPlanes[i].v0 = new Vector2f(b);
+			this.origPlanes[i].n = new Vector2f(n);
 		}
 	}
 
@@ -97,137 +120,115 @@ public class PolyShape extends Shape {
 	}
 
 	@Override
-	protected BB cacheData(Vector2f pos, Vector2f rot) {
-		transformAxes(pos, rot);
-		return transformVerts(pos, rot);
+	protected BB cacheData(Transform transform) {
+		int count = this.planes.length;
+
+		float l = Float.POSITIVE_INFINITY, r = Float.NEGATIVE_INFINITY;
+		float b = Float.POSITIVE_INFINITY, t = Float.NEGATIVE_INFINITY;
+
+		for (int i = 0; i < count; i++) {
+			Vector2f v = transform.transformPoint(origPlanes[i].v0);
+			Vector2f n = transform.transformVect(origPlanes[i].n);
+
+			planes[i].v0 = v;
+			planes[i].n = n;
+
+			l = cpfmin(l, v.x);
+			r = cpfmax(r, v.x);
+			b = cpfmin(b, v.y);
+			t = cpfmax(t, v.y);
+		}
+
+		float radius = this.r;
+		return (this.bb = new BB(l - radius, b - radius, r + radius, t + radius));
 	}
 
 	@Override
-	public boolean pointQuery(Vector2f p) {
-		return this.bb.contains(p) && cpPolyShapeContainsVert(this, p);
-	}
+	protected void segmentQueryImpl(Vector2f a, Vector2f b, float r2, SegmentQueryInfo info) {
+		SplittingPlane[] planes = this.planes;
+		int count = this.planes.length;
+		float r = this.r;
+		float rsum = r + r2;
 
-	@Override
-	protected void segmentQueryImpl(Vector2f a, Vector2f b, SegmentQueryInfo info) {
-		SplittingPlane[] axes = this.tPlanes;
-		Vector2f[] verts = this.tVerts;
-
-		for (int i = 0; i < verts.length; i++) {
-			Vector2f n = axes[i].n;
+		for (int i = 0; i < count; i++) {
+			Vector2f n = planes[i].n;
 			float an = cpvdot(a, n);
-			if (axes[i].d > an) continue;
+			float d = an - cpvdot(planes[i].v0, n) - rsum;
+			if (d < 0.0f)
+				continue;
 
 			float bn = cpvdot(b, n);
-			float t = (axes[i].d - an) / (bn - an);
-			if (t < 0.0f || 1.0f < t) continue;
+			float t = d / (an - bn);
+			if (t < 0.0f || 1.0f < t)
+				continue;
 
 			Vector2f point = cpvlerp(a, b, t);
-			float dt = -cpvcross(n, point);
-			float dtMin = -cpvcross(n, verts[i]);
-			float dtMax = -cpvcross(n, verts[(i + 1) % verts.length]);
+			float dt = cpvcross(n, point);
+			float dtMin = cpvcross(n, planes[(i - 1 + count) % count].v0);
+			float dtMax = cpvcross(n, planes[i].v0);
 
 			if (dtMin <= dt && dt <= dtMax) {
-				info.set(this, t, n);
+				info.shape = this;
+				info.point.set(cpvsub(cpvlerp(a, b, t), cpvmult(n, r2)));
+				info.normal.set(n);
+				info.alpha = t;
+			}
+		}
+
+		// Also check against the beveled vertexes.
+		if (rsum > 0.0f) {
+			SegmentQueryInfo circleInfo = new SegmentQueryInfo(null, b, cpvzero(), 1.0f);
+			for (int i = 0; i < count; i++) {
+				circleInfo.alpha = 1.0f;
+				CircleShape.circleSegmentQuery(this, planes[i].v0, r, a, b, r2, circleInfo);
+				if (circleInfo.alpha < info.alpha) {
+					info.set(circleInfo);
+				}
 			}
 		}
 	}
 
 	@Override
-	public NearestPointQueryInfo nearestPointQuery(Vector2f p, NearestPointQueryInfo out) {
-		int count = this.verts.length;
-		SplittingPlane[] planes = this.tPlanes;
-		Vector2f[] verts = this.tVerts;
+	public PointQueryInfo pointQuery(Vector2f p, PointQueryInfo info) {
+		int count = this.planes.length;
+		SplittingPlane[] planes = this.planes;
+		float r = this.r;
 
-		Vector2f v0 = verts[count - 1];
+		Vector2f v0 = planes[count - 1].v0;
 		float minDist = Float.POSITIVE_INFINITY;
 		Vector2f closestPoint = cpvzero();
+		Vector2f closestNormal = cpvzero();
 		boolean outside = false;
 
 		for (int i = 0; i < count; i++) {
-			if (splittingPlaneCompare(planes[i], p) > 0.0f) {
+			Vector2f v1 = planes[i].v0;
+			if (cpvdot(planes[i].n, cpvsub(p, v1)) > 0.0f)
 				outside = true;
-			}
 
-			Vector2f v1 = verts[i];
-			Vector2f closest = Util.closestPointOnSegment(p, v0, v1);
+			Vector2f closest = closestPointOnSegment(p, v0, v1);
 
 			float dist = cpvdist(p, closest);
 			if (dist < minDist) {
 				minDist = dist;
 				closestPoint = closest;
+				closestNormal = planes[i].n;
 			}
 
 			v0 = v1;
 		}
-		if (out == null) {
-			out = new NearestPointQueryInfo();
+
+		float dist = (outside ? minDist : -minDist);
+		Vector2f g = cpvmult(cpvsub(p, closestPoint), 1.0f / dist);
+		if (info == null) {
+			info = new PointQueryInfo();
 		}
-		out.set(this, closestPoint, (outside ? minDist : -minDist));
-		return out;
-	}
+		info.shape = this;
+		info.point.set(cpvadd(closestPoint, cpvmult(g, r)));
+		info.distance = dist - r;
 
-	static float cpPolyShapeValueOnAxis(final PolyShape poly, final Vector2f n, final float d) {
-		Vector2f[] verts = poly.tVerts;
-		float min = cpvdot(n, verts[0]);
-
-		for (int i = 1; i < verts.length; i++) {
-			min = cpfmin(min, cpvdot(n, verts[i]));
-		}
-
-		return min - d;
-	}
-
-	static boolean cpPolyShapeContainsVert(final PolyShape poly, final Vector2f v) {
-		SplittingPlane[] axes = poly.tPlanes;
-
-		for (int i = 0; i < axes.length; i++) {
-			float dist = cpvdot(axes[i].n, v) - axes[i].d;
-			if (dist > 0.0f) return false;
-		}
-
-		return true;
-	}
-
-	static boolean cpPolyShapeContainsVertPartial(final PolyShape poly, final Vector2f v, final Vector2f n) {
-		SplittingPlane[] axes = poly.tPlanes;
-
-		for (int i = 0; i < axes.length; i++) {
-			if (cpvdot(axes[i].n, n) < 0.0f) continue;
-			float dist = cpvdot(axes[i].n, v) - axes[i].d;
-			if (dist > 0.0f) return false;
-		}
-
-		return true;
-	}
-
-	BB transformVerts(Vector2f p, Vector2f rot) {
-		Vector2f[] src = this.verts;
-
-		float l = Float.POSITIVE_INFINITY, r = Float.NEGATIVE_INFINITY;
-		float b = Float.POSITIVE_INFINITY, t = Float.NEGATIVE_INFINITY;
-
-		for (int i = 0; i < src.length; i++) {
-			Vector2f v = cpvadd(p, cpvrotate(src[i], rot));
-
-			tVerts[i] = v;
-			l = cpfmin(l, v.getX());
-			r = cpfmax(r, v.getX());
-			b = cpfmin(b, v.getY());
-			t = cpfmax(t, v.getY());
-		}
-
-		return cpBBNew(l, b, r, t);
-	}
-
-	void transformAxes(Vector2f p, Vector2f rot) {
-		SplittingPlane[] src = this.planes;
-		SplittingPlane[] dst = this.tPlanes;
-
-		for (int i = 0; i < src.length; i++) {
-			Vector2f n = cpvrotate(src[i].n, rot);
-			dst[i].n = n;
-			dst[i].d = cpvdot(p, n) + src[i].d;
-		}
+		// Use the normal of the closest segment if the distance is small.
+		info.gradient.set(minDist > Constants.MAGIC_EPSILON ? g : closestNormal);
+		return info;
 	}
 
 	static boolean validate(final Vector2f[] verts, int offset, int length) {
@@ -243,20 +244,27 @@ public class PolyShape extends Shape {
 		return true;
 	}
 
-	static public PolyShape createBox(Body body, float width, float height) {
+	static public PolyShape createBox(Body body, float width, float height, float radius) {
 		float hw = width / 2.0f;
 		float hh = height / 2.0f;
 
-		Vector2f verts[] = {
-				cpv(-hw, -hh),
-				cpv(-hw, hh),
-				cpv(hw, hh),
-				cpv(hw, -hh)
-		};
-		return new PolyShape(body, verts, cpvzero());
+		Vector2f verts[] = { cpv(-hw, -hh), cpv(-hw, hh), cpv(hw, hh), cpv(hw, -hh) };
+		return new PolyShape(body, radius, verts);
 	}
 
-	static float splittingPlaneCompare(SplittingPlane plane, Vector2f v) {
-		return cpvdot(plane.n, v) - plane.d;
+	public static MassInfo massInfo(float mass, Vector2f[] verts, int offset, int count, float radius) {
+		// TODO moment is approximate due to radius.
+
+		Vector2f centroid = centroidForPoly(verts, offset, count);
+		return new MassInfo(mass, momentForPoly(1.0f, verts, offset, count, cpvneg(centroid), radius), centroid,
+							areaForPoly(verts, offset, count, radius));
+	}
+
+	public SplittingPlane[] getPlanes() {
+		return planes;
+	}
+
+	public float getRadius() {
+		return r;
 	}
 }

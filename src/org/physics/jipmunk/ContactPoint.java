@@ -24,26 +24,27 @@ package org.physics.jipmunk;
 
 /** @author jobernolte */
 public class ContactPoint {
-	/** The position of the contact point. */
-	public Vector2f point;
-	/** The normal of the contact point. */
-	public Vector2f normal;
-	/** The depth of the contact point. */
-	public float dist;
+	/** The position of the contact on the surface of each shape. */
+	Vector2f point1, point2;
+	/**
+	 * Penetration distance of the two shapes. Overlapping means it will be negative.
+	 * This value is calculated as cpvdot(cpvsub(point2, point1), normal) and is ignored by cpArbiterSetContactPointSet().
+	 */
+	float distance;
 
 	public ContactPoint() {
 	}
 
-	public ContactPoint(Vector2f point, Vector2f normal, float dist) {
-		this.point = point;
-		this.normal = normal;
-		this.dist = dist;
+	public ContactPoint(Vector2f point1, Vector2f point2, float distance) {
+		this.point1 = point1;
+		this.point2 = point2;
+		this.distance = distance;
 	}
 
-    public ContactPoint set(ContactPoint contactPoint) {
-        this.point.set(contactPoint.point);
-        this.normal.set(contactPoint.normal);
-        this.dist = contactPoint.dist;
-        return this;
-    }
+	public ContactPoint set(ContactPoint contactPoint) {
+		this.point1.set(contactPoint.point1);
+		this.point2.set(contactPoint.point2);
+		this.distance = contactPoint.distance;
+		return this;
+	}
 }

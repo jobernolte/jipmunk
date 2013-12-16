@@ -110,8 +110,8 @@ public class GrooveJoint extends Constraint {
 	@Override
 	protected void preStep(float dt) {
 		// calculate endpoints in worldspace
-		Vector2f ta = a.local2World(this.grooveA);
-		Vector2f tb = a.local2World(this.grooveB);
+		Vector2f ta = a.localToWorld(this.grooveA);
+		Vector2f tb = a.localToWorld(this.grooveB);
 
 		// calculate axis
 		Vector2f n = cpvrotate(this.grv_n, a.getRotation());
