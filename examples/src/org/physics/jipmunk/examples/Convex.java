@@ -64,7 +64,7 @@ public class Convex extends ExampleBase {
 
 			// This function builds a convex hull for the vertexes.
 			// Because the result array is NULL, it will reduce the input array instead.
-			ConvexHullInfo convexHullInfo = ConvexHullUtil.convexHull(count + 1, verts, null, tolerance);
+			ConvexHullInfo convexHullInfo = ConvexHullUtil.convexHull(verts, null, count + 1, tolerance);
 			int hullCount = convexHullInfo.count;
 
 			/*for (int i = 0; i < hullCount; i++) {

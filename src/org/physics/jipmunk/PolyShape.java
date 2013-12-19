@@ -87,25 +87,31 @@ public class PolyShape extends Shape {
 	}
 
 	public void setVertices(Vector2f[] verts, int offset, int count, Transform transform) {
+
+		Vector2f[] hullVerts = new Vector2f[count];
 		if (transform != null) {
-			Vector2f[] transformedVerts = new Vector2f[count];
 			for (int i = 0; i < count; i++) {
-				transformedVerts[i] = transform.transformPoint(verts[offset + i]);
+				hullVerts[i] = transform.transformPoint(verts[offset + i]);
 			}
-			verts = transformedVerts;
-			count = ConvexHullUtil.convexHull(count, transformedVerts, transformedVerts, 0.0f).count;
-			offset = 0;
+		} else {
+			System.arraycopy(verts, offset, hullVerts, 0, count);
 		}
-		if (!validate(verts, offset, count)) {
-			throw new IllegalArgumentException("Polygon is concave or has a reversed winding.");
-		}
+
+		/*for (int i = 0; i < count; i++) {
+			System.out.format("SetVerts1: i=%d, v=%s\n", i, hullVerts[offset + i]);
+		}*/
+
+		count = ConvexHullUtil.convexHull(hullVerts, hullVerts, count, 0.0f).count;
+
 		this.planes = new SplittingPlane[count];
 		this.origPlanes = new SplittingPlane[count];
 
 		for (int i = 0; i < count; i++) {
-			Vector2f a = verts[(i - 1 + count) % count];
-			Vector2f b = verts[i];
+			Vector2f a = hullVerts[(i - 1 + count) % count];
+			Vector2f b = hullVerts[i];
 			Vector2f n = cpvnormalize(cpvrperp(cpvsub(b, a)));
+
+			// System.out.format("SetVerts2: i=%d, b=%s, n=%s\n", i, b, n);
 
 			this.planes[i] = new SplittingPlane();
 			this.origPlanes[i] = new SplittingPlane();
@@ -113,7 +119,7 @@ public class PolyShape extends Shape {
 			this.origPlanes[i].n = new Vector2f(n);
 		}
 		float mass = this.massInfo.m;
-		this.massInfo = createMassInfo(mass, verts, offset, count, this.radius);
+		this.massInfo = createMassInfo(mass, hullVerts, 0, count, this.radius);
 		if (mass > 0.0f) {
 			body.accumulateMassFromShapes();
 		}
@@ -256,12 +262,7 @@ public class PolyShape extends Shape {
 	}
 
 	static public PolyShape createBox(Body body, BB box, float radius) {
-		Vector2f verts[] = {
-				cpv(box.r, box.b),
-				cpv(box.r, box.t),
-				cpv(box.l, box.t),
-				cpv(box.l, box.b),
-		};
+		Vector2f verts[] = { cpv(box.r, box.b), cpv(box.r, box.t), cpv(box.l, box.t), cpv(box.l, box.b), };
 		return new PolyShape(body, radius, verts);
 	}
 

@@ -93,7 +93,7 @@ public class Plink extends ExampleBase {
 			float x = rgen.nextFloat() * 640f - 320f;
 			body.setPosition(Util.cpv(x, 350f));
 
-			shape = space.addShape(new PolyShape(body, 0.0f, verts));
+			shape = space.addShape(new PolyShape(body, 0.0f, Transform.identity(), verts));
 			shape.setElasticity(0.1f);
 			shape.setFriction(0.4f);
 		}

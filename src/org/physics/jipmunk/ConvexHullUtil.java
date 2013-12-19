@@ -16,10 +16,10 @@ public class ConvexHullUtil {
 		for (int i = 1; i < count; i++) {
 			Vector2f v = verts[i];
 
-			if (v.getX() < min.getX() || (v.getX() == min.getX() && v.getY() < min.getY())) {
+			if (v.x < min.x || (v.x == min.x && v.y < min.y)) {
 				min = v;
 				startEnd.start = i;
-			} else if (v.getX() > max.getX() || (v.getX() == max.getX() && v.getY() > max.getY())) {
+			} else if (v.x > max.x || (v.x == max.x && v.y > max.y)) {
 				max = v;
 				startEnd.end = i;
 			}
@@ -27,10 +27,6 @@ public class ConvexHullUtil {
 	}
 
 	static void swap(Vector2f[] verts, int a, int b) {
-		/*float x = verts[a].getX();
-		float y = verts[a].getY();
-		verts[a].set(verts[b]);
-		verts[b].set(x, y);*/
 		Vector2f tmp = verts[a];
 		verts[a] = verts[b];
 		verts[b] = tmp;
@@ -49,7 +45,7 @@ public class ConvexHullUtil {
 
 		int head = 0;
 		for (int tail = count - 1; head <= tail; ) {
-			float value = Util.cpvcross(delta, Util.cpvsub(verts[offset + head], a));
+			float value = Util.cpvcross(Util.cpvsub(verts[offset + head], a), delta);
 			if (value > valueTol) {
 				if (value > max) {
 					max = value;
@@ -76,13 +72,11 @@ public class ConvexHullUtil {
 			return 0;
 		} else if (count == 0) {
 			result[resultOffset] = pivot;
-			//result[resultOffset].set(pivot);
 			return 1;
 		} else {
 			int left_count = QHullPartition(verts, offset, count, a, pivot, tol);
-			int index = QHullReduce(tol, verts, offset + 1, left_count - 1,
-					a, Util.cpv(verts[offset]), pivot,
-					result, resultOffset);
+			int index = QHullReduce(tol, verts, offset + 1, left_count - 1, a, Util.cpv(verts[offset]), pivot, result,
+									resultOffset);
 
 			result[resultOffset + index++] = pivot;
 			//result[resultOffset + index++].set(pivot);
@@ -94,7 +88,7 @@ public class ConvexHullUtil {
 				return index;
 			}
 			return index + QHullReduce(tol, verts, offset + left_count + 1, right_count - 1, pivot,
-					Util.cpv(verts[offset + left_count]), b, result, resultOffset + index);
+									   Util.cpv(verts[offset + left_count]), b, result, resultOffset + index);
 		}
 	}
 
@@ -102,8 +96,8 @@ public class ConvexHullUtil {
 	 * QuickHull seemed like a neat algorithm, and efficient-ish for large input sets. My implementation performs an in
 	 * place reduction using the result array as scratch space.
 	 */
-	public static ConvexHullInfo convexHull(int count, Vector2f[] verts, Vector2f[] result, float tol) {
-		if (result != null) {
+	public static ConvexHullInfo convexHull(Vector2f[] verts, Vector2f[] result, int count, float tol) {
+		if (result != null && result != verts) {
 			// Copy the line vertexes into the empty part of the result polyline to use as a scratch buffer.
 			System.arraycopy(verts, 0, result, 0, count);
 		} else {
@@ -125,9 +119,6 @@ public class ConvexHullUtil {
 		Vector2f b = Util.cpv(result[1]);
 
 		int resultCount = QHullReduce(tol, result, 2, count - 2, a, b, a, result, 1) + 1;
-		Assert.cpAssertSoft(PolyShape.validate(result, 0, resultCount),
-				"Internal error: convexHull() and Poly.validate() did not agree. "
-						+ "Please report this error with as much info as you can.");
 		return new ConvexHullInfo(startEnd.start, resultCount);
 	}
 }

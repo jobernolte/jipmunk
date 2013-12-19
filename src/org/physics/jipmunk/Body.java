@@ -748,10 +748,6 @@ public class Body {
 								  this.i));
 		}
 		this.v = cpvadd(cpvmult(this.v, damping), cpvmult(cpvadd(gravity, cpvmult(this.f, this.m_inv)), dt));
-		/*if (this.w != 0.0f) {
-			// TODO remove me
-			System.out.format("updatevel: w=%f, damping=%f, t=%f, i_inv=%f, dt=%f\n", w, damping, t, i_inv, dt);
-		}*/
 		this.w = this.w * damping + this.t * this.i_inv * dt;
 
 		// Reset forces.
