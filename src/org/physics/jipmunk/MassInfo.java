@@ -40,4 +40,14 @@ public class MassInfo {
 		this.cog = cog;
 		this.area = area;
 	}
+
+	@Override
+	public String toString() {
+		return "MassInfo{" +
+				"m=" + m +
+				", i=" + i +
+				", cog=" + cog +
+				", area=" + area +
+				'}';
+	}
 }

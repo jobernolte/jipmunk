@@ -27,7 +27,7 @@ public class Planet extends ExampleBase {
 
         // Create a rouge body to control the planet manually.
         planetBody = new Body(Float.POSITIVE_INFINITY, Float.POSITIVE_INFINITY);
-        planetBody.setAngVel(0.2f);
+        planetBody.setAngularVelocity(0.2f);
 
         for (int i = 0; i < 30; i++)
             add_box();
@@ -104,7 +104,7 @@ public class Planet extends ExampleBase {
 
         // Set the box's angular velocity to match its orbital period and
         // align its initial angle with its position.
-        body.setAngVel(v);
+        body.setAngularVelocity(v);
         body.setAngleInRadians(Util.cpvtoangle(pos));
         Shape shape = space.addShape(new PolyShape(body, 0.0f, verts));
         shape.setElasticity(0.0f);

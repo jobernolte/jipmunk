@@ -30,7 +30,7 @@ import static org.physics.jipmunk.Util.*;
 public class CircleShape extends Shape {
 	private Vector2f c = Util.cpvzero();
 	Vector2f tc;
-	float r;
+	float radius;
 
 	static MassInfo createMassInfo(float mass, float radius, Vector2f center) {
 		return new MassInfo(mass, Util.momentForCircle(1.0f, 0.0f, radius, cpvzero()), center,
@@ -40,7 +40,7 @@ public class CircleShape extends Shape {
 	public CircleShape(Body body, float radius, Vector2f offset) {
 		super(body, createMassInfo(0.0f, radius, offset));
 		this.c.set(offset);
-		this.r = radius;
+		this.radius = radius;
 	}
 
 	@Override
@@ -51,7 +51,7 @@ public class CircleShape extends Shape {
 	@Override
 	protected BB cacheData(Transform transform) {
 		Vector2f c = this.tc = transform.transformPoint(this.c);
-		return BB.forCircle(c, this.r);
+		return BB.forCircle(c, this.radius);
 	}
 
 	protected static void circleSegmentQuery(Shape shape, Vector2f center, float r1, Vector2f a, Vector2f b, float r2,
@@ -79,14 +79,14 @@ public class CircleShape extends Shape {
 
 	@Override
 	protected void segmentQueryImpl(Vector2f a, Vector2f b, float radius, SegmentQueryInfo info) {
-		circleSegmentQuery(this, this.tc, this.r, a, b, radius, info);
+		circleSegmentQuery(this, this.tc, this.radius, a, b, radius, info);
 	}
 
 	@Override
 	public PointQueryInfo pointQuery(Vector2f p, PointQueryInfo out) {
 		Vector2f delta = cpvsub(p, this.tc);
 		float d = Util.cpvlength(delta);
-		float r = this.r;
+		float r = this.radius;
 
 		if (out == null) {
 			out = new PointQueryInfo();
@@ -97,11 +97,17 @@ public class CircleShape extends Shape {
 	}
 
 	public float getRadius() {
-		return r;
+		return radius;
 	}
 
-	public void setRadius(float r) {
-		this.r = r;
+	public void setRadius(float radius) {
+		this.radius = radius;
+
+		float mass = this.massInfo.m;
+		this.massInfo = createMassInfo(mass, this.radius, this.c);
+		if (mass > 0.0f) {
+			body.accumulateMassFromShapes();
+		}
 	}
 
 	public Vector2f getOffset() {
@@ -110,13 +116,15 @@ public class CircleShape extends Shape {
 
 	public void setOffset(final Vector2f offset) {
 		this.c.set(offset);
+
+		float mass = this.massInfo.m;
+		this.massInfo = createMassInfo(mass, this.radius, this.c);
+		if (mass > 0.0f) {
+			body.accumulateMassFromShapes();
+		}
 	}
 
 	public Vector2f getTransformedCenter() {
 		return tc;
-	}
-
-	public static MassInfo massInfo(float mass, float radius, Vector2f center) {
-		return new MassInfo(mass, momentForCircle(1.0f, 0.0f, radius, cpvzero()), center, areaForCircle(0.0f, radius));
 	}
 }

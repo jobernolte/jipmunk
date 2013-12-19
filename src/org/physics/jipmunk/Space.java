@@ -39,28 +39,21 @@ import static org.physics.jipmunk.Util.cpfpow;
 import static org.physics.jipmunk.Util.cpvzero;
 
 /**
- * Spaces in Chipmunk are the basic unit of simulation. You add rigid dynamicBodies, shapes and constraints to it and then step
- * them all forward through time together.
- * <point/>
- * <b>What Are Iterations, and Why Should I care?</b>
- * <point/>
- * Chipmunk uses an iterative solver to figure out the forces between objects in the space. What this means is that it
- * builds a big list of all of the collisions, joints, and other constraints between the dynamicBodies and makes several passes
- * over the list considering each one individually. The number of passes it makes is the iteration count, and each
- * iteration makes the solution more accurate. If you use too many iterations, the physics should look nice and solid,
- * but may use up too much CPU time. If you use too few iterations, the simulation may seem mushy or bouncy when the
- * objects should be solid. Setting the number of iterations lets you balance between CPU usage and the accuracy of the
- * physics. Chipmunk’s default of 10 iterations is sufficient for most simple games.
- * <point/>
- * <point/>
- * <b>Sleeping</b>
- * <point/>
- * New in Chipmunk is the ability of spaces to disable entire groups of objects that have stopped moving to save CPU
- * time as well as battery life. In order to use this feature you must do 2 things. The first is that you must attach
- * all your static geometry to static dynamicBodies. Objects cannot fall asleep if they are touching a non-static rogue body
- * even if it’s shapes were added as static shapes. The second is that you must enable sleeping explicitly by choosing a
- * time threshold value for cpSpace.sleepTimeThreshold. If you do not set {@link Space#idleSpeedThreshold} explicitly, a
- * value will be chosen automatically based on the current amount of gravity.
+ * Spaces in Chipmunk are the basic unit of simulation. You add rigid dynamicBodies, shapes and constraints to it and
+ * then step them all forward through time together. <point/> <b>What Are Iterations, and Why Should I care?</b>
+ * <point/> Chipmunk uses an iterative solver to figure out the forces between objects in the space. What this means is
+ * that it builds a big list of all of the collisions, joints, and other constraints between the dynamicBodies and makes
+ * several passes over the list considering each one individually. The number of passes it makes is the iteration count,
+ * and each iteration makes the solution more accurate. If you use too many iterations, the physics should look nice and
+ * solid, but may use up too much CPU time. If you use too few iterations, the simulation may seem mushy or bouncy when
+ * the objects should be solid. Setting the number of iterations lets you balance between CPU usage and the accuracy of
+ * the physics. Chipmunk’s default of 10 iterations is sufficient for most simple games. <point/> <point/>
+ * <b>Sleeping</b> <point/> New in Chipmunk is the ability of spaces to disable entire groups of objects that have
+ * stopped moving to save CPU time as well as battery life. In order to use this feature you must do 2 things. The first
+ * is that you must attach all your static geometry to static dynamicBodies. Objects cannot fall asleep if they are
+ * touching a non-static rogue body even if it’s shapes were added as static shapes. The second is that you must enable
+ * sleeping explicitly by choosing a time threshold value for cpSpace.sleepTimeThreshold. If you do not set {@link
+ * Space#idleSpeedThreshold} explicitly, a value will be chosen automatically based on the current amount of gravity.
  *
  * @author jobernolte
  */
@@ -82,8 +75,8 @@ public class Space {
 	 */
 	private float idleSpeedThreshold = 0;
 	/**
-	 * Time a group of dynamicBodies must remain idle in order to fall asleep. Enabling sleeping also implicitly enables the
-	 * the contact graph. The default value of INFINITY disables the sleeping algorithm.
+	 * Time a group of dynamicBodies must remain idle in order to fall asleep. Enabling sleeping also implicitly enables
+	 * the the contact graph. The default value of INFINITY disables the sleeping algorithm.
 	 */
 	float sleepTimeThreshold = Float.POSITIVE_INFINITY;
 	/**
@@ -218,9 +211,9 @@ public class Space {
 	}
 
 	/**
-	 * A dedicated static body for the space. You don’alpha have to use it, but because it’s memory is managed automatically
-	 * with the space it’s very convenient. You can set its user data pointer to something helpful if you want for
-	 * callbacks.
+	 * A dedicated static body for the space. You don’alpha have to use it, but because it’s memory is managed
+	 * automatically with the space it’s very convenient. You can set its user data pointer to something helpful if you
+	 * want for callbacks.
 	 *
 	 * @return the dedicated static body for the space
 	 */
@@ -247,8 +240,8 @@ public class Space {
 	}
 
 	/**
-	 * Time a group of dynamicBodies must remain idle in order to fall asleep. The default value of
-	 * {@link Float#POSITIVE_INFINITY} disables the sleeping feature.
+	 * Time a group of dynamicBodies must remain idle in order to fall asleep. The default value of {@link
+	 * Float#POSITIVE_INFINITY} disables the sleeping feature.
 	 *
 	 * @param sleepTimeThreshold the sleep time threshold
 	 */
@@ -354,15 +347,11 @@ public class Space {
 	}
 
 	/**
-	 * Set a collision handler to handle specific collision types.
-	 * <point/>
-	 * The methods are called only when shapes with the specified collision types collide.
-	 * <point/>
-	 * <code>typeA</code> and <code>typeB</code> should be the same references set to {@link Shape#getCollisionType()}.
-	 * Add a collision handler for given collision type pair.
-	 * <point/>
-	 * Whenever a shapes with collision type <code>typeA</code> and collision type <code>typeB</code> collide, these
-	 * callbacks will be used to process the collision. If you need to fall back on the space’s default callbacks,
+	 * Set a collision handler to handle specific collision types. <point/> The methods are called only when shapes with
+	 * the specified collision types collide. <point/> <code>typeA</code> and <code>typeB</code> should be the same
+	 * references set to {@link Shape#getCollisionType()}. Add a collision handler for given collision type pair.
+	 * <point/> Whenever a shapes with collision type <code>typeA</code> and collision type <code>typeB</code> collide,
+	 * these callbacks will be used to process the collision. If you need to fall back on the space’s default callbacks,
 	 * you’ll have to provide them individually to each handler definition.
 	 *
 	 * @param typeA collision type a
@@ -496,10 +485,10 @@ public class Space {
 	}
 
 	/**
-	 * Adds the given constraint to this space. Cannot be called from within a callback other than a
-	 * {@link PostStepFunc} callback (which is different than a {@link CollisionHandler#postSolve(Arbiter, Space)}
-	 * callback!). Attempting to add or remove objects from the space while {@link Space#step(float)} is still executing
-	 * will throw an assertion.
+	 * Adds the given constraint to this space. Cannot be called from within a callback other than a {@link
+	 * PostStepFunc} callback (which is different than a {@link CollisionHandler#postSolve(Arbiter, Space)} callback!).
+	 * Attempting to add or remove objects from the space while {@link Space#step(float)} is still executing will throw
+	 * an assertion.
 	 *
 	 * @param constraint the {@link Constraint} to add to this space
 	 * @return the added constraint
@@ -530,10 +519,10 @@ public class Space {
 	}
 
 	/**
-	 * Removes the given shape from this space. Cannot be called from within a callback other than a
-	 * {@link PostStepFunc} callback (which is different than a {@link CollisionHandler#postSolve(Arbiter, Space)}
-	 * callback!). Attempting to add or remove objects from the space while {@link Space#step(float)} is still executing
-	 * will throw an assertion.
+	 * Removes the given shape from this space. Cannot be called from within a callback other than a {@link
+	 * PostStepFunc} callback (which is different than a {@link CollisionHandler#postSolve(Arbiter, Space)} callback!).
+	 * Attempting to add or remove objects from the space while {@link Space#step(float)} is still executing will throw
+	 * an assertion.
 	 *
 	 * @param shape the {@link Shape} to be removed to this space
 	 */
@@ -582,10 +571,10 @@ public class Space {
 	}
 
 	/**
-	 * Removes the given constraint from this space. Cannot be called from within a callback other than a
-	 * {@link PostStepFunc} callback (which is different than a {@link CollisionHandler#postSolve(Arbiter, Space)}
-	 * callback!). Attempting to add or remove objects from the space while {@link Space#step(float)} is still executing
-	 * will throw an assertion.
+	 * Removes the given constraint from this space. Cannot be called from within a callback other than a {@link
+	 * PostStepFunc} callback (which is different than a {@link CollisionHandler#postSolve(Arbiter, Space)} callback!).
+	 * Attempting to add or remove objects from the space while {@link Space#step(float)} is still executing will throw
+	 * an assertion.
 	 *
 	 * @param constraint the {@link Constraint} to be removed to this space
 	 */
@@ -664,8 +653,8 @@ public class Space {
 	}
 
 	/**
-	 * Call {@link SpaceBodyIteratorFunc#visit(Body)} for each body in the space. Sleeping dynamicBodies are included, but
-	 * static and rogue dynamicBodies are not as they aren’alpha added to the space.
+	 * Call {@link SpaceBodyIteratorFunc#visit(Body)} for each body in the space. Sleeping dynamicBodies are included,
+	 * but static and rogue dynamicBodies are not as they aren’alpha added to the space.
 	 *
 	 * @param func {@link SpaceBodyIteratorFunc} callback
 	 */
@@ -735,17 +724,7 @@ public class Space {
 		}
 	}
 
-	static boolean cachedArbitersFilter(Arbiter arb, ArbiterFilterContext context) { /*
-																					 * Body body = context.body; if
-																					 * (body == arb.body_a || body ==
-																					 * arb.body_b) {
-																					 * context.space.arbiters
-																					 * .remove(arb);
-																					 * context.space.pooledArbiters
-																					 * .free(arb); return false; }
-																					 * 
-																					 * return true;
-																					 */
+	static boolean cachedArbitersFilter(Arbiter arb, ArbiterFilterContext context) {
 		Shape shape = context.shape;
 		Body body = context.body;
 
@@ -1176,8 +1155,8 @@ public class Space {
 
 	/**
 	 * Add <code>func</code> to be called before {@link Space#step(float)} returns. You can add post step callbacks from
-	 * outside of other callback functions, but there isn?alpha a good reason to and they won?alpha be called until the next
-	 * time {@link Space#step(float)} is finishing.
+	 * outside of other callback functions, but there isn?alpha a good reason to and they won?alpha be called until the
+	 * next time {@link Space#step(float)} is finishing.
 	 *
 	 * @param func the post step callback to add
 	 */
@@ -1232,7 +1211,8 @@ public class Space {
 	 * @param point       the query point.
 	 * @param maxDistance the max. distance to query.
 	 * @param filter      the filter to use for the query.
-	 * @param out         if not <code>null</code> use this object as return value, else a new instance will be created.
+	 * @param out         if not <code>null</code> use this object as return value, else a new instance will be
+	 *                    created.
 	 * @return a {@link org.physics.jipmunk.constraints.PointQueryInfo} object with information about the closest shape.
 	 */
 	public PointQueryInfo pointQueryNearest(Vector2f point, float maxDistance, ShapeFilter filter, PointQueryInfo out) {
@@ -1297,7 +1277,7 @@ public class Space {
 		body.setMoment(Float.POSITIVE_INFINITY);
 
 		body.setVelocity(cpvzero());
-		body.setAngVel(0.0f);
+		body.setAngularVelocity(0.0f);
 
 		body.sleeping.idleTime = Float.POSITIVE_INFINITY;
 		for (Shape shape : body.shapes()) {

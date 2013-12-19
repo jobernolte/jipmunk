@@ -61,14 +61,14 @@ public class SimpleMotor extends Constraint {
 	@Override
 	protected void applyCachedImpulse(float dt_coef) {
 		float j = this.jAcc * dt_coef;
-		a.addAngVel(-j * a.getInverseMoment());
-		b.addAngVel(j * b.getInverseMoment());
+		a.addAngularVelocity(-j * a.getInverseMoment());
+		b.addAngularVelocity(j * b.getInverseMoment());
 	}
 
 	@Override
 	protected void applyImpulse(float dt) {
 		// compute relative rotational velocity
-		float wr = b.getAngVel() - a.getAngVel() + this.rate;
+		float wr = b.getAngularVelocity() - a.getAngularVelocity() + this.rate;
 
 		float jMax = this.maxForce * dt;
 
@@ -79,8 +79,8 @@ public class SimpleMotor extends Constraint {
 		j = this.jAcc - jOld;
 
 		// apply impulse
-		a.addAngVel(-j * a.getInverseMoment());
-		b.addAngVel(j * b.getInverseMoment());
+		a.addAngularVelocity(-j * a.getInverseMoment());
+		b.addAngularVelocity(j * b.getInverseMoment());
 	}
 
 	@Override

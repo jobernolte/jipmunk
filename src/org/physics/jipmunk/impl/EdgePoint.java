@@ -45,4 +45,12 @@ public class EdgePoint {
 	public int getHash() {
 		return hash;
 	}
+
+	@Override
+	public String toString() {
+		return "EdgePoint{" +
+				"p=" + p +
+				", hash=" + hash +
+				'}';
+	}
 }

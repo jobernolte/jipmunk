@@ -26,21 +26,16 @@ import java.awt.*;
 import java.nio.FloatBuffer;
 import javax.media.opengl.GL;
 import javax.media.opengl.GL2;
-import org.physics.jipmunk.Arbiter;
-import org.physics.jipmunk.Body;
-import org.physics.jipmunk.CircleShape;
-import org.physics.jipmunk.Constraint;
-import org.physics.jipmunk.PolyShape;
-import org.physics.jipmunk.SegmentShape;
+
+import org.physics.jipmunk.*;
 import org.physics.jipmunk.Shape;
-import org.physics.jipmunk.Space;
-import org.physics.jipmunk.Util;
-import org.physics.jipmunk.Vector2f;
 import org.physics.jipmunk.constraints.DampedSpring;
 import org.physics.jipmunk.constraints.GrooveJoint;
 import org.physics.jipmunk.constraints.PinJoint;
 import org.physics.jipmunk.constraints.PivotJoint;
 import org.physics.jipmunk.constraints.SlideJoint;
+
+import static org.physics.jipmunk.Util.cpv;
 
 /** @author jobernolte */
 public class DrawSpace {
@@ -70,12 +65,8 @@ public class DrawSpace {
 
 		}
 
-		public Options(boolean drawHash,
-				boolean drawBBs,
-				boolean drawShapes,
-				float collisionPointSize,
-				float bodyPointSize,
-				float lineThickness) {
+		public Options(boolean drawHash, boolean drawBBs, boolean drawShapes, float collisionPointSize,
+				float bodyPointSize, float lineThickness) {
 			this.drawHash = drawHash;
 			this.drawBBs = drawBBs;
 			this.drawShapes = drawShapes;
@@ -88,84 +79,29 @@ public class DrawSpace {
 	static final Color LINE_COLOR = new Color(0.0f, 0.0f, 0.0f);
 	static final Color COLLISION_COLOR = new Color(1.0f, 0.0f, 0.0f);
 	static final Color BODY_COLOR = new Color(0.0f, 0.0f, 1.0f);
+	static final Color BB_COLOR = new Color(1.0f, 0.0f, 0.0f);
+	static final float circleVAR[] =
+			{ 0.0000f, 1.0000f, 0.2588f, 0.9659f, 0.5000f, 0.8660f, 0.7071f, 0.7071f, 0.8660f, 0.5000f, 0.9659f,
+					0.2588f, 1.0000f, 0.0000f, 0.9659f, -0.2588f, 0.8660f, -0.5000f, 0.7071f, -0.7071f, 0.5000f,
+					-0.8660f, 0.2588f, -0.9659f, 0.0000f, -1.0000f, -0.2588f, -0.9659f, -0.5000f, -0.8660f, -0.7071f,
+					-0.7071f, -0.8660f, -0.5000f, -0.9659f, -0.2588f, -1.0000f, -0.0000f, -0.9659f, 0.2588f, -0.8660f,
+					0.5000f, -0.7071f, 0.7071f, -0.5000f, 0.8660f, -0.2588f, 0.9659f, 0.0000f, 1.0000f, 0.0f, 0.0f,
+					// For an extra line to see the rotation.
+			};
+	static final float pillVAR[] =
+			{ 0.0000f, 1.0000f, 1.0f, 0.2588f, 0.9659f, 1.0f, 0.5000f, 0.8660f, 1.0f, 0.7071f, 0.7071f, 1.0f, 0.8660f,
+					0.5000f, 1.0f, 0.9659f, 0.2588f, 1.0f, 1.0000f, 0.0000f, 1.0f, 0.9659f, -0.2588f, 1.0f, 0.8660f,
+					-0.5000f, 1.0f, 0.7071f, -0.7071f, 1.0f, 0.5000f, -0.8660f, 1.0f, 0.2588f, -0.9659f, 1.0f, 0.0000f,
+					-1.0000f, 1.0f,
 
-	static final float circleVAR[] = {
-			0.0000f, 1.0000f,
-			0.2588f, 0.9659f,
-			0.5000f, 0.8660f,
-			0.7071f, 0.7071f,
-			0.8660f, 0.5000f,
-			0.9659f, 0.2588f,
-			1.0000f, 0.0000f,
-			0.9659f, -0.2588f,
-			0.8660f, -0.5000f,
-			0.7071f, -0.7071f,
-			0.5000f, -0.8660f,
-			0.2588f, -0.9659f,
-			0.0000f, -1.0000f,
-			-0.2588f, -0.9659f,
-			-0.5000f, -0.8660f,
-			-0.7071f, -0.7071f,
-			-0.8660f, -0.5000f,
-			-0.9659f, -0.2588f,
-			-1.0000f, -0.0000f,
-			-0.9659f, 0.2588f,
-			-0.8660f, 0.5000f,
-			-0.7071f, 0.7071f,
-			-0.5000f, 0.8660f,
-			-0.2588f, 0.9659f,
-			0.0000f, 1.0000f,
-			0.0f, 0.0f, // For an extra line to see the rotation.
-	};
-	static final float pillVAR[] = {
-			0.0000f, 1.0000f, 1.0f,
-			0.2588f, 0.9659f, 1.0f,
-			0.5000f, 0.8660f, 1.0f,
-			0.7071f, 0.7071f, 1.0f,
-			0.8660f, 0.5000f, 1.0f,
-			0.9659f, 0.2588f, 1.0f,
-			1.0000f, 0.0000f, 1.0f,
-			0.9659f, -0.2588f, 1.0f,
-			0.8660f, -0.5000f, 1.0f,
-			0.7071f, -0.7071f, 1.0f,
-			0.5000f, -0.8660f, 1.0f,
-			0.2588f, -0.9659f, 1.0f,
-			0.0000f, -1.0000f, 1.0f,
-
-			0.0000f, -1.0000f, 0.0f,
-			-0.2588f, -0.9659f, 0.0f,
-			-0.5000f, -0.8660f, 0.0f,
-			-0.7071f, -0.7071f, 0.0f,
-			-0.8660f, -0.5000f, 0.0f,
-			-0.9659f, -0.2588f, 0.0f,
-			-1.0000f, -0.0000f, 0.0f,
-			-0.9659f, 0.2588f, 0.0f,
-			-0.8660f, 0.5000f, 0.0f,
-			-0.7071f, 0.7071f, 0.0f,
-			-0.5000f, 0.8660f, 0.0f,
-			-0.2588f, 0.9659f, 0.0f,
-			0.0000f, 1.0000f, 0.0f,
-	};
-	static final float springVAR[] = {
-			0.00f, 0.0f,
-			0.20f, 0.0f,
-			0.25f, 3.0f,
-			0.30f, -6.0f,
-			0.35f, 6.0f,
-			0.40f, -6.0f,
-			0.45f, 6.0f,
-			0.50f, -6.0f,
-			0.55f, 6.0f,
-			0.60f, -6.0f,
-			0.65f, 6.0f,
-			0.70f, -3.0f,
-			0.75f, 6.0f,
-			0.80f, 0.0f,
-			1.00f, 0.0f,
-	};
-
+					0.0000f, -1.0000f, 0.0f, -0.2588f, -0.9659f, 0.0f, -0.5000f, -0.8660f, 0.0f, -0.7071f, -0.7071f,
+					0.0f, -0.8660f, -0.5000f, 0.0f, -0.9659f, -0.2588f, 0.0f, -1.0000f, -0.0000f, 0.0f, -0.9659f,
+					0.2588f, 0.0f, -0.8660f, 0.5000f, 0.0f, -0.7071f, 0.7071f, 0.0f, -0.5000f, 0.8660f, 0.0f, -0.2588f,
+					0.9659f, 0.0f, 0.0000f, 1.0000f, 0.0f, };
+	static final float springVAR[] =
+			{ 0.00f, 0.0f, 0.20f, 0.0f, 0.25f, 3.0f, 0.30f, -6.0f, 0.35f, 6.0f, 0.40f, -6.0f, 0.45f, 6.0f, 0.50f, -6.0f,
+					0.55f, 6.0f, 0.60f, -6.0f, 0.65f, 6.0f, 0.70f, -3.0f, 0.75f, 6.0f, 0.80f, 0.0f, 1.00f, 0.0f, };
 	private final GL2 gl;
-
 	private FloatBuffer circleVARBuffer;
 	private FloatBuffer pillVARBuffer;
 	private FloatBuffer springVARBuffer;
@@ -226,7 +162,7 @@ public class DrawSpace {
 	}
 
 	void drawCircleShape(Body body, CircleShape circle, Space space) {
-//        glVertexPointer(2, GL_FLOAT, 0, circleVAR);
+		//        glVertexPointer(2, GL_FLOAT, 0, circleVAR);
 		gl.glVertexPointer(2, GL2.GL_FLOAT, 0, circleVARBuffer);
 
 		gl.glPushMatrix();
@@ -242,7 +178,8 @@ public class DrawSpace {
 				gl.glDrawArrays(GL.GL_TRIANGLE_FAN, 0, (circleVAR.length / 2) - 1);
 			}
 
-			gl.glColor4i(LINE_COLOR.getRed(), LINE_COLOR.getGreen(), LINE_COLOR.getBlue(), LINE_COLOR.getAlpha());
+			gl.glColor4ub((byte) LINE_COLOR.getRed(), (byte) LINE_COLOR.getGreen(), (byte) LINE_COLOR.getBlue(),
+						  (byte) LINE_COLOR.getAlpha());
 			//glDrawArrays(GL_LINE_STRIP, 0, circleVAR_count);
 			gl.glDrawArrays(GL.GL_LINE_STRIP, 0, circleVAR.length / 2);
 		}
@@ -258,14 +195,12 @@ public class DrawSpace {
 			gl.glPushMatrix();
 			{
 				Vector2f d = Util.cpvsub(b, a); // cpvsub(b, a);
-				Vector2f r = Util.cpvmult(d, seg.getRadius() / Util.cpvlength(d)); // cpvmult(distance, seg->r/cpvlength(distance));
+				Vector2f r = Util.cpvmult(d, seg.getRadius() / Util
+						.cpvlength(d)); // cpvmult(distance, seg->r/cpvlength(distance));
 
-				float matrix[] = {
-						r.getX(), r.getY(), 0.0f, 0.0f,
-						-r.getY(), r.getX(), 0.0f, 0.0f,
-						d.getX(), d.getY(), 0.0f, 0.0f,
-						a.getX(), a.getY(), 0.0f, 1.0f,
-				};
+				float matrix[] =
+						{ r.getX(), r.getY(), 0.0f, 0.0f, -r.getY(), r.getX(), 0.0f, 0.0f, d.getX(), d.getY(), 0.0f,
+								0.0f, a.getX(), a.getY(), 0.0f, 1.0f, };
 				gl.glMultMatrixf(matrix, 0);
 
 				if (!seg.isSensor()) {
@@ -273,12 +208,14 @@ public class DrawSpace {
 					gl.glDrawArrays(GL.GL_TRIANGLE_FAN, 0, pillVAR.length / 3);
 				}
 
-				gl.glColor4i(LINE_COLOR.getRed(), LINE_COLOR.getGreen(), LINE_COLOR.getBlue(), LINE_COLOR.getAlpha());
+				gl.glColor4ub((byte) LINE_COLOR.getRed(), (byte) LINE_COLOR.getGreen(), (byte) LINE_COLOR.getBlue(),
+							  (byte) LINE_COLOR.getAlpha());
 				gl.glDrawArrays(GL.GL_LINE_LOOP, 0, pillVAR.length / 3);
 			}
 			gl.glPopMatrix();
 		} else {
-			gl.glColor4i(LINE_COLOR.getRed(), LINE_COLOR.getGreen(), LINE_COLOR.getBlue(), LINE_COLOR.getAlpha());
+			gl.glColor4ub((byte) LINE_COLOR.getRed(), (byte) LINE_COLOR.getGreen(), (byte) LINE_COLOR.getBlue(),
+						  (byte) LINE_COLOR.getAlpha());
 			gl.glBegin(GL2.GL_LINES);
 			{
 				gl.glVertex2f(a.getX(), a.getY());
@@ -308,9 +245,24 @@ public class DrawSpace {
 			gl.glDrawArrays(GL.GL_TRIANGLE_FAN, 0, count);
 		}
 
-		gl.glColor4i(LINE_COLOR.getRed(), LINE_COLOR.getGreen(), LINE_COLOR.getBlue(), LINE_COLOR.getAlpha());
+		gl.glColor4ub((byte) LINE_COLOR.getRed(), (byte) LINE_COLOR.getGreen(), (byte) LINE_COLOR.getBlue(),
+					  (byte) LINE_COLOR.getAlpha());
 		gl.glDrawArrays(GL.GL_LINE_LOOP, 0, count);
 		gl.glPopMatrix();
+	}
+
+	void drawBB(BB bb, Color color) {
+		Vector2f verts[] = { cpv(bb.r, bb.b), cpv(bb.r, bb.t), cpv(bb.l, bb.t), cpv(bb.l, bb.b), };
+		// ChipmunkDebugDrawPolygon(4, verts, 0.0f, color, LAColor(0, 0));
+		polyShapeBuffer.clear();
+		for (Vector2f vert : verts) {
+			polyShapeBuffer.put(vert.getX()).put(vert.getY());
+		}
+		polyShapeBuffer.flip();
+		gl.glVertexPointer(2, GL2.GL_FLOAT, 0, polyShapeBuffer);
+		gl.glColor4ub((byte) color.getRed(), (byte) color.getGreen(), (byte) color.getBlue(), (byte) color.getAlpha());
+		//gl.glColor4ub((byte)255, (byte)0, (byte)0, (byte)255);
+		gl.glDrawArrays(GL.GL_LINE_LOOP, 0, 4);
 	}
 
 	void drawObject(Shape shape, Space space) {
@@ -327,9 +279,9 @@ public class DrawSpace {
 
 	void drawSpring(DampedSpring spring, Body body_a, Body body_b) {
 		Vector2f a = Util.cpvadd(body_a.getPosition(), Util.cpvrotate(spring.getAnchr1(),
-				body_a.getRotation())); //   cpvadd(body_a->point, cpvrotate(spring->anchr1, body_a->rot));
+																	  body_a.getRotation())); //   cpvadd(body_a->point, cpvrotate(spring->anchr1, body_a->rot));
 		Vector2f b = Util.cpvadd(body_b.getPosition(), Util.cpvrotate(spring.getAnchr2(),
-				body_b.getRotation())); //  cpvadd(body_b->point, cpvrotate(spring->anchr2, body_b->rot));
+																	  body_b.getRotation())); //  cpvadd(body_b->point, cpvrotate(spring->anchr2, body_b->rot));
 
 		gl.glPointSize(5.0f);
 		gl.glBegin(GL.GL_POINTS);
@@ -350,12 +302,8 @@ public class DrawSpace {
 			float sin = delta.getY();
 			float s = 1.0f / Util.cpvlength(delta);
 
-			float matrix[] = {
-					cos, sin, 0.0f, 0.0f,
-					-sin * s, cos * s, 0.0f, 0.0f,
-					0.0f, 0.0f, 1.0f, 0.0f,
-					x, y, 0.0f, 1.0f,
-			};
+			float matrix[] =
+					{ cos, sin, 0.0f, 0.0f, -sin * s, cos * s, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, x, y, 0.0f, 1.0f, };
 
 			gl.glMultMatrixf(matrix, matrix.length);
 			gl.glDrawArrays(GL.GL_LINE_STRIP, 0, springVAR.length / 2);
@@ -372,9 +320,9 @@ public class DrawSpace {
 			PinJoint joint = (PinJoint) constraint;
 
 			Vector2f a = Util.cpvadd(body_a.getPosition(), Util.cpvrotate(joint.getAnchr1(),
-					body_a.getRotation())); // cpvadd(body_a->point, cpvrotate(joint->anchr1, body_a->rot));
+																		  body_a.getRotation())); // cpvadd(body_a->point, cpvrotate(joint->anchr1, body_a->rot));
 			Vector2f b = Util.cpvadd(body_b.getPosition(), Util.cpvrotate(joint.getAnchr2(),
-					body_b.getRotation())); // cpvadd(body_b->point, cpvrotate(joint->anchr2, body_b->rot));
+																		  body_b.getRotation())); // cpvadd(body_b->point, cpvrotate(joint->anchr2, body_b->rot));
 
 			gl.glPointSize(5.0f);
 			gl.glBegin(GL.GL_POINTS);
@@ -396,9 +344,9 @@ public class DrawSpace {
 			//cpVect a = cpvadd(body_a->point, cpvrotate(joint->anchr1, body_a->rot));
 			//cpVect b = cpvadd(body_b->point, cpvrotate(joint->anchr2, body_b->rot));
 			Vector2f a = Util.cpvadd(body_a.getPosition(), Util.cpvrotate(joint.getAnchr1(),
-					body_a.getRotation())); // cpvadd(body_a->point, cpvrotate(joint->anchr1, body_a->rot));
+																		  body_a.getRotation())); // cpvadd(body_a->point, cpvrotate(joint->anchr1, body_a->rot));
 			Vector2f b = Util.cpvadd(body_b.getPosition(), Util.cpvrotate(joint.getAnchr2(),
-					body_b.getRotation())); // cpvadd(body_b->point, cpvrotate(joint->anchr2, body_b->rot));
+																		  body_b.getRotation())); // cpvadd(body_b->point, cpvrotate(joint->anchr2, body_b->rot));
 
 			gl.glPointSize(5.0f);
 			gl.glBegin(GL.GL_POINTS);
@@ -420,9 +368,9 @@ public class DrawSpace {
 			//cpVect a = cpvadd(body_a->point, cpvrotate(joint->anchr1, body_a->rot));
 			//cpVect b = cpvadd(body_b->point, cpvrotate(joint->anchr2, body_b->rot));
 			Vector2f a = Util.cpvadd(body_a.getPosition(), Util.cpvrotate(joint.getAnchr1(),
-					body_a.getRotation())); // cpvadd(body_a->point, cpvrotate(joint->anchr1, body_a->rot));
+																		  body_a.getRotation())); // cpvadd(body_a->point, cpvrotate(joint->anchr1, body_a->rot));
 			Vector2f b = Util.cpvadd(body_b.getPosition(), Util.cpvrotate(joint.getAnchr2(),
-					body_b.getRotation())); // cpvadd(body_b->point, cpvrotate(joint->anchr2, body_b->rot));
+																		  body_b.getRotation())); // cpvadd(body_b->point, cpvrotate(joint->anchr2, body_b->rot));
 
 			gl.glPointSize(10.0f);
 			gl.glBegin(GL.GL_POINTS);
@@ -435,11 +383,11 @@ public class DrawSpace {
 			GrooveJoint joint = (GrooveJoint) constraint;
 
 			Vector2f a = Util.cpvadd(body_a.getPosition(), Util.cpvrotate(joint.getGrooveA(),
-					body_a.getRotation())); // cpvadd(body_a->point, cpvrotate(joint->grv_a, body_a->rot));
+																		  body_a.getRotation())); // cpvadd(body_a->point, cpvrotate(joint->grv_a, body_a->rot));
 			Vector2f b = Util.cpvadd(body_a.getPosition(), Util.cpvrotate(joint.getGrooveB(),
-					body_a.getRotation())); // cpvadd(body_a->point, cpvrotate(joint->grv_b, body_a->rot));
+																		  body_a.getRotation())); // cpvadd(body_a->point, cpvrotate(joint->grv_b, body_a->rot));
 			Vector2f c = Util.cpvadd(body_b.getPosition(), Util.cpvrotate(joint.getAnchr2(),
-					body_b.getRotation())); // cpvadd(body_b->point, cpvrotate(joint->anchr2, body_b->rot));
+																		  body_b.getRotation())); // cpvadd(body_b->point, cpvrotate(joint->anchr2, body_b->rot));
 
 			gl.glPointSize(5.0f);
 			gl.glBegin(GL.GL_POINTS);
@@ -457,7 +405,7 @@ public class DrawSpace {
 		} else if (DampedSpring.class.isInstance(constraint)) {
 			drawSpring((DampedSpring) constraint, body_a, body_b);
 		} else {
-//		printf("Cannot draw constraint\normal");
+			//		printf("Cannot draw constraint\normal");
 		}
 	}
 
@@ -488,11 +436,7 @@ public class DrawSpace {
 
 		gl.glLineWidth(1.0f);
 		if (options.drawBBs) {
-			/*
-					 glColor3f(0.3f, 0.5f, 0.3f);
-					 cpSpaceHashEach(space->activeShapes, (cpSpaceHashIterator)drawBB, NULL);
-					 cpSpaceHashEach(space->staticShapes, (cpSpaceHashIterator)drawBB, NULL);
-					 */
+			space.eachShape((shape) -> drawBB(shape.getBB(), BB_COLOR));
 		}
 
 		//cpArray *constraints = space->constraints;
@@ -507,23 +451,24 @@ public class DrawSpace {
 
 			gl.glBegin(GL.GL_POINTS);
 			{
-				gl.glColor4i(LINE_COLOR.getRed(), LINE_COLOR.getGreen(), LINE_COLOR.getBlue(), LINE_COLOR.getAlpha());
+				gl.glColor4ub((byte) LINE_COLOR.getRed(), (byte) LINE_COLOR.getGreen(), (byte) LINE_COLOR.getBlue(),
+							  (byte) LINE_COLOR.getAlpha());
 				for (Body body : space.getDynamicBodies()) {
 					Vector2f position = body.getPosition();
 					gl.glVertex2f(position.getX(), position.getY());
 				}
 			}
 
-//			glColor3f(0.5f, 0.5f, 0.5f);
-//			cpArray *components = space->components;
-//			for(int i=0; i<components->num; i++){
-//				cpBody *root = components->arr[i];
-//				cpBody *body = root, *next;
-//				do {
-//					next = body->node.next;
-//					glVertex2f(body->point.getX(), body->point.getY());
-//				} while((body = next) != root);
-//			}
+			//			glColor3f(0.5f, 0.5f, 0.5f);
+			//			cpArray *components = space->components;
+			//			for(int i=0; i<components->num; i++){
+			//				cpBody *root = components->arr[i];
+			//				cpBody *body = root, *next;
+			//				do {
+			//					next = body->node.next;
+			//					glVertex2f(body->point.getX(), body->point.getY());
+			//				} while((body = next) != root);
+			//			}
 			gl.glEnd();
 		}
 
@@ -532,8 +477,8 @@ public class DrawSpace {
 			gl.glBegin(GL.GL_POINTS);
 			{
 				for (Arbiter arb : space.getArbiters()) {
-					gl.glColor4i(COLLISION_COLOR.getRed(), COLLISION_COLOR.getGreen(), COLLISION_COLOR.getBlue(),
-							COLLISION_COLOR.getAlpha());
+					gl.glColor4ub((byte) COLLISION_COLOR.getRed(), (byte) COLLISION_COLOR.getGreen(),
+								  (byte) COLLISION_COLOR.getBlue(), (byte) COLLISION_COLOR.getAlpha());
 					for (int i = 0; i < arb.getCount(); i++) {
 						Vector2f contactPoint = arb.getPoint1(i);
 						gl.glVertex2f(contactPoint.getX(), contactPoint.getY());

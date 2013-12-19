@@ -79,14 +79,14 @@ public class GearJoint extends Constraint {
 	@Override
 	protected void applyCachedImpulse(float dt_coef) {
 		float j = this.jAcc * dt_coef;
-		a.addAngVel(-j * a.getInverseMoment() * this.ratio_inv);
-		b.addAngVel(j * b.getInverseMoment());
+		a.addAngularVelocity(-j * a.getInverseMoment() * this.ratio_inv);
+		b.addAngularVelocity(j * b.getInverseMoment());
 	}
 
 	@Override
 	protected void applyImpulse(float dt) {
 		// compute relative rotational velocity
-		float wr = b.getAngVel() * this.ratio - a.getAngVel();
+		float wr = b.getAngularVelocity() * this.ratio - a.getAngularVelocity();
 
 		float jMax = this.maxForce*dt;
 
@@ -97,8 +97,8 @@ public class GearJoint extends Constraint {
 		j = this.jAcc - jOld;
 
 		// apply impulse
-		a.addAngVel(-j * a.getInverseMoment() * this.ratio_inv);
-		b.addAngVel(j * b.getInverseMoment());
+		a.addAngularVelocity(-j * a.getInverseMoment() * this.ratio_inv);
+		b.addAngularVelocity(j * b.getInverseMoment());
 	}
 
 	@Override

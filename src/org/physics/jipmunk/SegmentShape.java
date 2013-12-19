@@ -33,7 +33,7 @@ public class SegmentShape extends Shape {
 	Vector2f ta;
 	Vector2f tb;
 	Vector2f tn;
-	float r;
+	float radius;
 	Vector2f a_tangent, b_tangent;
 
 	static MassInfo createMassInfo(float mass, Vector2f a, Vector2f b, float r) {
@@ -42,11 +42,11 @@ public class SegmentShape extends Shape {
 							cpvlerp(a, b, 0.5f), Util.areaForSegment(a, b, r));
 	}
 
-	public SegmentShape(Body body, Vector2f a, Vector2f b, float r) {
-		super(body, createMassInfo(0.0f, a, b, r));
+	public SegmentShape(Body body, Vector2f a, Vector2f b, float radius) {
+		super(body, createMassInfo(0.0f, a, b, radius));
 		this.a = Util.cpv(a);
 		this.b = Util.cpv(b);
-		this.r = r;
+		this.radius = radius;
 		this.n = cpvperp(cpvnormalize(cpvsub(b, a)));
 		this.a_tangent = Util.cpvzero();
 		this.b_tangent = Util.cpvzero();
@@ -65,11 +65,16 @@ public class SegmentShape extends Shape {
 	}
 
 	public float getRadius() {
-		return r;
+		return radius;
 	}
 
 	public void setRadius(float radius) {
-		this.r = radius;
+		this.radius = radius;
+		float mass = this.massInfo.m;
+		this.massInfo = createMassInfo(mass, this.a, this.b, this.radius);
+		if (mass > 0.0f) {
+			body.accumulateMassFromShapes();
+		}
 	}
 
 	public Vector2f getTa() {
@@ -121,7 +126,7 @@ public class SegmentShape extends Shape {
 			t = this.ta.y;
 		}
 
-		float rad = this.r;
+		float rad = this.radius;
 		return new BB(l - rad, b - rad, r + rad, t + rad);
 	}
 
@@ -133,7 +138,7 @@ public class SegmentShape extends Shape {
 	protected void segmentQueryImpl(Vector2f a, Vector2f b, float r2, SegmentQueryInfo info) {
 		Vector2f n = this.tn;
 		float d = cpvdot(cpvsub(this.ta, a), n);
-		float r = this.r + r2;
+		float r = this.radius + r2;
 
 		Vector2f flipped_n = (d > 0.0f ? cpvneg(n) : n);
 		Vector2f seg_offset = cpvsub(cpvmult(flipped_n, r), a);
@@ -159,8 +164,8 @@ public class SegmentShape extends Shape {
 		} else if (r != 0.0f) {
 			SegmentQueryInfo info1 = new SegmentQueryInfo(null, b, cpvzero(), 1.0f);
 			SegmentQueryInfo info2 = new SegmentQueryInfo(null, b, cpvzero(), 1.0f);
-			CircleShape.circleSegmentQuery(this, this.ta, this.r, a, b, r2, info1);
-			CircleShape.circleSegmentQuery(this, this.tb, this.r, a, b, r2, info2);
+			CircleShape.circleSegmentQuery(this, this.ta, this.radius, a, b, r2, info1);
+			CircleShape.circleSegmentQuery(this, this.tb, this.radius, a, b, r2, info2);
 
 			if (info1.alpha < info2.alpha) {
 				info.set(info1);
@@ -176,7 +181,7 @@ public class SegmentShape extends Shape {
 
 		Vector2f delta = cpvsub(p, closest);
 		float d = Util.cpvlength(delta);
-		float r = this.r;
+		float r = this.radius;
 		Vector2f g = cpvmult(delta, 1.0f / d);
 
 		if (out == null) {

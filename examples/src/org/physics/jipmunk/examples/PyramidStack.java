@@ -22,13 +22,7 @@
 
 package org.physics.jipmunk.examples;
 
-import org.physics.jipmunk.Body;
-import org.physics.jipmunk.CircleShape;
-import org.physics.jipmunk.PolyShape;
-import org.physics.jipmunk.SegmentShape;
-import org.physics.jipmunk.Shape;
-import org.physics.jipmunk.Space;
-import org.physics.jipmunk.Util;
+import org.physics.jipmunk.*;
 
 import static org.physics.jipmunk.Util.cpv;
 import static org.physics.jipmunk.Util.cpvzero;
@@ -36,6 +30,10 @@ import static org.physics.jipmunk.Util.cpvzero;
 /** @author jobernolte */
 public class PyramidStack extends ExampleBase {
 	private Space space;
+
+	private static enum CollisionTypes implements CollisionType {
+		BOX_BOX
+	}
 
 	@Override
 	public Space init() {
@@ -71,7 +69,7 @@ public class PyramidStack extends ExampleBase {
 		shape.setFilter(NOT_GRABABLE_FILTER);
 
 		// Add lots of boxes.
-		for (int i = 0; i < 1; i++) {
+		for (int i = 0; i < 14; i++) {
 			for (int j = 0; j <= i; j++) {
 				body = space.addBody(new Body(1.0f, Util.momentForBox(1.0f, 30.0f, 30.0f)));
 				//body = space.addBody(new Body(1.0f, Util.momentForCircle(1.0f, 30.0f, 30.0f, cpvzero())));
@@ -81,31 +79,62 @@ public class PyramidStack extends ExampleBase {
 				//shape = space.addShape(new CircleShape(body, 30.0f, cpvzero()));
 				shape.setElasticity(0.0f);
 				shape.setFriction(0.8f);
+				shape.setCollisionType(CollisionTypes.BOX_BOX);
 			}
 		}
 
 		// Add a ball to make things more interesting
 		float radius = 15.0f;
-		// body = space.addBody(new Body(10.0f, Util.momentForCircle(10.0f, 0.0f, radius, Util.cpvzero())));
-		body = space.addBody(new Body(1.0f, Util.momentForBox(1.0f, 30.0f, 30.0f)));
-		body.setPosition(cpv(0, -hh + radius + 5));
+		body = space.addBody(new Body(10.0f, Util.momentForCircle(10.0f, 0.0f, radius, Util.cpvzero())));
+		//body = space.addBody(new Body(1.0f, Util.momentForBox(1.0f, 30.0f, 30.0f)));
+		body.setPosition(cpv(0, -hh + radius + 15));
 
-		//shape = space.addShape(new CircleShape(body, radius, Util.cpvzero()));
-		shape = space.addShape(PolyShape.createBox(body, 30.0f, 30.0f, 0.5f));
+		shape = space.addShape(new CircleShape(body, radius, Util.cpvzero()));
+		//shape = space.addShape(PolyShape.createBox(body, 30.0f, 30.0f, 0.5f));
 		shape.setElasticity(0.0f);
 		shape.setFriction(0.9f);
+		shape.setCollisionType(CollisionTypes.BOX_BOX);
+
+		CollisionHandler handler = space.addCollisionHandler(CollisionTypes.BOX_BOX, CollisionTypes.BOX_BOX);
+		handler.setBeginFunc(this::beginCollision);
 
 		return space;
 	}
 
+	double LastTime = getTime();
+	double Accumulator = 0.0;
+	double timestep = 1.0 / 180.0;
+
+	private boolean beginCollision(Arbiter arb, Space space) {
+		return true;
+	}
+
+	private double getTime() {
+		return (double) System.currentTimeMillis() / 1000.0;
+	}
+
 	@Override
 	public void update(long delta) {
-		int steps = 3;
-		float dt = 1.0f / 60.0f / (float) steps;
+		double time = getTime();
+
+		/*int steps = 3;
+		float dt = 1.0f / 300.0f / (float) steps;
 
 		for (int i = 0; i < steps; i++) {
 			space.step(dt);
+		}*/
+		double dt = time - LastTime;
+		if (dt > 0.2) {
+			dt = 0.2;
 		}
+
+		double fixed_dt = timestep;
+
+		for (Accumulator += dt; Accumulator > fixed_dt; Accumulator -= fixed_dt) {
+			space.step((float) fixed_dt);
+		}
+
+		LastTime = time;
 	}
 
 	public static void main(String[] args) {

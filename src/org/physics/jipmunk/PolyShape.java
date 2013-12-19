@@ -30,7 +30,7 @@ import static org.physics.jipmunk.Util.*;
 
 /** @author jobernolte */
 public class PolyShape extends Shape {
-	float r;
+	float radius;
 	SplittingPlane[] planes;
 	SplittingPlane[] origPlanes;
 
@@ -59,7 +59,7 @@ public class PolyShape extends Shape {
 	public PolyShape(Body body, float radius, Transform transform, Vector2f[] verts, int offset, int count) {
 		super(body, createMassInfo(0.0f, verts, offset, count, radius));
 		setVertices(verts, offset, count, transform);
-		this.r = radius;
+		this.radius = radius;
 	}
 
 	public int getNumVertices() {
@@ -112,6 +112,11 @@ public class PolyShape extends Shape {
 			this.origPlanes[i].v0 = new Vector2f(b);
 			this.origPlanes[i].n = new Vector2f(n);
 		}
+		float mass = this.massInfo.m;
+		this.massInfo = createMassInfo(mass, verts, offset, count, this.radius);
+		if (mass > 0.0f) {
+			body.accumulateMassFromShapes();
+		}
 	}
 
 	@Override
@@ -139,7 +144,7 @@ public class PolyShape extends Shape {
 			t = cpfmax(t, v.y);
 		}
 
-		float radius = this.r;
+		float radius = this.radius;
 		return (this.bb = new BB(l - radius, b - radius, r + radius, t + radius));
 	}
 
@@ -147,7 +152,7 @@ public class PolyShape extends Shape {
 	protected void segmentQueryImpl(Vector2f a, Vector2f b, float r2, SegmentQueryInfo info) {
 		SplittingPlane[] planes = this.planes;
 		int count = this.planes.length;
-		float r = this.r;
+		float r = this.radius;
 		float rsum = r + r2;
 
 		for (int i = 0; i < count; i++) {
@@ -192,7 +197,7 @@ public class PolyShape extends Shape {
 	public PointQueryInfo pointQuery(Vector2f p, PointQueryInfo info) {
 		int count = this.planes.length;
 		SplittingPlane[] planes = this.planes;
-		float r = this.r;
+		float r = this.radius;
 
 		Vector2f v0 = planes[count - 1].v0;
 		float minDist = Float.POSITIVE_INFINITY;
@@ -231,13 +236,13 @@ public class PolyShape extends Shape {
 		return info;
 	}
 
-	static boolean validate(final Vector2f[] verts, int offset, int length) {
-		for (int i = 0; i < length; i++) {
+	static boolean validate(final Vector2f[] verts, int offset, int count) {
+		for (int i = 0; i < count; i++) {
 			Vector2f a = verts[offset + i];
-			Vector2f b = verts[offset + ((i + 1) % length)];
-			Vector2f c = verts[offset + ((i + 2) % length)];
+			Vector2f b = verts[offset + ((i + 1) % count)];
+			Vector2f c = verts[offset + ((i + 2) % count)];
 
-			if (cpvcross(cpvsub(b, a), cpvsub(c, b)) > 0.0f) {
+			if (cpvcross(cpvsub(b, a), cpvsub(c, b)) < 0.0f) {
 				return false;
 			}
 		}
@@ -247,8 +252,16 @@ public class PolyShape extends Shape {
 	static public PolyShape createBox(Body body, float width, float height, float radius) {
 		float hw = width / 2.0f;
 		float hh = height / 2.0f;
+		return createBox(body, new BB(-hw, -hh, hw, hh), radius);
+	}
 
-		Vector2f verts[] = { cpv(-hw, -hh), cpv(-hw, hh), cpv(hw, hh), cpv(hw, -hh) };
+	static public PolyShape createBox(Body body, BB box, float radius) {
+		Vector2f verts[] = {
+				cpv(box.r, box.b),
+				cpv(box.r, box.t),
+				cpv(box.l, box.t),
+				cpv(box.l, box.b),
+		};
 		return new PolyShape(body, radius, verts);
 	}
 
@@ -265,6 +278,6 @@ public class PolyShape extends Shape {
 	}
 
 	public float getRadius() {
-		return r;
+		return radius;
 	}
 }

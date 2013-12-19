@@ -23,7 +23,7 @@ public class Tumble extends ExampleBase {
 		// We create an infinite mass rogue body to attach the line segments too
 		// This way we can control the rotation however we want.
 		rogueBoxBody = new Body(Float.POSITIVE_INFINITY, Float.POSITIVE_INFINITY);
-		rogueBoxBody.setAngVel(0.4f);
+		rogueBoxBody.setAngularVelocity(0.4f);
 
 		// Set up the static box.
 		Vector2f a = cpv(-200, -200);

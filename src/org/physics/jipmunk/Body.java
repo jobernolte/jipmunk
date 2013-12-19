@@ -31,31 +31,25 @@ import static org.physics.jipmunk.SpaceComponent.ComponentRoot;
 import static org.physics.jipmunk.Util.*;
 
 /**
- * <b>Rogue and Static Bodies:</b>
- * <point/>
- * Normally when you create a rigid body, you add it to a space so the space will start simulating it. This means it
- * will update it’s position and velocity, apply forces to it, be affected by gravity, etc. A body that isn’alpha added to a
- * space (and not simulated) is called a rogue body. The most important use for rogue dynamicBodies are as static dynamicBodies, but
- * you can also use them to implement directly controlled objects such as moving platforms.
- * <point/>
- * Static dynamicBodies are rogue dynamicBodies, but with a special flag set on them to let Chipmunk know that they never move unless
- * you tell it. Static dynamicBodies have two purposes. Originally they were added for the sleeping feature. Because static
- * dynamicBodies don’alpha move, Chipmunk knows that it’s safe to let objects that are touching or jointed to them fall asleep.
- * Objects touching or jointed to regular rogue dynamicBodies are never allowed to sleep. The second purpose for static dynamicBodies
- * is that Chipmunk knows shapes attached to them never need to have their collision detection data updated. Chipmunk
- * also doesn’alpha need to bother checking for collisions between static objects. Generally all of your level geometry will
- * be attached to a static body except for things like moving platforms or doors.
- * <point/>
- * In previous versions of Chipmunk before 5.3 you would create an infinite mass rogue body to attach static shapes to
- * using cpSpaceAddStaticShape(). You don’alpha need to do any of that anymore, and shouldn’alpha if you want to use the
- * sleeping feature. Each space has a dedicated static body that you can use to attach your static shapes to. Chipmunk
- * also automatically adds shapes attached to static dynamicBodies as static shapes. *
- * <point/>
- * <b>Creating Additional Static Bodies:</b>
- * <point/>
- * While every cpSpace has a built in static body that you can use, it can be convenient to make your own as well. One
- * potential use is in a level editor. By attaching chunks of your level to static dynamicBodies, you can still move and rotate
- * the chunks independently of each other. Then all you have to do is call cpSpaceRehashStatic() to rebuild the static
+ * <b>Rogue and Static Bodies:</b> <point/> Normally when you create a rigid body, you add it to a space so the space
+ * will start simulating it. This means it will update it’s position and velocity, apply forces to it, be affected by
+ * gravity, etc. A body that isn’alpha added to a space (and not simulated) is called a rogue body. The most important
+ * use for rogue dynamicBodies are as static dynamicBodies, but you can also use them to implement directly controlled
+ * objects such as moving platforms. <point/> Static dynamicBodies are rogue dynamicBodies, but with a special flag set
+ * on them to let Chipmunk know that they never move unless you tell it. Static dynamicBodies have two purposes.
+ * Originally they were added for the sleeping feature. Because static dynamicBodies don’alpha move, Chipmunk knows that
+ * it’s safe to let objects that are touching or jointed to them fall asleep. Objects touching or jointed to regular
+ * rogue dynamicBodies are never allowed to sleep. The second purpose for static dynamicBodies is that Chipmunk knows
+ * shapes attached to them never need to have their collision detection data updated. Chipmunk also doesn’alpha need to
+ * bother checking for collisions between static objects. Generally all of your level geometry will be attached to a
+ * static body except for things like moving platforms or doors. <point/> In previous versions of Chipmunk before 5.3
+ * you would create an infinite mass rogue body to attach static shapes to using cpSpaceAddStaticShape(). You don’alpha
+ * need to do any of that anymore, and shouldn’alpha if you want to use the sleeping feature. Each space has a dedicated
+ * static body that you can use to attach your static shapes to. Chipmunk also automatically adds shapes attached to
+ * static dynamicBodies as static shapes. * <point/> <b>Creating Additional Static Bodies:</b> <point/> While every
+ * cpSpace has a built in static body that you can use, it can be convenient to make your own as well. One potential use
+ * is in a level editor. By attaching chunks of your level to static dynamicBodies, you can still move and rotate the
+ * chunks independently of each other. Then all you have to do is call cpSpaceRehashStatic() to rebuild the static
  * collision detection data when you are done.
  *
  * @author jobernolte
@@ -100,8 +94,8 @@ public class Body {
 	/** Mass inverse. */
 	float m_inv;
 	/**
-	 * Moment of inertia of the body. Must agree with cpBody.i_inv! Use cpBodySetMoment() when changing the moment for this
-	 * reason.
+	 * Moment of inertia of the body. Must agree with cpBody.i_inv! Use cpBodySetMoment() when changing the moment for
+	 * this reason.
 	 */
 	private float i;
 	/** Moment of inertia inverse. */
@@ -115,8 +109,8 @@ public class Body {
 	/** Force acting on the rigid body's center of gravity. */
 	private Vector2f f = Util.cpvzero();
 	/**
-	 * Rotation of the body around it's center of gravity in radians. Must agree with cpBody.rot! Use cpBodySetAngle() when
-	 * changing the angle for this reason.
+	 * Rotation of the body around it's center of gravity in radians. Must agree with cpBody.rot! Use cpBodySetAngle()
+	 * when changing the angle for this reason.
 	 */
 	private float a;
 	/** Angular velocity of the body around it's center of gravity in radians/second. */
@@ -125,8 +119,7 @@ public class Body {
 	private float t = 0.0f;
 	Transform transform = Transform.identity();
 	/**
-	 * "pseudo-velocities" used for eliminating overlap.
-	 * Erin Catto has some papers that talk about what these are.
+	 * "pseudo-velocities" used for eliminating overlap. Erin Catto has some papers that talk about what these are.
 	 */
 	Vector2f v_bias = Util.cpvzero();
 	float w_bias = 0;
@@ -145,13 +138,13 @@ public class Body {
 	/**
 	 * Creates a new body with the given mass and moment.
 	 *
-	 * @param m the mass of the body
-	 * @param i the moment of the body
+	 * @param mass   the mass of the body
+	 * @param moment the moment of the body
 	 */
-	public Body(float m, float i) {
-		setMass(m);
-		setMoment(i);
-		setAngleInRadians(0);
+	public Body(float mass, float moment) {
+		setMass(mass);
+		setMoment(moment);
+		setAngle(0);
 	}
 
 	public static Body createStatic() {
@@ -178,6 +171,7 @@ public class Body {
 		activate();
 		this.m = mass;
 		this.m_inv = 1.0f / mass;
+		sanityCheck();
 	}
 
 	/** @return the moment of inertia of the body */
@@ -186,8 +180,8 @@ public class Body {
 	}
 
 	/**
-	 * Moment of inertia (MoI or sometimes just moment) of the body. The moment is like the rotational mass of a body. See
-	 * below for function to help calculate the moment.
+	 * Moment of inertia (MoI or sometimes just moment) of the body. The moment is like the rotational mass of a body.
+	 * See below for function to help calculate the moment.
 	 *
 	 * @param moment the moment of inertia of the body
 	 * @see Util#momentForBox(float, float, float)
@@ -197,9 +191,13 @@ public class Body {
 	 * @see Util#momentForSegment(float, Vector2f, Vector2f, float)
 	 */
 	public void setMoment(float moment) {
+		if (moment < 0.0f) {
+			throw new IllegalArgumentException("Moment of inertia must be positive.");
+		}
 		activate();
 		this.i = moment;
 		this.i_inv = 1.0f / moment;
+		sanityCheck();
 	}
 
 	/** @return the inverse moment of inertia of the body */
@@ -224,13 +222,13 @@ public class Body {
 
 	/** @return position of the center of gravity of the body */
 	public Vector2f getPosition() {
-		return p;
+		return p; // transform.transformPoint(cpvzero());
 	}
 
 	/**
 	 * Position of the center of gravity of the body. When changing the position you may also want to call {@link
-	 * Space#reindexShapesForBody(Body)} to update the collision detection information for the attached shapes if plan to
-	 * make any queries against the space.
+	 * Space#reindexShapesForBody(Body)} to update the collision detection information for the attached shapes if plan
+	 * to make any queries against the space.
 	 *
 	 * @param position position of the center of gravity of the body
 	 */
@@ -265,6 +263,7 @@ public class Body {
 	public void setVelocity(Vector2f v) {
 		activate();
 		this.v.set(v);
+		sanityCheck();
 	}
 
 	/**
@@ -285,7 +284,9 @@ public class Body {
 	}
 
 	private float setAngle(float angle) {
+		activate();
 		this.a = angle;
+		setTransform(this.p, angle);
 		sanityCheck();
 		return a;
 	}
@@ -297,13 +298,12 @@ public class Body {
 
 	/**
 	 * Rotation of the body in radians. When changing the rotation you may also want to call {@link
-	 * Space#reindexShapesForBody(Body)} to update the collision detection information for the attached shapes if plan to
-	 * make any queries against the space.
+	 * Space#reindexShapesForBody(Body)} to update the collision detection information for the attached shapes if plan
+	 * to make any queries against the space.
 	 *
 	 * @param angle the angle in radians
 	 */
 	public void setAngleInRadians(float angle) {
-		activate();
 		setAngle(angle);
 	}
 
@@ -318,24 +318,28 @@ public class Body {
 	 * @param f the force applied to the center of gravity of the body
 	 */
 	public void setForce(Vector2f f) {
+		activate();
 		this.f.set(f);
+		sanityCheck();
 	}
 
 	/** @return The angular velocity of the body in radians per second. */
-	public float getAngVel() {
+	public float getAngularVelocity() {
 		return w;
 	}
 
 	/**
 	 * Set the angular velocity of the body in radians per second.
 	 *
-	 * @param w the angular velocity in radians
+	 * @param angularVelocity the angular velocity in radians
 	 */
-	public void setAngVel(float w) {
-		this.w = w;
+	public void setAngularVelocity(float angularVelocity) {
+		activate();
+		this.w = angularVelocity;
+		sanityCheck();
 	}
 
-	public void addAngVel(float w) {
+	public void addAngularVelocity(float w) {
 		this.w += w;
 	}
 
@@ -350,7 +354,9 @@ public class Body {
 	 * @param t the torque to apply
 	 */
 	public void setTorque(float t) {
+		activate();
 		this.t = t;
+		sanityCheck();
 	}
 
 	/** Zero both the forces and torques currently applied to the body. */
@@ -381,6 +387,11 @@ public class Body {
 	public void applyImpulse(Vector2f j, Vector2f r) {
 		this.v = cpvadd(this.v, cpvmult(j, this.m_inv));
 		this.w += this.i_inv * cpvcross(r, j);
+	}
+
+	public void applyBiasImpulse(Vector2f j, Vector2f r) {
+		this.v_bias = cpvadd(this.v_bias, cpvmult(j, this.m_inv));
+		this.w_bias += this.i_inv * cpvcross(r, j);
 	}
 
 	/**
@@ -509,8 +520,8 @@ public class Body {
 	}
 
 	/**
-	 * Similar in function to {@link #activate()}. Activates all dynamicBodies touching body. If filter is not <code>null</code>,
-	 * then only dynamicBodies touching through filter will be awoken.
+	 * Similar in function to {@link #activate()}. Activates all dynamicBodies touching body. If filter is not
+	 * <code>null</code>, then only dynamicBodies touching through filter will be awoken.
 	 *
 	 * @param filter if not <code>null</code> only dynamicBodies touching through filter will be awoken
 	 */
@@ -536,10 +547,10 @@ public class Body {
 	}
 
 	/**
-	 * When objects in Chipmunk sleep, they sleep as a group of all objects that are touching or jointed together. When an
-	 * object is woken up, all of the objects in it’s group are woken up. sleepWithGroup() allows you group sleeping
-	 * objects together. It acts identically to {@link #sleep()} if you pass <code>null</code> as group by starting a new
-	 * group. If you pass a sleeping body for group, body will be awoken when group is awoken. You can use this to
+	 * When objects in Chipmunk sleep, they sleep as a group of all objects that are touching or jointed together. When
+	 * an object is woken up, all of the objects in it’s group are woken up. sleepWithGroup() allows you group sleeping
+	 * objects together. It acts identically to {@link #sleep()} if you pass <code>null</code> as group by starting a
+	 * new group. If you pass a sleeping body for group, body will be awoken when group is awoken. You can use this to
 	 * initialize levels and start stacks of objects in a pre-sleeping state.
 	 *
 	 * @param group the group to sleep with
@@ -624,13 +635,13 @@ public class Body {
 	}
 
 	/**
-	 * This one is more interesting. Returns an {@link Arbiter} for each collision pair that body is involved in. Calling
-	 * {@link Arbiter#getBodyA()} or {@link Arbiter#getShapeA()} will return the body or shape for body as the first
-	 * argument. You can use this to check all sorts of collision information for a body like if it’s touching the ground,
-	 * another particular object, how much collision force is being applied to an object, etc. Note: This function only
-	 * works if the contact graph is enabled either by enabling the sleeping feature of a space or by enabling the contact
-	 * graph. Sensor shapes and arbiters that have been rejected by a collision handler callback or cpArbiterIgnore() are
-	 * not tracked by the contact graph.
+	 * This one is more interesting. Returns an {@link Arbiter} for each collision pair that body is involved in.
+	 * Calling {@link Arbiter#getBodyA()} or {@link Arbiter#getShapeA()} will return the body or shape for body as the
+	 * first argument. You can use this to check all sorts of collision information for a body like if it’s touching the
+	 * ground, another particular object, how much collision force is being applied to an object, etc. Note: This
+	 * function only works if the contact graph is enabled either by enabling the sleeping feature of a space or by
+	 * enabling the contact graph. Sensor shapes and arbiters that have been rejected by a collision handler callback or
+	 * cpArbiterIgnore() are not tracked by the contact graph.
 	 *
 	 * @return {@link Iterable<Arbiter>} which can be used to iterate all collision pairs
 	 */
@@ -737,6 +748,10 @@ public class Body {
 								  this.i));
 		}
 		this.v = cpvadd(cpvmult(this.v, damping), cpvmult(cpvadd(gravity, cpvmult(this.f, this.m_inv)), dt));
+		/*if (this.w != 0.0f) {
+			// TODO remove me
+			System.out.format("updatevel: w=%f, damping=%f, t=%f, i_inv=%f, dt=%f\n", w, damping, t, i_inv, dt);
+		}*/
 		this.w = this.w * damping + this.t * this.i_inv * dt;
 
 		// Reset forces.
@@ -753,7 +768,7 @@ public class Body {
 	 */
 	public void updatePosition(float dt) {
 		this.p.set(cpvadd(this.p, cpvmult(cpvadd(this.v, this.v_bias), dt)));
-		float a = setAngle(this.a + (this.w + this.w_bias) * dt);
+		this.a = this.a + (this.w + this.w_bias) * dt;
 		setTransform(p, a);
 
 		this.v_bias.set(0, 0);

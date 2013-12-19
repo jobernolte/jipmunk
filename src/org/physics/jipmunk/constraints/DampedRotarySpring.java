@@ -109,8 +109,8 @@ public class DampedRotarySpring extends Constraint {
 		float j_spring = this.springTorqueFunc.apply(this, a.getAngleInRadians() - b.getAngleInRadians()) * dt;
 		this.jAcc = j_spring;
 
-		a.setAngVel(a.getAngVel() - j_spring * a.getInverseMoment());
-		b.setAngVel(b.getAngVel() + j_spring * b.getInverseMoment());
+		a.setAngularVelocity(a.getAngularVelocity() - j_spring * a.getInverseMoment());
+		b.setAngularVelocity(b.getAngularVelocity() + j_spring * b.getInverseMoment());
 	}
 
 	@Override
@@ -120,7 +120,7 @@ public class DampedRotarySpring extends Constraint {
 	@Override
 	protected void applyImpulse(float dt) {
 		// compute relative velocity
-		float wrn = a.getAngVel() - b.getAngVel();//normal_relative_velocity(a, b, r1, r2, normal) - this.target_vrn;
+		float wrn = a.getAngularVelocity() - b.getAngularVelocity();//normal_relative_velocity(a, b, r1, r2, normal) - this.target_vrn;
 
 		// compute velocity loss from drag
 		// not 100% certain this is derived correctly, though it makes sense
@@ -131,8 +131,8 @@ public class DampedRotarySpring extends Constraint {
 		float j_damp = w_damp * this.iSum;
 		this.jAcc += j_damp;
 
-		a.setAngVel(a.getAngVel() + j_damp * a.getInverseMoment());
-		b.setAngVel(b.getAngVel() - j_damp * b.getInverseMoment());
+		a.setAngularVelocity(a.getAngularVelocity() + j_damp * a.getInverseMoment());
+		b.setAngularVelocity(b.getAngularVelocity() - j_damp * b.getInverseMoment());
 	}
 
 	@Override

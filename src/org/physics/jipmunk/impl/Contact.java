@@ -121,4 +121,13 @@ public class Contact {
 	public void setHash(int hash) {
 		this.hash = hash;
 	}
+
+	@Override
+	public String toString() {
+		return "Contact{" +
+				"r1=" + r1 +
+				", r2=" + r2 +
+				", hash=" + hash +
+				'}';
+	}
 }

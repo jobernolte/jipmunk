@@ -65,6 +65,10 @@ public class Collision {
 				if (dist <= 0.0f) {
 					int hash_1a2b = HashValue.hashPair(edgePoint1A.getHash(), edgePoint2B.getHash());
 					info.addContact(p1, p2, hash_1a2b);
+					if (info.getA().getType() == ShapeType.POLY_SHAPE && info.getB().getType() == ShapeType.POLY_SHAPE) {
+						// TODO remove me
+						info.getA();
+					}
 				}
 			}
 			{
@@ -76,6 +80,10 @@ public class Collision {
 				if (dist <= 0.0f) {
 					int hash_1b2a = HashValue.hashPair(edgePoint1B.getHash(), edgePoint2A.getHash());
 					info.addContact(p1, p2, hash_1b2a);
+					if (info.getA().getType() == ShapeType.POLY_SHAPE && info.getB().getType() == ShapeType.POLY_SHAPE) {
+						// TODO remove me
+						info.getA();
+					}
 				}
 			}
 		}

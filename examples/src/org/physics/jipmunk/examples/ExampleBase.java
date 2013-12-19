@@ -55,7 +55,7 @@ public abstract class ExampleBase implements GLEventListener {
 			new ShapeFilter(Constants.NO_GROUP, GRABABLE_MASK_BIT, GRABABLE_MASK_BIT);
 	public static final ShapeFilter NOT_GRABABLE_FILTER =
 			new ShapeFilter(Constants.NO_GROUP, ~GRABABLE_MASK_BIT, ~GRABABLE_MASK_BIT);
-	private DrawSpace.Options drawSpaceOptions = new DrawSpace.Options(false, false, true, 4.0f, 0.0f, 1.5f);
+	private DrawSpace.Options drawSpaceOptions = new DrawSpace.Options(false, false, true, 6.0f, 4.0f, 1.5f);
 	private GL2 gl;
 	private GLU glu;
 	private DrawSpace drawSpace;

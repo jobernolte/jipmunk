@@ -124,6 +124,13 @@ public class Arbiter {
 		this.state = ArbiterState.FIRST_COLLISION;
 	}
 
+	void reset() {
+		this.handler = this.handlerA = this.handlerB = null;
+		this.a = this.b = null;
+		this.body_a = this.body_b = null;
+		this.contacts = null;
+	}
+
 	ArbiterThread threadForBody(Body body) {
 		return (this.body_a == body ? this.thread_a : this.thread_b);
 	}
@@ -183,7 +190,7 @@ public class Arbiter {
 
 	public Vector2f getPoint2(int i) {
 		cpAssertHard(0 <= i && i < getCount(), "Index error: The specified contact index is invalid for this arbiter");
-		return cpvadd(this.body_a.p, this.contacts.get(i).getR2());
+		return cpvadd(this.body_b.p, this.contacts.get(i).getR2());
 	}
 
 	public float getDepth(int i) {

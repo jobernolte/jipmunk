@@ -105,8 +105,8 @@ public class RatchetJoint extends Constraint {
 	@Override
 	protected void applyCachedImpulse(float dt_coef) {
 		float j = this.jAcc * dt_coef;
-		a.setAngVel(a.getAngVel() - j * a.getInverseMoment());
-		b.setAngVel(b.getAngVel() + j * b.getInverseMoment());
+		a.setAngularVelocity(a.getAngularVelocity() - j * a.getInverseMoment());
+		b.setAngularVelocity(b.getAngularVelocity() + j * b.getInverseMoment());
 	}
 
 	@Override
@@ -116,7 +116,7 @@ public class RatchetJoint extends Constraint {
 		}
 
 		// compute relative rotational velocity
-		float wr = b.getAngVel() - a.getAngVel();
+		float wr = b.getAngularVelocity() - a.getAngularVelocity();
 		float ratchet = this.ratchet;
 
 		float jMax = this.maxForce * dt;
@@ -128,8 +128,8 @@ public class RatchetJoint extends Constraint {
 		j = this.jAcc - jOld;
 
 		// apply impulse
-		a.setAngVel(a.getAngVel() - j * a.getInverseMoment());
-		b.setAngVel(b.getAngVel() + j * b.getInverseMoment());
+		a.setAngularVelocity(a.getAngularVelocity() - j * a.getInverseMoment());
+		b.setAngularVelocity(b.getAngularVelocity() + j * b.getInverseMoment());
 	}
 
 	@Override

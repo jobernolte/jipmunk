@@ -235,11 +235,9 @@ public class Util {
 		return false;
 	}
 
-	static float
-	k_scalar_body(Body body, Vector2f r, Vector2f n)
-	{
+	static float k_scalar_body(Body body, Vector2f r, Vector2f n) {
 		float rcn = cpvcross(r, n);
-		return body.m_inv + body.i_inv*rcn*rcn;
+		return body.m_inv + body.i_inv * rcn * rcn;
 	}
 
 	public static float k_scalar(Body a, Body b, Vector2f r1, Vector2f r2, Vector2f n) {
@@ -346,24 +344,14 @@ public class Util {
 		return cpvdot(relative_velocity(a, b, r1, r2), n);
 	}
 
-	public static void apply_impulse(Body body, Vector2f j, Vector2f r) {
-		body.v = cpvadd(body.v, cpvmult(j, body.m_inv));
-		body.w += body.i_inv * cpvcross(r, j);
-	}
-
 	public static void apply_impulses(Body a, Body b, Vector2f r1, Vector2f r2, Vector2f j) {
-		apply_impulse(a, cpvneg(j), r1);
-		apply_impulse(b, j, r2);
-	}
-
-	public static void apply_bias_impulse(Body body, Vector2f j, Vector2f r) {
-		body.v_bias = cpvadd(body.v_bias, cpvmult(j, body.m_inv));
-		body.w_bias += body.i_inv * cpvcross(r, j);
+		a.applyImpulse(cpvneg(j), r1);
+		b.applyImpulse(j, r2);
 	}
 
 	public static void apply_bias_impulses(Body a, Body b, Vector2f r1, Vector2f r2, Vector2f j) {
-		apply_bias_impulse(a, cpvneg(j), r1);
-		apply_bias_impulse(b, j, r2);
+		a.applyBiasImpulse(cpvneg(j), r1);
+		b.applyBiasImpulse(j, r2);
 	}
 
 	public static float momentForCircle(float m, float r1, float r2, Vector2f offset) {

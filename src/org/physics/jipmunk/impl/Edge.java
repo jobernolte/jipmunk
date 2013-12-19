@@ -58,6 +58,16 @@ public class Edge {
 		return n;
 	}
 
+	@Override
+	public String toString() {
+		return "Edge{" +
+				"a=" + a +
+				", b=" + b +
+				", r=" + r +
+				", n=" + n +
+				'}';
+	}
+
 	public static Edge edgeForPoly(final PolyShape poly, final Vector2f n) {
 		final SplittingPlane[] planes = poly.getPlanes();
 		int count = planes.length;

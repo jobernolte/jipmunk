@@ -81,7 +81,7 @@ public class Transform {
 	}
 
 	public Vector2f transformVect(Vector2f v) {
-		return transformVect(this, v);
+		return new Vector2f(this.a * v.x + this.c * v.y, this.b * v.x + this.d * v.y);
 	}
 
 	/// Transform a cpBB.
