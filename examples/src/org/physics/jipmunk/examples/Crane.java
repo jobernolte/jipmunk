@@ -125,7 +125,7 @@ public class Crane extends ExampleBase {
 
 		for (int i = 0; i < steps; i++) {
 			// Set the first anchor point (the one attached to the static body) of the dolly servo to the mouse's x position.
-			dollyServo.setAnchr1(cpv(mousePoint.getX(), 100));
+			dollyServo.setAnchorA(cpv(mousePoint.getX(), 100));
 
 			// Set the max length of the winch servo to match the mouse's height.
 			winchServo.setMax(cpfmax(100 - mousePoint.getY(), 50));

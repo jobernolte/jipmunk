@@ -26,21 +26,18 @@ import static org.physics.jipmunk.SpaceComponent.cpBodyActivate;
 
 /** @author jobernolte */
 public abstract class Constraint {
+	Space space;
 	/** The first body connected to this constraint. */
 	protected final Body a;
 	/** The second body connected to this constraint. */
 	protected final Body b;
-
-	Space space;
-
 	Constraint next_a;
 	Constraint next_b;
-
 	/** The maximum force that this constraint is allowed to use. Defaults to infinity. */
 	protected float maxForce = Float.POSITIVE_INFINITY;
 	/**
-	 * The rate at which joint error is corrected. Defaults to pow(1.0 - 0.1, 60.0) meaning that it will correct 10% of the
-	 * error every 1/60th of a second.
+	 * The rate at which joint error is corrected. Defaults to pow(1.0 - 0.1, 60.0) meaning that it will correct 10% of
+	 * the error every 1/60th of a second.
 	 */
 	protected float errorBias = Util.cpfpow(1.0f - 0.1f, 60.0f);
 	/** The maximum rate at which joint error is corrected. Defaults to infinity. */
@@ -74,7 +71,11 @@ public abstract class Constraint {
 	}
 
 	public void setMaxForce(float maxForce) {
+		if (maxForce < 0.0f) {
+			throw new IllegalArgumentException("max. force must be positive.");
+		}
 		this.maxForce = maxForce;
+		activateBodies();
 	}
 
 	public float getErrorBias() {
@@ -82,7 +83,11 @@ public abstract class Constraint {
 	}
 
 	public void setErrorBias(float errorBias) {
+		if (errorBias < 0.0f) {
+			throw new IllegalArgumentException("error bias must be positive.");
+		}
 		this.errorBias = errorBias;
+		activateBodies();
 	}
 
 	public float getMaxBias() {
@@ -90,7 +95,20 @@ public abstract class Constraint {
 	}
 
 	public void setMaxBias(float maxBias) {
+		if (maxBias < 0.0f) {
+			throw new IllegalArgumentException("max. bias must be positive.");
+		}
 		this.maxBias = maxBias;
+		activateBodies();
+	}
+
+	public boolean isCollideBodies() {
+		return collideBodies;
+	}
+
+	public void setCollideBodies(boolean collideBodies) {
+		this.collideBodies = collideBodies;
+		activateBodies();
 	}
 
 	protected abstract void preStep(float dt);
@@ -102,8 +120,12 @@ public abstract class Constraint {
 	protected abstract float getImpulse();
 
 	protected void activateBodies() {
-		if (a != null) cpBodyActivate(a);
-		if (b != null) cpBodyActivate(b);
+		if (a != null) {
+			a.activate();
+		}
+		if (b != null) {
+			b.activate();
+		}
 	}
 
 	public ConstraintPreSolveFunc getPreSolveFunc() {
@@ -128,20 +150,20 @@ public abstract class Constraint {
 	}
 
 	/**
-	 * @param clazz the {@link Class} of the user data
-	 * @param <T>   the type of the data
-	 * @return the user data
-	 */
-	public <T> T getData(Class<T> clazz) {
-		return clazz.cast(data);
-	}
-
-	/**
 	 * Sets user data. Use this data to get a reference to the game object that owns this body from callbacks.
 	 *
 	 * @param data the user data to set
 	 */
 	public void setData(Object data) {
 		this.data = data;
+	}
+
+	/**
+	 * @param clazz the {@link Class} of the user data
+	 * @param <T>   the type of the data
+	 * @return the user data
+	 */
+	public <T> T getData(Class<T> clazz) {
+		return clazz.cast(data);
 	}
 }

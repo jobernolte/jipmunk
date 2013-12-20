@@ -354,14 +354,41 @@ public class Util {
 		b.applyBiasImpulse(j, r2);
 	}
 
+	/**
+	 * Calculate the moment of inertia for a hollow circle, <code>r1</code> and <code>r2</code> are the inner and outer
+	 * diameters in no particular order (a solid circle has an inner diameter of 0).
+	 *
+	 * @param m      the mass of the circle.
+	 * @param r1     the inner diameter of the circle.
+	 * @param r2     the outer diameter of the circle.
+	 * @param offset the offset of the circle.
+	 * @return the moment of inertia for the circle.
+	 */
 	public static float momentForCircle(float m, float r1, float r2, Vector2f offset) {
 		return m * (0.5f * (r1 * r1 + r2 * r2) + cpvlengthsq(offset));
 	}
 
+	/**
+	 * Area of a hollow circle.
+	 *
+	 * @param r1 the inner diameter of the circle.
+	 * @param r2 the outer diameter of the circle.
+	 * @return the area of the hollow circle.
+	 */
 	public static float areaForCircle(float r1, float r2) {
 		return 2.0f * (float) Math.PI * cpfabs(r1 * r1 - r2 * r2);
 	}
 
+	/**
+	 * Calculate the moment of inertia for a line segment. The endpoints <code>a</code> and <code>b</code> are relative
+	 * to the body.
+	 *
+	 * @param m the mass of the segment.
+	 * @param a the first endpoint of the segment.
+	 * @param b the second endpoint of the segment.
+	 * @param r the radius of the segment.
+	 * @return the moment of inertia for the line segment.
+	 */
 	public static float momentForSegment(float m, Vector2f a, Vector2f b, float r) {
 		Vector2f offset = cpvlerp(a, b, 0.5f);
 
@@ -370,10 +397,28 @@ public class Util {
 		return m * ((length * length + 4.0f * r * r) / 12.0f + cpvlengthsq(offset));
 	}
 
+	/**
+	 * Area of a beveled segment. (Will always be zero if radius is zero)
+	 *
+	 * @param a the first endpoint of the segment.
+	 * @param b the second endpoint of the segment.
+	 * @param r the radius of the segment.
+	 * @return the area of the the beveled segment.
+	 */
 	public static float areaForSegment(Vector2f a, Vector2f b, float r) {
 		return 2.0f * r * ((float) Math.PI * r + cpvdist(a, b));
 	}
 
+	/**
+	 * Calculate the moment of inertia for a solid polygon shape assuming it's center of gravity is at it's centroid.
+	 * The offset is added to each vertex.
+	 *
+	 * @param m      the mass of the poly.
+	 * @param verts  the vertices of the poly.
+	 * @param offset the offset added to each vertex.
+	 * @param radius the radius of the poly.
+	 * @return the moment of inertia for the solid polygon.
+	 */
 	public static float momentForPoly(float m, Vector2f[] verts, Vector2f offset, float radius) {
 		return momentForPoly(m, verts, 0, verts.length, offset, radius);
 	}
@@ -401,6 +446,13 @@ public class Util {
 		return (m * sum1) / (6.0f * sum2);
 	}
 
+	/**
+	 * Signed area of a polygon shape. Returns a negative number for polygons with a backwards winding.
+	 *
+	 * @param verts the vertices of the poly.
+	 * @param r     the radius of the poly.
+	 * @return the signed area of the polygon shape.
+	 */
 	public static float areaForPoly(Vector2f[] verts, float r) {
 		return areaForPoly(verts, 0, verts.length, r);
 	}

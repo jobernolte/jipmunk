@@ -1,8 +1,4 @@
-package org.physics.jipmunk.constraints;
-
-import org.physics.jipmunk.Shape;
-import org.physics.jipmunk.Util;
-import org.physics.jipmunk.Vector2f;
+package org.physics.jipmunk;
 
 /**
  * Nearest point query info struct.

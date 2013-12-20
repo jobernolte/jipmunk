@@ -37,12 +37,8 @@ import static org.physics.jipmunk.Util.cpfexp;
  */
 public class DampedRotarySpring extends Constraint {
 
-	private final static DampedRotarySpringTorqueFunc defaultSpringTorque = new DampedRotarySpringTorqueFunc() {
-		@Override
-		public float apply(DampedRotarySpring spring, float relativeAngleInRadians) {
-			return (relativeAngleInRadians - spring.restAngle) * spring.stiffness;
-		}
-	};
+	private final static DampedRotarySpringTorqueFunc defaultSpringTorque =
+			(spring, relativeAngleInRadians) -> (relativeAngleInRadians - spring.restAngle) * spring.stiffness;
 
 	private float restAngle;
 	private float stiffness;
@@ -69,6 +65,7 @@ public class DampedRotarySpring extends Constraint {
 	}
 
 	public void setRestAngle(float restAngle) {
+		activateBodies();
 		this.restAngle = restAngle;
 	}
 
@@ -77,6 +74,7 @@ public class DampedRotarySpring extends Constraint {
 	}
 
 	public void setStiffness(float stiffness) {
+		activateBodies();
 		this.stiffness = stiffness;
 	}
 
@@ -85,6 +83,7 @@ public class DampedRotarySpring extends Constraint {
 	}
 
 	public void setDamping(float damping) {
+		activateBodies();
 		this.damping = damping;
 	}
 
@@ -106,7 +105,7 @@ public class DampedRotarySpring extends Constraint {
 		this.target_wrn = 0.0f;
 
 		// apply spring torque
-		float j_spring = this.springTorqueFunc.apply(this, a.getAngleInRadians() - b.getAngleInRadians()) * dt;
+		float j_spring = this.springTorqueFunc.apply(this, a.getAngle() - b.getAngle()) * dt;
 		this.jAcc = j_spring;
 
 		a.setAngularVelocity(a.getAngularVelocity() - j_spring * a.getInverseMoment());

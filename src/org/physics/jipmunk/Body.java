@@ -37,20 +37,36 @@ import static org.physics.jipmunk.Util.*;
  * use for rogue dynamicBodies are as static dynamicBodies, but you can also use them to implement directly controlled
  * objects such as moving platforms. <point/> Static dynamicBodies are rogue dynamicBodies, but with a special flag set
  * on them to let Chipmunk know that they never move unless you tell it. Static dynamicBodies have two purposes.
- * Originally they were added for the sleeping feature. Because static dynamicBodies don’alpha move, Chipmunk knows that
+ * Originally they were added for the sleeping feature. Because static dynamicBodies don’alpha move, Chipmunk knows
+ * that
  * it’s safe to let objects that are touching or jointed to them fall asleep. Objects touching or jointed to regular
  * rogue dynamicBodies are never allowed to sleep. The second purpose for static dynamicBodies is that Chipmunk knows
  * shapes attached to them never need to have their collision detection data updated. Chipmunk also doesn’alpha need to
  * bother checking for collisions between static objects. Generally all of your level geometry will be attached to a
  * static body except for things like moving platforms or doors. <point/> In previous versions of Chipmunk before 5.3
  * you would create an infinite mass rogue body to attach static shapes to using cpSpaceAddStaticShape(). You don’alpha
- * need to do any of that anymore, and shouldn’alpha if you want to use the sleeping feature. Each space has a dedicated
+ * need to do any of that anymore, and shouldn’alpha if you want to use the sleeping feature. Each space has a
+ * dedicated
  * static body that you can use to attach your static shapes to. Chipmunk also automatically adds shapes attached to
  * static dynamicBodies as static shapes. * <point/> <b>Creating Additional Static Bodies:</b> <point/> While every
- * cpSpace has a built in static body that you can use, it can be convenient to make your own as well. One potential use
+ * cpSpace has a built in static body that you can use, it can be convenient to make your own as well. One potential
+ * use
  * is in a level editor. By attaching chunks of your level to static dynamicBodies, you can still move and rotate the
  * chunks independently of each other. Then all you have to do is call cpSpaceRehashStatic() to rebuild the static
  * collision detection data when you are done.
+ * <p>
+ * <h2>Applying Forces and Torques:, Forces</h2>
+ * People are sometimes confused by the difference between a force and
+ * an impulse. An impulse is basically a very large force applied over a very short period of time, like a ball hitting
+ * a wall or cannon firing. Chipmunk treats impulses as if they occur instantaneously by simply adding directly to the
+ * velocity of an object. Both impulses and forces are affected the mass of an object. Double the mass of the object
+ * and
+ * halve the effect.
+ * <ul>
+ * <li>{@link #resetForces()} - Zero both the forces and torques currently applied to the body.</li>
+ * <li>{@link #applyForceAtLocalPoint(Vector2f, Vector2f)} - Add the force to the body at a relative offset from the center of gravity.</li>
+ * <li>{@link #applyImpulseAtLocalPoint(Vector2f, Vector2f)} - Add the impulse to the body at a relative offset from the center of gravity.</li>
+ * </ul>
  *
  * @author jobernolte
  */
@@ -274,6 +290,10 @@ public class Body {
 		return Util.cpv(this.transform.a, this.transform.b);
 	}
 
+	public Transform getTransform() {
+		return transform;
+	}
+
 	// 'p' is the position of the CoG
 	public void setTransform(Vector2f p, float a) {
 		Vector2f rot = cpvforangle(a);
@@ -283,16 +303,8 @@ public class Body {
 											 p.y - (c.x * rot.y + c.y * rot.x));
 	}
 
-	private float setAngle(float angle) {
-		activate();
-		this.a = angle;
-		setTransform(this.p, angle);
-		sanityCheck();
-		return a;
-	}
-
 	/** @return the rotation angle in radians */
-	public float getAngleInRadians() {
+	public float getAngle() {
 		return a;
 	}
 
@@ -302,9 +314,14 @@ public class Body {
 	 * to make any queries against the space.
 	 *
 	 * @param angle the angle in radians
+	 * @return the angle in radians
 	 */
-	public void setAngleInRadians(float angle) {
-		setAngle(angle);
+	public float setAngle(float angle) {
+		activate();
+		this.a = angle;
+		setTransform(this.p, angle);
+		sanityCheck();
+		return a;
 	}
 
 	/** @return the force applied to the center of gravity of the body. */
@@ -367,7 +384,7 @@ public class Body {
 	}
 
 	/**
-	 * Add the force <code>force</code> to body at a relative offset <code>point</code> from the center of gravity.
+	 * Add the force <code>force</code> to body at an offset <code>point</code> from the center of gravity.
 	 *
 	 * @param force the force to apply
 	 * @param point the relative offset
@@ -380,22 +397,28 @@ public class Body {
 		this.t += cpvcross(r, force);
 	}
 
+	/**
+	 * Add the force <code>force</code> to body at a relative offset <code>point</code> from the center of gravity.
+	 *
+	 * @param force the force to apply
+	 * @param point the relative offset
+	 */
 	public void applyForceAtLocalPoint(final Vector2f force, final Vector2f point) {
 		applyForceAtWorldPoint(transform.transformVect(force), transform.transformPoint(point));
 	}
 
-	public void applyImpulse(Vector2f j, Vector2f r) {
+	void applyImpulse(Vector2f j, Vector2f r) {
 		this.v = cpvadd(this.v, cpvmult(j, this.m_inv));
 		this.w += this.i_inv * cpvcross(r, j);
 	}
 
-	public void applyBiasImpulse(Vector2f j, Vector2f r) {
+	void applyBiasImpulse(Vector2f j, Vector2f r) {
 		this.v_bias = cpvadd(this.v_bias, cpvmult(j, this.m_inv));
 		this.w_bias += this.i_inv * cpvcross(r, j);
 	}
 
 	/**
-	 * Add the impulse <code>i</code> to body at a relative offset <code>point</code> from the center of gravity.
+	 * Add the impulse <code>i</code> to body at an offset <code>point</code> from the center of gravity.
 	 *
 	 * @param impulse the impulse to apply
 	 * @param point   the relative offset
@@ -407,6 +430,12 @@ public class Body {
 		applyImpulse(impulse, r);
 	}
 
+	/**
+	 * Add the impulse <code>i</code> to body at a relative offset <code>point</code> from the center of gravity.
+	 *
+	 * @param impulse the impulse to apply
+	 * @param point   the relative offset
+	 */
 	public void applyImpulseAtLocalPoint(Vector2f impulse, Vector2f point) {
 		applyImpulseAtWorldPoint(transform.transformVect(impulse), transform.transformPoint(point));
 	}
@@ -637,10 +666,12 @@ public class Body {
 	/**
 	 * This one is more interesting. Returns an {@link Arbiter} for each collision pair that body is involved in.
 	 * Calling {@link Arbiter#getBodyA()} or {@link Arbiter#getShapeA()} will return the body or shape for body as the
-	 * first argument. You can use this to check all sorts of collision information for a body like if it’s touching the
+	 * first argument. You can use this to check all sorts of collision information for a body like if it’s touching
+	 * the
 	 * ground, another particular object, how much collision force is being applied to an object, etc. Note: This
 	 * function only works if the contact graph is enabled either by enabling the sleeping feature of a space or by
-	 * enabling the contact graph. Sensor shapes and arbiters that have been rejected by a collision handler callback or
+	 * enabling the contact graph. Sensor shapes and arbiters that have been rejected by a collision handler callback
+	 * or
 	 * cpArbiterIgnore() are not tracked by the contact graph.
 	 *
 	 * @return {@link Iterable<Arbiter>} which can be used to iterate all collision pairs
@@ -997,5 +1028,15 @@ public class Body {
 				", t=" + t +
 				", transform=" + transform +
 				'}';
+	}
+
+	public static void applyImpulses(Body a, Body b, Vector2f r1, Vector2f r2, Vector2f j) {
+		a.applyImpulse(cpvneg(j), r1);
+		b.applyImpulse(j, r2);
+	}
+
+	public static void applyBiasImpulses(Body a, Body b, Vector2f r1, Vector2f r2, Vector2f j) {
+		a.applyBiasImpulse(cpvneg(j), r1);
+		b.applyBiasImpulse(j, r2);
 	}
 }

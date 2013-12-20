@@ -169,7 +169,7 @@ public class DrawSpace {
 		{
 			Vector2f center = circle.getTransformedCenter(); // circle - > tc;
 			gl.glTranslatef(center.getX(), center.getY(), 0.0f);
-			gl.glRotatef((float) (body.getAngleInRadians() * 180.0f / Math.PI), 0.0f, 0.0f, 1.0f);
+			gl.glRotatef((float) (body.getAngle() * 180.0f / Math.PI), 0.0f, 0.0f, 1.0f);
 			float radius = circle.getRadius();
 			gl.glScalef(radius, radius, 1.0f);
 			if (!circle.isSensor()) {
@@ -278,9 +278,9 @@ public class DrawSpace {
 	}
 
 	void drawSpring(DampedSpring spring, Body body_a, Body body_b) {
-		Vector2f a = Util.cpvadd(body_a.getPosition(), Util.cpvrotate(spring.getAnchr1(),
+		Vector2f a = Util.cpvadd(body_a.getPosition(), Util.cpvrotate(spring.getAnchorA(),
 																	  body_a.getRotation())); //   cpvadd(body_a->point, cpvrotate(spring->anchr1, body_a->rot));
-		Vector2f b = Util.cpvadd(body_b.getPosition(), Util.cpvrotate(spring.getAnchr2(),
+		Vector2f b = Util.cpvadd(body_b.getPosition(), Util.cpvrotate(spring.getAnchorB(),
 																	  body_b.getRotation())); //  cpvadd(body_b->point, cpvrotate(spring->anchr2, body_b->rot));
 
 		gl.glPointSize(5.0f);
@@ -319,9 +319,9 @@ public class DrawSpace {
 		if (PinJoint.class.isInstance(constraint)) {
 			PinJoint joint = (PinJoint) constraint;
 
-			Vector2f a = Util.cpvadd(body_a.getPosition(), Util.cpvrotate(joint.getAnchr1(),
+			Vector2f a = Util.cpvadd(body_a.getPosition(), Util.cpvrotate(joint.getAnchorA(),
 																		  body_a.getRotation())); // cpvadd(body_a->point, cpvrotate(joint->anchr1, body_a->rot));
-			Vector2f b = Util.cpvadd(body_b.getPosition(), Util.cpvrotate(joint.getAnchr2(),
+			Vector2f b = Util.cpvadd(body_b.getPosition(), Util.cpvrotate(joint.getAnchorB(),
 																		  body_b.getRotation())); // cpvadd(body_b->point, cpvrotate(joint->anchr2, body_b->rot));
 
 			gl.glPointSize(5.0f);
@@ -343,9 +343,9 @@ public class DrawSpace {
 
 			//cpVect a = cpvadd(body_a->point, cpvrotate(joint->anchr1, body_a->rot));
 			//cpVect b = cpvadd(body_b->point, cpvrotate(joint->anchr2, body_b->rot));
-			Vector2f a = Util.cpvadd(body_a.getPosition(), Util.cpvrotate(joint.getAnchr1(),
+			Vector2f a = Util.cpvadd(body_a.getPosition(), Util.cpvrotate(joint.getAnchorA(),
 																		  body_a.getRotation())); // cpvadd(body_a->point, cpvrotate(joint->anchr1, body_a->rot));
-			Vector2f b = Util.cpvadd(body_b.getPosition(), Util.cpvrotate(joint.getAnchr2(),
+			Vector2f b = Util.cpvadd(body_b.getPosition(), Util.cpvrotate(joint.getAnchorB(),
 																		  body_b.getRotation())); // cpvadd(body_b->point, cpvrotate(joint->anchr2, body_b->rot));
 
 			gl.glPointSize(5.0f);
@@ -367,9 +367,9 @@ public class DrawSpace {
 
 			//cpVect a = cpvadd(body_a->point, cpvrotate(joint->anchr1, body_a->rot));
 			//cpVect b = cpvadd(body_b->point, cpvrotate(joint->anchr2, body_b->rot));
-			Vector2f a = Util.cpvadd(body_a.getPosition(), Util.cpvrotate(joint.getAnchr1(),
+			Vector2f a = Util.cpvadd(body_a.getPosition(), Util.cpvrotate(joint.getAnchorA(),
 																		  body_a.getRotation())); // cpvadd(body_a->point, cpvrotate(joint->anchr1, body_a->rot));
-			Vector2f b = Util.cpvadd(body_b.getPosition(), Util.cpvrotate(joint.getAnchr2(),
+			Vector2f b = Util.cpvadd(body_b.getPosition(), Util.cpvrotate(joint.getAnchorB(),
 																		  body_b.getRotation())); // cpvadd(body_b->point, cpvrotate(joint->anchr2, body_b->rot));
 
 			gl.glPointSize(10.0f);
@@ -386,7 +386,7 @@ public class DrawSpace {
 																		  body_a.getRotation())); // cpvadd(body_a->point, cpvrotate(joint->grv_a, body_a->rot));
 			Vector2f b = Util.cpvadd(body_a.getPosition(), Util.cpvrotate(joint.getGrooveB(),
 																		  body_a.getRotation())); // cpvadd(body_a->point, cpvrotate(joint->grv_b, body_a->rot));
-			Vector2f c = Util.cpvadd(body_b.getPosition(), Util.cpvrotate(joint.getAnchr2(),
+			Vector2f c = Util.cpvadd(body_b.getPosition(), Util.cpvrotate(joint.getAnchorB(),
 																		  body_b.getRotation())); // cpvadd(body_b->point, cpvrotate(joint->anchr2, body_b->rot));
 
 			gl.glPointSize(5.0f);

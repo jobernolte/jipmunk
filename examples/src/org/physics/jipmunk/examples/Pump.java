@@ -90,7 +90,7 @@ public class Pump extends ExampleBase {
 		// add small gear
 		Body smallGear = space.addBody(new Body(10.0f, Util.momentForCircle(10.0f, 80, 0, cpvzero())));
 		smallGear.setPosition(cpv(-160, -160));
-		smallGear.setAngleInRadians(-M_PI_2);
+		smallGear.setAngle(-M_PI_2);
 
 		shape = space.addShape(new CircleShape(smallGear, 80.0f, cpvzero()));
 		shape.setFilter(ShapeFilter.NONE);
@@ -100,7 +100,7 @@ public class Pump extends ExampleBase {
 		// add big gear
 		Body bigGear = space.addBody(new Body(40.0f, Util.momentForCircle(40.0f, 160, 0, cpvzero())));
 		bigGear.setPosition(cpv(80, -160));
-		bigGear.setAngleInRadians(M_PI_2);
+		bigGear.setAngle(M_PI_2);
 
 		shape = space.addShape(new CircleShape(bigGear, 160.0f, cpvzero()));
 		shape.setFilter(ShapeFilter.NONE);

@@ -23,6 +23,7 @@
 package org.physics.jipmunk.constraints;
 
 /** @author jobernolte */
+@FunctionalInterface
 public interface DampedSpringForceFunc {
 	float apply(DampedSpring spring, float dist);
 }

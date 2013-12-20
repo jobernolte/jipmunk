@@ -22,7 +22,6 @@
 
 package org.physics.jipmunk;
 
-import org.physics.jipmunk.constraints.PointQueryInfo;
 import org.physics.jipmunk.impl.Collision;
 
 import java.util.*;
@@ -1213,7 +1212,7 @@ public class Space {
 	 * @param filter      the filter to use for the query.
 	 * @param out         if not <code>null</code> use this object as return value, else a new instance will be
 	 *                    created.
-	 * @return a {@link org.physics.jipmunk.constraints.PointQueryInfo} object with information about the closest shape.
+	 * @return a {@link PointQueryInfo} object with information about the closest shape.
 	 */
 	public PointQueryInfo pointQueryNearest(Vector2f point, float maxDistance, ShapeFilter filter, PointQueryInfo out) {
 		return cpSpacePointQueryNearest(this, point, maxDistance, filter, out);

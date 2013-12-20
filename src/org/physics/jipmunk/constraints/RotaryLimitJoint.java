@@ -25,16 +25,12 @@ package org.physics.jipmunk.constraints;
 import org.physics.jipmunk.Body;
 import org.physics.jipmunk.Constraint;
 
-import static org.physics.jipmunk.Util.bias_coef;
-import static org.physics.jipmunk.Util.cpfabs;
-import static org.physics.jipmunk.Util.cpfclamp;
+import static org.physics.jipmunk.Util.*;
 
 /** @author jobernolte */
 public class RotaryLimitJoint extends Constraint {
 	float min, max;
-
 	float iSum;
-
 	float bias;
 	float jAcc;
 
@@ -52,6 +48,7 @@ public class RotaryLimitJoint extends Constraint {
 	}
 
 	public void setMin(float min) {
+		activateBodies();
 		this.min = min;
 	}
 
@@ -60,12 +57,13 @@ public class RotaryLimitJoint extends Constraint {
 	}
 
 	public void setMax(float max) {
+		activateBodies();
 		this.max = max;
 	}
 
 	@Override
 	protected void preStep(float dt) {
-		float dist = b.getAngleInRadians() - a.getAngleInRadians();
+		float dist = b.getAngle() - a.getAngle();
 		float pdist = 0.0f;
 		if (dist > this.max) {
 			pdist = this.max - dist;

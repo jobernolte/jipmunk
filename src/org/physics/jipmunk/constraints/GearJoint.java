@@ -33,9 +33,7 @@ import static org.physics.jipmunk.Util.cpfclamp;
 public class GearJoint extends Constraint {
 	float phase, ratio;
 	float ratio_inv;
-
 	float iSum;
-
 	float bias;
 	float jAcc;
 
@@ -54,6 +52,7 @@ public class GearJoint extends Constraint {
 	}
 
 	public void setPhase(float phase) {
+		activateBodies();
 		this.phase = phase;
 	}
 
@@ -62,6 +61,7 @@ public class GearJoint extends Constraint {
 	}
 
 	public void setRatio(float ratio) {
+		activateBodies();
 		this.ratio = ratio;
 	}
 
@@ -72,8 +72,9 @@ public class GearJoint extends Constraint {
 
 		// calculate bias velocity
 		float maxBias = this.maxBias;
-		this.bias = cpfclamp(-bias_coef(this.errorBias, dt) * (b.getAngleInRadians() * this.ratio - a
-				.getAngleInRadians() - this.phase) / dt, -maxBias, maxBias);
+		this.bias =
+				cpfclamp(-bias_coef(this.errorBias, dt) * (b.getAngle() * this.ratio - a.getAngle() - this.phase) / dt,
+						 -maxBias, maxBias);
 	}
 
 	@Override
@@ -88,7 +89,7 @@ public class GearJoint extends Constraint {
 		// compute relative rotational velocity
 		float wr = b.getAngularVelocity() * this.ratio - a.getAngularVelocity();
 
-		float jMax = this.maxForce*dt;
+		float jMax = this.maxForce * dt;
 
 		// compute normal impulse
 		float j = (this.bias - wr) * this.iSum;

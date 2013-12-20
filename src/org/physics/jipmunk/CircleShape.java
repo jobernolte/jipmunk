@@ -22,8 +22,6 @@
 
 package org.physics.jipmunk;
 
-import org.physics.jipmunk.constraints.PointQueryInfo;
-
 import static org.physics.jipmunk.Util.*;
 
 /** @author jobernolte */

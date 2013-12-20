@@ -22,8 +22,6 @@
 
 package org.physics.jipmunk;
 
-import org.physics.jipmunk.constraints.PointQueryInfo;
-
 import static org.physics.jipmunk.Space.cpSpaceLock;
 import static org.physics.jipmunk.Space.cpSpaceUnlock;
 import static org.physics.jipmunk.SpatialIndex.cpSpatialIndexQuery;

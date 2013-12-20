@@ -25,16 +25,12 @@ package org.physics.jipmunk.constraints;
 import org.physics.jipmunk.Body;
 import org.physics.jipmunk.Constraint;
 
-import static org.physics.jipmunk.Util.bias_coef;
-import static org.physics.jipmunk.Util.cpfabs;
-import static org.physics.jipmunk.Util.cpfclamp;
+import static org.physics.jipmunk.Util.*;
 
 /** @author jobernolte */
 public class RatchetJoint extends Constraint {
 	float angle, phase, ratchet;
-
 	float iSum;
-
 	float bias;
 	float jAcc;
 
@@ -46,7 +42,7 @@ public class RatchetJoint extends Constraint {
 		this.ratchet = ratchet;
 
 		// STATIC_BODY_CHECK
-		this.angle = (b != null ? b.getAngleInRadians() : 0.0f) - (a != null ? a.getAngleInRadians() : 0.0f);
+		this.angle = (b != null ? b.getAngle() : 0.0f) - (a != null ? a.getAngle() : 0.0f);
 	}
 
 	public float getAngle() {
@@ -54,6 +50,7 @@ public class RatchetJoint extends Constraint {
 	}
 
 	public void setAngle(float angle) {
+		activateBodies();
 		this.angle = angle;
 	}
 
@@ -62,6 +59,7 @@ public class RatchetJoint extends Constraint {
 	}
 
 	public void setPhase(float phase) {
+		activateBodies();
 		this.phase = phase;
 	}
 
@@ -70,6 +68,7 @@ public class RatchetJoint extends Constraint {
 	}
 
 	public void setRatchet(float ratchet) {
+		activateBodies();
 		this.ratchet = ratchet;
 	}
 
@@ -79,7 +78,7 @@ public class RatchetJoint extends Constraint {
 		float phase = this.phase;
 		float ratchet = this.ratchet;
 
-		float delta = b.getAngleInRadians() - a.getAngleInRadians();
+		float delta = b.getAngle() - a.getAngle();
 		float diff = angle - delta;
 		float pdist = 0.0f;
 

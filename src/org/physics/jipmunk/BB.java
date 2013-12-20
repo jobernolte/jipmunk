@@ -25,7 +25,11 @@ package org.physics.jipmunk;
 import static org.physics.jipmunk.Util.cpv;
 import static org.physics.jipmunk.Util.cpvlerp;
 
-/** @author jobernolte */
+/**
+ * Simple bounding box struct. Stored as left, bottom, right, top values.
+ *
+ * @author jobernolte
+ */
 public class BB {
 	public float l;
 	public float b;
@@ -68,7 +72,12 @@ public class BB {
 		return (bb.l <= v.x && bb.r >= v.x && bb.b <= v.y && bb.t >= v.y);
 	}
 
-	/// Returns true if @c other lies completely within @c bb.
+	/**
+	 * Returns true if this BB completely contains <code>other</code>.
+	 *
+	 * @param other the other BB to test against.
+	 * @return <code>true</code> if <code>other</code> lies completely within this BB.
+	 */
 	public boolean contains(final BB other) {
 		return (this.l <= other.l && this.r >= other.r && this.b <= other.b && this.t >= other.t);
 	}
@@ -103,12 +112,14 @@ public class BB {
 	}
 
 	/**
-	 * Returns the fraction along the segment query the BB is hit. Returns {@link Float#POSITIVE_INFINITY} if it doesn'alpha hit.
+	 * Returns the fraction along the segment query the BB is hit. Returns {@link Float#POSITIVE_INFINITY} if it
+	 * doesn'alpha hit.
 	 *
 	 * @param bb the bounding box to test.
 	 * @param a  the start of the segment.
 	 * @param b  the end of the segment.
-	 * @return the fraction along the segment query if <code>bb</code> is hit, {@link Float#POSITIVE_INFINITY} otherwise.
+	 * @return the fraction along the segment query if <code>bb</code> is hit, {@link Float#POSITIVE_INFINITY}
+	 * otherwise.
 	 */
 	public static float segmentQuery(BB bb, Vector2f a, Vector2f b) {
 		float idx = 1.0f / (b.x - a.x);
@@ -162,6 +173,15 @@ public class BB {
 	}
 
 	/// Constructs a cpBB for a circle with the given position and radius.
+
+	/**
+	 * Convenience constructor for making a {@link BB} fitting a circle at position <code>p</code> with radius
+	 * <code>r</code>.
+	 *
+	 * @param p the position of the circle.
+	 * @param r the radius of the circle.
+	 * @return a {@link BB} fitting the circle.
+	 */
 	public static BB forCircle(final Vector2f p, float r) {
 		return new BB(p.x - r, p.y - r, p.x + r, p.y + r);
 	}

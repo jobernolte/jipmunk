@@ -22,12 +22,8 @@
 
 package org.physics.jipmunk.constraints;
 
-import org.physics.jipmunk.Body;
-import org.physics.jipmunk.Constraint;
-import org.physics.jipmunk.Util;
-import org.physics.jipmunk.Vector2f;
+import org.physics.jipmunk.*;
 
-import static org.physics.jipmunk.Util.apply_impulses;
 import static org.physics.jipmunk.Util.bias_coef;
 import static org.physics.jipmunk.Util.cpvadd;
 import static org.physics.jipmunk.Util.cpvclamp;
@@ -38,43 +34,39 @@ import static org.physics.jipmunk.Util.cpvmult;
 import static org.physics.jipmunk.Util.cpvnormalize;
 import static org.physics.jipmunk.Util.cpvperp;
 import static org.physics.jipmunk.Util.cpvproject;
-import static org.physics.jipmunk.Util.cpvrotate;
 import static org.physics.jipmunk.Util.cpvsub;
 import static org.physics.jipmunk.Util.cpvzero;
 import static org.physics.jipmunk.Util.k_tensor;
-import static org.physics.jipmunk.Util.mult_k;
 import static org.physics.jipmunk.Util.relative_velocity;
 
 /**
  * The groove goes from {@link GrooveJoint#grooveA} to {@link GrooveJoint#grooveB} on body <b>a</b>, and the pivot is
- * attached to {@link GrooveJoint#anchr2} on body <b>b</b>. All coordinates are body local.
+ * attached to {@link GrooveJoint#anchorB} on body <b>b</b>. All coordinates are body local.
  *
  * @author jobernolte
  */
 public class GrooveJoint extends Constraint {
 	Vector2f grv_n, grooveA, grooveB;
-	Vector2f anchr2;
-
+	Vector2f anchorB;
 	Vector2f grv_tn;
 	float clamp;
 	Vector2f r1, r2;
-	Vector2f k1 = Util.cpvzero(), k2 = Util.cpvzero();
-
+	Mat2x2 k;
 	Vector2f jAcc;
 	Vector2f bias;
 
-	void init(Vector2f groove_a, Vector2f groove_b, Vector2f anchr2) {
+	void init(Vector2f groove_a, Vector2f groove_b, Vector2f anchorB) {
 		this.grooveA = Util.cpv(groove_a);
 		this.grooveB = Util.cpv(groove_b);
 		this.grv_n = cpvperp(cpvnormalize(cpvsub(groove_b, groove_a)));
-		this.anchr2 = anchr2;
+		this.anchorB = anchorB;
 
 		this.jAcc = cpvzero();
 	}
 
-	public GrooveJoint(Body a, Body b, Vector2f groove_a, Vector2f groove_b, Vector2f anchr2) {
+	public GrooveJoint(Body a, Body b, Vector2f groove_a, Vector2f groove_b, Vector2f anchorB) {
 		super(a, b);
-		init(groove_a, groove_b, anchr2);
+		init(groove_a, groove_b, anchorB);
 	}
 
 	public Vector2f getGrooveA() {
@@ -99,12 +91,13 @@ public class GrooveJoint extends Constraint {
 		activateBodies();
 	}
 
-	public Vector2f getAnchr2() {
-		return anchr2;
+	public Vector2f getAnchorB() {
+		return anchorB;
 	}
 
-	public void setAnchr2(Vector2f anchr2) {
-		this.anchr2 = anchr2;
+	public void setAnchorB(Vector2f anchorB) {
+		activateBodies();
+		this.anchorB = anchorB;
 	}
 
 	@Override
@@ -114,11 +107,11 @@ public class GrooveJoint extends Constraint {
 		Vector2f tb = a.localToWorld(this.grooveB);
 
 		// calculate axis
-		Vector2f n = cpvrotate(this.grv_n, a.getRotation());
+		Vector2f n = a.getTransform().transformVect(this.grv_n);
 		float d = cpvdot(ta, n);
 
 		this.grv_tn = n;
-		this.r2 = cpvrotate(this.anchr2, b.getRotation());
+		this.r2 = b.getTransform().transformVect(cpvsub(this.anchorB, b.getCenterOfGravity()));
 
 		// calculate tangential distance along the axis of r2
 		float td = cpvcross(cpvadd(b.getPosition(), this.r2), n);
@@ -135,7 +128,7 @@ public class GrooveJoint extends Constraint {
 		}
 
 		// Calculate mass tensor
-		k_tensor(a, b, this.r1, this.r2, this.k1, this.k2);
+		this.k = Mat2x2.k_tensor(a, b, this.r1, this.r2);
 
 		// calculate bias velocity
 		Vector2f delta = cpvsub(cpvadd(b.getPosition(), this.r2), cpvadd(a.getPosition(), this.r1));
@@ -144,7 +137,7 @@ public class GrooveJoint extends Constraint {
 
 	@Override
 	protected void applyCachedImpulse(float dt_coef) {
-		apply_impulses(a, b, this.r1, this.r2, cpvmult(this.jAcc, dt_coef));
+		Body.applyImpulses(a, b, this.r1, this.r2, cpvmult(this.jAcc, dt_coef));
 	}
 
 	Vector2f grooveConstrain(Vector2f j, float dt) {
@@ -161,13 +154,13 @@ public class GrooveJoint extends Constraint {
 		// compute impulse
 		Vector2f vr = relative_velocity(a, b, r1, r2);
 
-		Vector2f j = mult_k(cpvsub(this.bias, vr), this.k1, this.k2);
+		Vector2f j = k.transform(cpvsub(this.bias, vr));
 		Vector2f jOld = this.jAcc;
 		this.jAcc = grooveConstrain(cpvadd(jOld, j), dt);
 		j = cpvsub(this.jAcc, jOld);
 
 		// apply impulse
-		apply_impulses(a, b, this.r1, this.r2, j);
+		Body.applyImpulses(a, b, this.r1, this.r2, j);
 	}
 
 	@Override

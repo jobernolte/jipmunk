@@ -1,7 +1,7 @@
 package org.physics.jipmunk.examples;
 
 import org.physics.jipmunk.*;
-import org.physics.jipmunk.constraints.PointQueryInfo;
+import org.physics.jipmunk.PointQueryInfo;
 
 /** @author jobernolte */
 public class Convex extends ExampleBase {

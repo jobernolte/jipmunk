@@ -23,6 +23,7 @@
 package org.physics.jipmunk.constraints;
 
 /** @author jobernolte */
+@FunctionalInterface
 public interface DampedRotarySpringTorqueFunc {
 	float apply(DampedRotarySpring spring, float relativeAngleInRadians);
 }

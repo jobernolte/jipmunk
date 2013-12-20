@@ -105,7 +105,7 @@ public class Planet extends ExampleBase {
         // Set the box's angular velocity to match its orbital period and
         // align its initial angle with its position.
         body.setAngularVelocity(v);
-        body.setAngleInRadians(Util.cpvtoangle(pos));
+        body.setAngle(Util.cpvtoangle(pos));
         Shape shape = space.addShape(new PolyShape(body, 0.0f, verts));
         shape.setElasticity(0.0f);
         shape.setFriction(0.7f);

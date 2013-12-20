@@ -22,43 +22,27 @@
 
 package org.physics.jipmunk.constraints;
 
-import org.physics.jipmunk.Body;
-import org.physics.jipmunk.Constraint;
-import org.physics.jipmunk.Mat2x2;
-import org.physics.jipmunk.Util;
-import org.physics.jipmunk.Vector2f;
+import org.physics.jipmunk.*;
 
-import static org.physics.jipmunk.Util.apply_impulses;
-import static org.physics.jipmunk.Util.bias_coef;
-import static org.physics.jipmunk.Util.cpvadd;
-import static org.physics.jipmunk.Util.cpvclamp;
-import static org.physics.jipmunk.Util.cpvlength;
-import static org.physics.jipmunk.Util.cpvmult;
-import static org.physics.jipmunk.Util.cpvrotate;
-import static org.physics.jipmunk.Util.cpvsub;
-import static org.physics.jipmunk.Util.cpvzero;
-import static org.physics.jipmunk.Util.k_tensor;
-import static org.physics.jipmunk.Util.relative_velocity;
+import static org.physics.jipmunk.Util.*;
 
 /** @author jobernolte */
 public class PivotJoint extends Constraint {
-	Vector2f anchr1, anchr2;
-
+	Vector2f anchorA, anchorB;
 	Vector2f r1, r2;
 	Mat2x2 k;
-
 	Vector2f jAcc;
 	Vector2f bias;
 
-	public PivotJoint(Body a, Body b, Vector2f anchr1, Vector2f anchr2) {
+	public PivotJoint(Body a, Body b, Vector2f anchorA, Vector2f anchorB) {
 		super(a, b);
-		init(a, b, anchr1, anchr2);
+		init(a, b, anchorA, anchorB);
 	}
 
 	/**
 	 * <code>a</code> and <code>b</code> are the two bodies to connect, and <code>pivot</code> is the point in world
-	 * coordinates of the pivot. Because the pivot location is given in world coordinates, you must have the bodies moved
-	 * into the correct positions already.
+	 * coordinates of the pivot. Because the pivot location is given in world coordinates, you must have the bodies
+	 * moved into the correct positions already.
 	 *
 	 * @param a     the first body to connect
 	 * @param b     the second body to connect
@@ -72,36 +56,38 @@ public class PivotJoint extends Constraint {
 	}
 
 	void init(Body a, Body b, Vector2f anchr1, Vector2f anchr2) {
-		this.anchr1 = anchr1;
-		this.anchr2 = anchr2;
+		this.anchorA = anchr1;
+		this.anchorB = anchr2;
 
 		this.jAcc = cpvzero();
 	}
 
-	public Vector2f getAnchr1() {
-		return anchr1;
+	public Vector2f getAnchorA() {
+		return anchorA;
 	}
 
-	public void setAnchr1(Vector2f anchr1) {
-		this.anchr1.set(anchr1);
+	public void setAnchorA(Vector2f anchorA) {
+		activateBodies();
+		this.anchorA.set(anchorA);
 	}
 
-	public Vector2f getAnchr2() {
-		return anchr2;
+	public Vector2f getAnchorB() {
+		return anchorB;
 	}
 
-	public void setAnchr2(Vector2f anchr2) {
-		this.anchr2.set(anchr2);
+	public void setAnchorB(Vector2f anchorB) {
+		activateBodies();
+		this.anchorB.set(anchorB);
 	}
 
 	@Override
 	protected void preStep(float dt) {
 
-		this.r1 = cpvrotate(this.anchr1, a.getRotation());
-		this.r2 = cpvrotate(this.anchr2, b.getRotation());
+		this.r1 = a.getTransform().transformVect(cpvsub(this.anchorA, a.getCenterOfGravity()));
+		this.r2 = b.getTransform().transformVect(cpvsub(this.anchorB, b.getCenterOfGravity()));
 
 		// Calculate mass tensor
-		this.k = k_tensor(a, b, this.r1, this.r2);
+		this.k = Mat2x2.k_tensor(a, b, this.r1, this.r2);
 
 		// calculate bias velocity
 		Vector2f delta = cpvsub(cpvadd(b.getPosition(), this.r2), cpvadd(a.getPosition(), this.r1));
@@ -110,7 +96,7 @@ public class PivotJoint extends Constraint {
 
 	@Override
 	protected void applyCachedImpulse(float dt_coef) {
-		apply_impulses(a, b, this.r1, this.r2, cpvmult(this.jAcc, dt_coef));
+		Body.applyImpulses(a, b, this.r1, this.r2, cpvmult(this.jAcc, dt_coef));
 	}
 
 	@Override
@@ -128,7 +114,7 @@ public class PivotJoint extends Constraint {
 		j = cpvsub(this.jAcc, jOld);
 
 		// apply impulse
-		apply_impulses(a, b, this.r1, this.r2, j);
+		Body.applyImpulses(a, b, this.r1, this.r2, j);
 	}
 
 	@Override

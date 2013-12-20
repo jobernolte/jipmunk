@@ -31,9 +31,7 @@ import static org.physics.jipmunk.Util.cpfclamp;
 /** @author jobernolte */
 public class SimpleMotor extends Constraint {
 	float rate;
-
 	float iSum;
-
 	float jAcc;
 
 	public SimpleMotor(Body a, Body b, float rate) {
@@ -49,6 +47,7 @@ public class SimpleMotor extends Constraint {
 	}
 
 	public void setRate(float rate) {
+		activateBodies();
 		this.rate = rate;
 	}
 

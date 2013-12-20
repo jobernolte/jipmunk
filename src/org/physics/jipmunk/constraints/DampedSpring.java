@@ -53,28 +53,24 @@ public class DampedSpring extends Constraint {
 			return (spring.restLength - dist) * spring.stiffness;
 		}
 	};
-
-	private Vector2f anchr1, anchr2;
+	private Vector2f anchorA, anchorB;
 	private float restLength;
 	private float stiffness;
 	private float damping;
 	private DampedSpringForceFunc springForceFunc;
-
 	private float target_vrn;
 	private float v_coef;
-
 	private Vector2f r1, r2;
 	private float nMass;
 	private Vector2f n;
-
 	private float jAcc;
 
-	public DampedSpring(Body a, Body b, Vector2f anchr1, Vector2f anchr2, float restLength, float stiffness,
+	public DampedSpring(Body a, Body b, Vector2f anchorA, Vector2f anchr2, float restLength, float stiffness,
 			float damping) {
 		super(a, b);
 
-		this.anchr1 = Util.cpv(anchr1);
-		this.anchr2 = Util.cpv(anchr2);
+		this.anchorA = Util.cpv(anchorA);
+		this.anchorB = Util.cpv(anchr2);
 
 		this.restLength = restLength;
 		this.stiffness = stiffness;
@@ -82,20 +78,22 @@ public class DampedSpring extends Constraint {
 		this.springForceFunc = defaultSpringForce;
 	}
 
-	public Vector2f getAnchr1() {
-		return anchr1;
+	public Vector2f getAnchorA() {
+		return anchorA;
 	}
 
-	public void setAnchr1(Vector2f anchr1) {
-		this.anchr1.set(anchr1);
+	public void setAnchorA(Vector2f anchorA) {
+		activateBodies();
+		this.anchorA.set(anchorA);
 	}
 
-	public Vector2f getAnchr2() {
-		return anchr2;
+	public Vector2f getAnchorB() {
+		return anchorB;
 	}
 
-	public void setAnchr2(Vector2f anchr2) {
-		this.anchr2.set(anchr2);
+	public void setAnchorB(Vector2f anchorB) {
+		activateBodies();
+		this.anchorB.set(anchorB);
 	}
 
 	public float getRestLength() {
@@ -103,6 +101,7 @@ public class DampedSpring extends Constraint {
 	}
 
 	public void setRestLength(float restLength) {
+		activateBodies();
 		this.restLength = restLength;
 	}
 
@@ -111,6 +110,7 @@ public class DampedSpring extends Constraint {
 	}
 
 	public void setStiffness(float stiffness) {
+		activateBodies();
 		this.stiffness = stiffness;
 	}
 
@@ -119,6 +119,7 @@ public class DampedSpring extends Constraint {
 	}
 
 	public void setDamping(float damping) {
+		activateBodies();
 		this.damping = damping;
 	}
 
@@ -132,15 +133,17 @@ public class DampedSpring extends Constraint {
 
 	@Override
 	protected void preStep(float dt) {
-		this.r1 = cpvrotate(this.anchr1, a.getRotation());
-		this.r2 = cpvrotate(this.anchr2, b.getRotation());
+		this.r1 = a.getTransform().transformVect(cpvsub(this.anchorA, a.getCenterOfGravity()));
+		this.r2 = b.getTransform().transformVect(cpvsub(this.anchorB, b.getCenterOfGravity()));
 
 		Vector2f delta = cpvsub(cpvadd(b.getPosition(), this.r2), cpvadd(a.getPosition(), this.r1));
 		float dist = cpvlength(delta);
 		this.n = cpvmult(delta, 1.0f / (dist != 0.0f ? dist : Float.POSITIVE_INFINITY));
 
 		float k = k_scalar(a, b, this.r1, this.r2, this.n);
-		assert k != 0.0 : "Unsolvable spring.";
+		if (k == 0.0f) {
+			throw new IllegalStateException("Unsolvable spring.");
+		}
 		this.nMass = 1.0f / k;
 
 		this.target_vrn = 0.0f;
@@ -149,7 +152,7 @@ public class DampedSpring extends Constraint {
 		// apply spring force
 		float f_spring = this.springForceFunc.apply(this, dist);
 		float j_spring = this.jAcc = f_spring * dt;
-		apply_impulses(a, b, this.r1, this.r2, cpvmult(this.n, j_spring));
+		Body.applyImpulses(a, b, this.r1, this.r2, cpvmult(this.n, j_spring));
 	}
 
 	@Override
@@ -171,7 +174,7 @@ public class DampedSpring extends Constraint {
 
 		float j_damp = v_damp * this.nMass;
 		this.jAcc += j_damp;
-		apply_impulses(a, b, this.r1, this.r2, cpvmult(this.n, j_damp));
+		Body.applyImpulses(a, b, this.r1, this.r2, cpvmult(this.n, j_damp));
 	}
 
 	@Override

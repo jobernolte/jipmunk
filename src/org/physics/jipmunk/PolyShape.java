@@ -22,8 +22,6 @@
 
 package org.physics.jipmunk;
 
-import org.physics.jipmunk.constraints.PointQueryInfo;
-
 import java.util.Iterator;
 
 import static org.physics.jipmunk.Util.*;

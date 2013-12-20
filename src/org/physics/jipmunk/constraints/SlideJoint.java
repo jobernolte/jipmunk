@@ -27,69 +27,58 @@ import org.physics.jipmunk.Constraint;
 import org.physics.jipmunk.Util;
 import org.physics.jipmunk.Vector2f;
 
-import static org.physics.jipmunk.Util.apply_impulses;
-import static org.physics.jipmunk.Util.bias_coef;
-import static org.physics.jipmunk.Util.cpfabs;
-import static org.physics.jipmunk.Util.cpfclamp;
-import static org.physics.jipmunk.Util.cpvadd;
-import static org.physics.jipmunk.Util.cpvdot;
-import static org.physics.jipmunk.Util.cpvlength;
-import static org.physics.jipmunk.Util.cpvmult;
-import static org.physics.jipmunk.Util.cpvrotate;
-import static org.physics.jipmunk.Util.cpvsub;
-import static org.physics.jipmunk.Util.k_scalar;
-import static org.physics.jipmunk.Util.relative_velocity;
+import static org.physics.jipmunk.Util.*;
 
 /** @author jobernolte */
 public class SlideJoint extends Constraint {
 
-	Vector2f anchr1, anchr2;
+	Vector2f anchorA, anchorB;
 	float min, max;
-
 	Vector2f r1, r2;
 	Vector2f n;
 	float nMass;
-
 	float jnAcc;
 	float bias;
 
 	/**
-	 * <code>a</code> and <code>b</code> are the two bodies to connect, <code>anchr1</code> and <code>anchr2</code> are the
-	 * anchor points on those bodies, and <code>min</code> and <code>max</code> define the allowed distances of the anchor
-	 * points.
+	 * <code>a</code> and <code>b</code> are the two bodies to connect, <code>anchorA</code> and <code>anchorB</code>
+	 * are the anchor points on those bodies, and <code>min</code> and <code>max</code> define the allowed distances of
+	 * the anchor points.
 	 *
-	 * @param a      the first body to connect
-	 * @param b      the second body to connect
-	 * @param anchr1 the first anchor point
-	 * @param anchr2 the second anchor point
-	 * @param min    the minimum distance
-	 * @param max    the maximum distance
+	 * @param a       the first body to connect
+	 * @param b       the second body to connect
+	 * @param anchorA the first anchor point
+	 * @param anchorB the second anchor point
+	 * @param min     the minimum distance
+	 * @param max     the maximum distance
 	 */
-	public SlideJoint(Body a, Body b, Vector2f anchr1, Vector2f anchr2, float min, float max) {
+	public SlideJoint(Body a, Body b, Vector2f anchorA, Vector2f anchorB, float min, float max) {
 		super(a, b);
 
-		this.anchr1 = Util.cpv(anchr1);
-		this.anchr2 = Util.cpv(anchr2);
+		this.anchorA = Util.cpv(anchorA);
+		this.anchorB = Util.cpv(anchorB);
 		this.min = min;
 		this.max = max;
 
 		this.jnAcc = 0.0f;
 	}
 
-	public Vector2f getAnchr1() {
-		return anchr1;
+	public Vector2f getAnchorA() {
+		return anchorA;
 	}
 
-	public void setAnchr1(Vector2f anchr1) {
-		this.anchr1.set(anchr1);
+	public void setAnchorA(Vector2f anchorA) {
+		activateBodies();
+		this.anchorA.set(anchorA);
 	}
 
-	public Vector2f getAnchr2() {
-		return anchr2;
+	public Vector2f getAnchorB() {
+		return anchorB;
 	}
 
-	public void setAnchr2(Vector2f anchr2) {
-		this.anchr2.set(anchr2);
+	public void setAnchorB(Vector2f anchorB) {
+		activateBodies();
+		this.anchorB.set(anchorB);
 	}
 
 	public float getMin() {
@@ -97,6 +86,7 @@ public class SlideJoint extends Constraint {
 	}
 
 	public void setMin(float min) {
+		activateBodies();
 		this.min = min;
 	}
 
@@ -105,13 +95,14 @@ public class SlideJoint extends Constraint {
 	}
 
 	public void setMax(float max) {
+		activateBodies();
 		this.max = max;
 	}
 
 	@Override
 	protected void preStep(float dt) {
-		this.r1 = cpvrotate(this.anchr1, a.getRotation());
-		this.r2 = cpvrotate(this.anchr2, b.getRotation());
+		this.r1 = a.getTransform().transformVect(cpvsub(this.anchorA, a.getCenterOfGravity()));
+		this.r2 = b.getTransform().transformVect(cpvsub(this.anchorB, b.getCenterOfGravity()));
 
 		Vector2f delta = cpvsub(cpvadd(b.getPosition(), this.r2), cpvadd(a.getPosition(), this.r1));
 		float dist = cpvlength(delta);
@@ -140,7 +131,7 @@ public class SlideJoint extends Constraint {
 	@Override
 	protected void applyCachedImpulse(float dt_coef) {
 		Vector2f j = cpvmult(this.n, this.jnAcc * dt_coef);
-		apply_impulses(a, b, this.r1, this.r2, j);
+		Body.applyImpulses(a, b, this.r1, this.r2, j);
 	}
 
 	@Override
@@ -167,7 +158,7 @@ public class SlideJoint extends Constraint {
 		jn = this.jnAcc - jnOld;
 
 		// apply impulse
-		apply_impulses(a, b, this.r1, this.r2, cpvmult(n, jn));
+		Body.applyImpulses(a, b, this.r1, this.r2, cpvmult(n, jn));
 	}
 
 	@Override
