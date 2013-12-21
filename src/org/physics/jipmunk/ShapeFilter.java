@@ -31,7 +31,6 @@ public class ShapeFilter {
 			new ShapeFilter(Constants.NO_GROUP, Constants.ALL_CATEGORIES, Constants.ALL_CATEGORIES);
 	public static final ShapeFilter NONE =
 			new ShapeFilter(Constants.NO_GROUP, ~Constants.ALL_CATEGORIES, ~Constants.ALL_CATEGORIES);
-
 	private final int group;
 	private final int categories;
 	private final int mask;
