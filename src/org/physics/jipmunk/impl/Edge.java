@@ -28,6 +28,8 @@ import static org.physics.jipmunk.Util.cpvdot;
 import static org.physics.jipmunk.Util.cpvneg;
 
 /**
+ * Support edges are the edges of a polygon or segment shape that are in contact.
+ *
  * @author jobernolte
  */
 public class Edge {

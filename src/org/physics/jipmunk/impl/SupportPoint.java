@@ -28,23 +28,27 @@ import static org.physics.jipmunk.Util.cpvdot;
 import static org.physics.jipmunk.Util.cpvzero;
 
 /**
+ * Support points are the maximal points on a shape's perimeter along a certain axis.
+ * The GJK and EPA algorithms use support points to iteratively sample the surface of the two shapes' minkowski difference.
+ *
  * @author jobernolte
  */
 public class SupportPoint {
 	private final Vector2f p;
-	private final CollisionID id;
+	/** Save an index of the point so it can be cheaply looked up as a starting point for the next frame. */
+	private final CollisionID index;
 
-	public SupportPoint(Vector2f p, CollisionID id) {
+	public SupportPoint(Vector2f p, CollisionID index) {
 		this.p = new Vector2f(p);
-		this.id = id;
+		this.index = index;
 	}
 
 	public Vector2f getP() {
 		return p;
 	}
 
-	public CollisionID getId() {
-		return id;
+	public CollisionID getIndex() {
+		return index;
 	}
 
 	public static SupportPoint circleSupportPoint(Shape shape, Vector2f n) {
@@ -83,6 +87,13 @@ public class SupportPoint {
 		return new SupportPoint(planes[i].v0, new CollisionID(i));
 	}
 
+	/**
+	 * Get a SupportPoint from a cached shape and index.
+	 *
+	 * @param shape the cached shape.
+	 * @param i     the index.
+	 * @return the support point.
+	 */
 	public static SupportPoint shapePoint(Shape shape, int i) {
 		switch (shape.getType()) {
 			case CIRCLE_SHAPE: {

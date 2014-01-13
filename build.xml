@@ -14,7 +14,7 @@
 	<property name="compiler.generate.no.warnings" value="off"/>
 	<property name="compiler.args" value=""/>
 	<property name="compiler.max.memory" value="128m"/>
-	<patternset id="ignored.files">
+	<patternset index="ignored.files">
 		<exclude name="**/CVS/**"/>
 		<exclude name="**/SCCS/**"/>
 		<exclude name="**/RCS/**"/>
@@ -34,7 +34,7 @@
 		<exclude name="**/.bundle/**"/>
 		<exclude name="**/*.rbc/**"/>
 	</patternset>
-	<patternset id="library.patterns">
+	<patternset index="library.patterns">
 		<include name="*.war"/>
 		<include name="*.ear"/>
 		<include name="*.apk"/>
@@ -44,7 +44,7 @@
 		<include name="*.egg"/>
 		<include name="*.jar"/>
 	</patternset>
-	<patternset id="compiler.resources">
+	<patternset index="compiler.resources">
 		<include name="**/?*.properties"/>
 		<include name="**/?*.xml"/>
 		<include name="**/?*.gif"/>

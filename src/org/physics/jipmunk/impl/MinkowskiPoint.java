@@ -29,11 +29,16 @@ import static org.physics.jipmunk.Util.cpvneg;
 import static org.physics.jipmunk.Util.cpvsub;
 
 /**
+ * A point on the surface of two shape's minkowski difference.
+ *
  * @author jobernolte
  */
 public class MinkowskiPoint {
+	/** Cache the two original support points. */
 	private final Vector2f a, b;
+	/** b - a */
 	private final Vector2f ab;
+	/** Concatenate the two support point indexes. */
 	private final CollisionID id;
 
 	public Vector2f getA() {
@@ -53,10 +58,17 @@ public class MinkowskiPoint {
 	}
 
 	public static MinkowskiPoint create(SupportPoint a, SupportPoint b) {
-		return new MinkowskiPoint(a.getP(), b.getP(), cpvsub(b.getP(), a.getP()),
-								  new CollisionID((a.getId().getValue() & 0xFF) << 8 | (b.getId().getValue() & 0xFF)));
+		return new MinkowskiPoint(a.getP(), b.getP(), cpvsub(b.getP(), a.getP()), new CollisionID(
+				(a.getIndex().getValue() & 0xFF) << 8 | (b.getIndex().getValue() & 0xFF)));
 	}
 
+	/**
+	 * Calculate the maximal point on the minkowski difference of two shapes along a particular axis.
+	 *
+	 * @param ctx the {@link org.physics.jipmunk.impl.SupportContext} to use.
+	 * @param n   the normal vector.
+	 * @return a new {@link org.physics.jipmunk.impl.MinkowskiPoint} instance.
+	 */
 	public static MinkowskiPoint support(SupportContext ctx, Vector2f n) {
 		SupportPoint a = ctx.func1.apply(ctx.shape1, cpvneg(n));
 		SupportPoint b = ctx.func2.apply(ctx.shape2, n);

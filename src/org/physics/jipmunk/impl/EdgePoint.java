@@ -36,6 +36,7 @@ public class EdgePoint {
 	}
 
 	private final Vector2f p;
+	/** Keep a hash value for Chipmunk's collision hashing mechanism. */
 	private final int hash;
 
 	public Vector2f getP() {

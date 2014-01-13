@@ -36,6 +36,14 @@ public class Collision {
 		void apply(final Shape shape1, final Shape shape2, CollisionInfo info);
 	}
 
+	/**
+	 * Given two support edges, find contact point pairs on their surfaces.
+	 *
+	 * @param e1     the first edge.
+	 * @param e2     the second edge.
+	 * @param points the closest points.
+	 * @param info   the collision info.
+	 */
 	static void contactPoints(final Edge e1, final Edge e2, final ClosestPoints points, CollisionInfo info) {
 		float mindist = e1.getR() + e2.getR();
 		if (points.d <= mindist) {
@@ -56,6 +64,8 @@ public class Collision {
 			float e1_denom = 1.0f / (d_e1_b - d_e1_a);
 			float e2_denom = 1.0f / (d_e2_b - d_e2_a);
 
+			// Project the endpoints of the two edges onto the opposing edge, clamping them as necessary.
+			// Compare the projected points to the collision normal to see if the shapes overlap there.
 			{
 				Vector2f p1 = cpvadd(cpvmult(n, e1.getR()), cpvlerp(edgePoint1A.getP(), edgePoint1B.getP(),
 																	cpfclamp01((d_e2_b - d_e1_a) * e1_denom)));
@@ -65,7 +75,8 @@ public class Collision {
 				if (dist <= 0.0f) {
 					int hash_1a2b = HashValue.hashPair(edgePoint1A.getHash(), edgePoint2B.getHash());
 					info.addContact(p1, p2, hash_1a2b);
-					if (info.getA().getType() == ShapeType.POLY_SHAPE && info.getB().getType() == ShapeType.POLY_SHAPE) {
+					if (info.getA().getType() == ShapeType.POLY_SHAPE
+							&& info.getB().getType() == ShapeType.POLY_SHAPE) {
 						// TODO remove me
 						info.getA();
 					}
@@ -80,7 +91,8 @@ public class Collision {
 				if (dist <= 0.0f) {
 					int hash_1b2a = HashValue.hashPair(edgePoint1B.getHash(), edgePoint2A.getHash());
 					info.addContact(p1, p2, hash_1b2a);
-					if (info.getA().getType() == ShapeType.POLY_SHAPE && info.getB().getType() == ShapeType.POLY_SHAPE) {
+					if (info.getA().getType() == ShapeType.POLY_SHAPE
+							&& info.getB().getType() == ShapeType.POLY_SHAPE) {
 						// TODO remove me
 						info.getA();
 					}
@@ -118,18 +130,21 @@ public class Collision {
 		Vector2f seg_b = segment.getTb();
 		Vector2f center = circle.getTransformedCenter();
 
+		// Find the closest point on the segment to the circle.
 		Vector2f seg_delta = cpvsub(seg_b, seg_a);
 		float closest_t = cpfclamp01(cpvdot(seg_delta, cpvsub(center, seg_a)) / cpvlengthsq(seg_delta));
 		Vector2f closest = cpvadd(seg_a, cpvmult(seg_delta, closest_t));
 
 		final float circleRadius = circle.getRadius();
 		final float segmentRadius = segment.getRadius();
+		// Compare the radii of the two shapes to see if they are colliding.
 		float mindist = circleRadius + segmentRadius;
 		Vector2f delta = cpvsub(closest, center);
 		float distsq = cpvlengthsq(delta);
 		if (distsq < mindist * mindist) {
 			float dist = cpfsqrt(distsq);
-			Vector2f n = (dist != 0.0f ? cpvmult(delta, 1.0f / dist) : cpv(1.0f, 0.0f));
+			// Handle coincident shapes as gracefully as possible.
+			Vector2f n = (dist != 0.0f ? cpvmult(delta, 1.0f / dist) : segment.getTn());
 			info.setN(n);
 
 			// Reject endcap collisions if tangents are provided.
@@ -153,7 +168,10 @@ public class Collision {
 		Vector2f n = points.n;
 		Vector2f rot1 = seg1.getBody().getRotation();
 		Vector2f rot2 = seg2.getBody().getRotation();
+
+		// If the closest points are nearer than the sum of the radii...
 		if (points.d <= (seg1.getRadius() + seg2.getRadius()) && (
+				// Reject endcap collisions if tangents are provided.
 				(!cpveql(points.a, seg1.getTa()) || cpvdot(n, cpvrotate(seg1.getATangent(), rot1)) <= 0.0f) &&
 						(!cpveql(points.a, seg1.getTb()) || cpvdot(n, cpvrotate(seg1.getBTangent(), rot1)) <= 0.0f) &&
 						(!cpveql(points.b, seg2.getTa()) || cpvdot(n, cpvrotate(seg2.getATangent(), rot2)) >= 0.0f) &&
@@ -169,8 +187,8 @@ public class Collision {
 				new SupportContext(circle, poly, SupportPoint::circleSupportPoint, SupportPoint::polySupportPoint);
 		ClosestPoints points = ClosestPoints.GJK(context, info.getId());
 
-		float mindist = circle.getRadius() + poly.getRadius();
-		if (points.d - mindist <= 0.0f) {
+		// If the closest points are nearer than the sum of the radii...
+		if (points.d <= circle.getRadius() + poly.getRadius()) {
 			Vector2f n = points.n;
 			info.setN(n);
 			info.addContact(cpvadd(points.a, cpvmult(n, circle.getRadius())),
@@ -202,6 +220,7 @@ public class Collision {
 				new SupportContext(poly1, poly2, SupportPoint::polySupportPoint, SupportPoint::polySupportPoint);
 		ClosestPoints points = ClosestPoints.GJK(context, info.getId());
 
+		// If the closest points are nearer than the sum of the radii...
 		if (points.d - poly1.getRadius() - poly2.getRadius() <= 0.0f) {
 			contactPoints(Edge.edgeForPoly(poly1, points.n), Edge.edgeForPoly(poly2, cpvneg(points.n)), points, info);
 		}

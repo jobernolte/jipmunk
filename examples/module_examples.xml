@@ -8,18 +8,18 @@
   <property name="examples.output.dir" value="${module.examples.basedir}/../out/production/examples"/>
   <property name="examples.testoutput.dir" value="${module.examples.basedir}/../out/test/examples"/>
   
-  <path id="examples.module.bootclasspath">
+  <path index="examples.module.bootclasspath">
     <!-- Paths to be included in compilation bootclasspath -->
   </path>
   
-  <path id="examples.module.production.classpath">
+  <path index="examples.module.production.classpath">
     <fileset dir="${basedir}/examples/libs">
       <patternset refid="library.patterns"/>
     </fileset>
     <pathelement location="${jipmunk.output.dir}"/>
   </path>
   
-  <path id="examples.runtime.production.module.classpath">
+  <path index="examples.runtime.production.module.classpath">
     <pathelement location="${examples.output.dir}"/>
     <fileset dir="${basedir}/examples/libs">
       <patternset refid="library.patterns"/>
@@ -27,7 +27,7 @@
     <path refid="jipmunk.runtime.production.module.classpath"/>
   </path>
   
-  <path id="examples.module.classpath">
+  <path index="examples.module.classpath">
     <pathelement location="${examples.output.dir}"/>
     <fileset dir="${basedir}/examples/libs">
       <patternset refid="library.patterns"/>
@@ -36,7 +36,7 @@
     <pathelement location="${jipmunk.output.dir}"/>
   </path>
   
-  <path id="examples.runtime.module.classpath">
+  <path index="examples.runtime.module.classpath">
     <pathelement location="${examples.testoutput.dir}"/>
     <pathelement location="${examples.output.dir}"/>
     <fileset dir="${basedir}/examples/libs">
@@ -46,15 +46,15 @@
   </path>
   
   
-  <patternset id="excluded.from.module.examples">
+  <patternset index="excluded.from.module.examples">
     <patternset refid="ignored.files"/>
   </patternset>
   
-  <patternset id="excluded.from.compilation.examples">
+  <patternset index="excluded.from.compilation.examples">
     <patternset refid="excluded.from.module.examples"/>
   </patternset>
   
-  <path id="examples.module.sourcepath">
+  <path index="examples.module.sourcepath">
     <dirset dir="${module.examples.basedir}">
       <include name="src"/>
     </dirset>

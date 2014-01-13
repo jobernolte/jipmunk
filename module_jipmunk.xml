@@ -8,35 +8,35 @@
   <property name="jipmunk.output.dir" value="${module.jipmunk.basedir}/out/production/jipmunk"/>
   <property name="jipmunk.testoutput.dir" value="${module.jipmunk.basedir}/out/test/jipmunk"/>
   
-  <path id="jipmunk.module.bootclasspath">
+  <path index="jipmunk.module.bootclasspath">
     <!-- Paths to be included in compilation bootclasspath -->
   </path>
   
-  <path id="jipmunk.module.production.classpath"/>
+  <path index="jipmunk.module.production.classpath"/>
   
-  <path id="jipmunk.runtime.production.module.classpath">
+  <path index="jipmunk.runtime.production.module.classpath">
     <pathelement location="${jipmunk.output.dir}"/>
   </path>
   
-  <path id="jipmunk.module.classpath">
+  <path index="jipmunk.module.classpath">
     <pathelement location="${jipmunk.output.dir}"/>
   </path>
   
-  <path id="jipmunk.runtime.module.classpath">
+  <path index="jipmunk.runtime.module.classpath">
     <pathelement location="${jipmunk.testoutput.dir}"/>
     <pathelement location="${jipmunk.output.dir}"/>
   </path>
   
   
-  <patternset id="excluded.from.module.jipmunk">
+  <patternset index="excluded.from.module.jipmunk">
     <patternset refid="ignored.files"/>
   </patternset>
   
-  <patternset id="excluded.from.compilation.jipmunk">
+  <patternset index="excluded.from.compilation.jipmunk">
     <patternset refid="excluded.from.module.jipmunk"/>
   </patternset>
   
-  <path id="jipmunk.module.sourcepath">
+  <path index="jipmunk.module.sourcepath">
     <dirset dir="${module.jipmunk.basedir}">
       <include name="src"/>
     </dirset>
