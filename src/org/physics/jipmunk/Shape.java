@@ -24,9 +24,7 @@ package org.physics.jipmunk;
 
 import org.physics.jipmunk.impl.Collision;
 
-import static org.physics.jipmunk.Util.cpvnormalize;
-import static org.physics.jipmunk.Util.cpvsub;
-import static org.physics.jipmunk.Util.cpvzero;
+import static org.physics.jipmunk.Util.*;
 
 /**
  * There are currently 3 collision shape types:
@@ -45,11 +43,12 @@ import static org.physics.jipmunk.Util.cpvzero;
  */
 public abstract class Shape {
 
-	/** The current bounding box of the shape. */
-	protected BB bb;
+	private int hashid = -1;
 	/** The rigid body this collision shape is attached to. */
 	Body body;
 	MassInfo massInfo;
+	/** The current bounding box of the shape. */
+	protected BB bb;
 	/** Sensor flag. Sensor shapes call collision callbacks but don'alpha produce collisions. */
 	boolean sensor = false;
 	/** Coefficient of restitution. (elasticity) */
@@ -60,11 +59,10 @@ public abstract class Shape {
 	Vector2f surfaceV = cpvzero();
 	/** Collision type of this shape used when picking collision handlers. */
 	CollisionType collisionType = null;
-	ShapeFilter filter = ShapeFilter.ALL;
+	ShapeFilter filter = new ShapeFilter(Group.NO_GROUP, Bitmask.ALL, Bitmask.ALL);
 	Shape prev;
 	Shape next;
 	Space space;
-	private int hashid = -1;
 	/**
 	 * User definable data. Generally this points to your the game object class so you can access it when given a Body
 	 * reference in a callback.

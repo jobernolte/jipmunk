@@ -80,7 +80,7 @@ public class Pump extends ExampleBase {
 		shape = space.addShape(new PolyShape(plunger, 0.0f, verts, 0, 4));
 		shape.setElasticity(1.0f);
 		shape.setFriction(0.5f);
-		shape.setFilter(new ShapeFilter(Constants.NO_GROUP, 1, 1));
+		shape.setFilter(new ShapeFilter(Constants.NO_GROUP, new Bitmask(1), new Bitmask(1)));
 
 		// add balls to hopper
 		for (int i = 0; i < numBalls; i++) {

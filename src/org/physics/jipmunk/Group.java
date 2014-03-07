@@ -23,45 +23,10 @@
 package org.physics.jipmunk;
 
 /**
+ * Unique identifier for collision groups.
+ *
  * @author jobernolte
  */
-public class ShapeFilter {
-
-	public static final ShapeFilter ALL = new ShapeFilter(Group.NO_GROUP, Bitmask.ALL, Bitmask.ALL);
-	public static final ShapeFilter NONE = new ShapeFilter(Group.NO_GROUP, Bitmask.NONE, Bitmask.NONE);
-
-	private final Group group;
-	private final Bitmask categories;
-	private final Bitmask mask;
-
-	public ShapeFilter(Group group, Bitmask categories, Bitmask mask) {
-		this.group = group;
-		this.categories = categories;
-		this.mask = mask;
-	}
-
-	public Group getGroup() {
-		return group;
-	}
-
-	public Bitmask getCategories() {
-		return categories;
-	}
-
-	public Bitmask getMask() {
-		return mask;
-	}
-
-	public boolean reject(ShapeFilter b) {
-		return reject(this, b);
-	}
-
-	public static boolean reject(ShapeFilter a, ShapeFilter b) {
-		// Reject the collision if:
-		return (
-				// They are in the same non-zero group.
-				(a.group != Group.NO_GROUP && a.group.equals(b.group) ||
-						// One of the category/mask combinations fails.
-						!a.categories.and(b.mask) || !b.categories.and(a.mask)));
-	}
+public interface Group {
+	static final Group NO_GROUP = null;
 }

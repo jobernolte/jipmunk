@@ -56,16 +56,17 @@ import static org.physics.jipmunk.Util.*;
  * collision detection data when you are done.
  * <p>
  * <h2>Applying Forces and Torques:, Forces</h2>
- * People are sometimes confused by the difference between a force and
- * an impulse. An impulse is basically a very large force applied over a very short period of time, like a ball hitting
- * a wall or cannon firing. Chipmunk treats impulses as if they occur instantaneously by simply adding directly to the
+ * People are sometimes confused by the difference between a force and an
+ * impulse. An impulse is basically a very large force applied over a very short period of time, like a ball hitting a
+ * wall or cannon firing. Chipmunk treats impulses as if they occur instantaneously by simply adding directly to the
  * velocity of an object. Both impulses and forces are affected the mass of an object. Double the mass of the object
- * and
- * halve the effect.
+ * and halve the effect.
  * <ul>
  * <li>{@link #resetForces()} - Zero both the forces and torques currently applied to the body.</li>
- * <li>{@link #applyForceAtLocalPoint(Vector2f, Vector2f)} - Add the force to the body at a relative offset from the center of gravity.</li>
- * <li>{@link #applyImpulseAtLocalPoint(Vector2f, Vector2f)} - Add the impulse to the body at a relative offset from the center of gravity.</li>
+ * <li>{@link #applyForceAtLocalPoint(Vector2f, Vector2f)} - Add the force to the body at a relative offset from the
+ * center of gravity.</li>
+ * <li>{@link #applyImpulseAtLocalPoint(Vector2f, Vector2f)} - Add the impulse to the body at a relative offset from the
+ * center of gravity.</li>
  * </ul>
  *
  * @author jobernolte
@@ -300,7 +301,7 @@ public class Body {
 		Vector2f c = this.cog;
 
 		this.transform = Transform.transpose(rot.x, -rot.y, p.x - (c.x * rot.x - c.y * rot.y), rot.y, rot.x,
-											 p.y - (c.x * rot.y + c.y * rot.x));
+				p.y - (c.x * rot.y + c.y * rot.x));
 	}
 
 	/** @return the rotation angle in radians */
@@ -776,7 +777,7 @@ public class Body {
 		if (!(this.m > 0.0f && this.i > 0.0f)) {
 			throw new IllegalStateException(
 					String.format("Body's mass and moment must be positive to simulate. (Mass: %f Moment: %f)", this.m,
-								  this.i));
+							this.i));
 		}
 		this.v = cpvadd(cpvmult(this.v, damping), cpvmult(cpvadd(gravity, cpvmult(this.f, this.m_inv)), dt));
 		this.w = this.w * damping + this.t * this.i_inv * dt;

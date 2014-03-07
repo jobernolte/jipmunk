@@ -23,45 +23,25 @@
 package org.physics.jipmunk;
 
 /**
+ * Type used as the layers bitmask.
+ *
  * @author jobernolte
  */
-public class ShapeFilter {
+public class Bitmask {
+	public static final Bitmask ALL = new Bitmask(~0L);
+	public static final Bitmask NONE = new Bitmask(0);
 
-	public static final ShapeFilter ALL = new ShapeFilter(Group.NO_GROUP, Bitmask.ALL, Bitmask.ALL);
-	public static final ShapeFilter NONE = new ShapeFilter(Group.NO_GROUP, Bitmask.NONE, Bitmask.NONE);
+	private final long value;
 
-	private final Group group;
-	private final Bitmask categories;
-	private final Bitmask mask;
-
-	public ShapeFilter(Group group, Bitmask categories, Bitmask mask) {
-		this.group = group;
-		this.categories = categories;
-		this.mask = mask;
+	public Bitmask(long value) {
+		this.value = value;
 	}
 
-	public Group getGroup() {
-		return group;
+	public long getValue() {
+		return value;
 	}
 
-	public Bitmask getCategories() {
-		return categories;
-	}
-
-	public Bitmask getMask() {
-		return mask;
-	}
-
-	public boolean reject(ShapeFilter b) {
-		return reject(this, b);
-	}
-
-	public static boolean reject(ShapeFilter a, ShapeFilter b) {
-		// Reject the collision if:
-		return (
-				// They are in the same non-zero group.
-				(a.group != Group.NO_GROUP && a.group.equals(b.group) ||
-						// One of the category/mask combinations fails.
-						!a.categories.and(b.mask) || !b.categories.and(a.mask)));
+	public boolean and(final Bitmask bitmask) {
+		return (this.value & bitmask.value) != 0;
 	}
 }

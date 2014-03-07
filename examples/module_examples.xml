@@ -8,53 +8,53 @@
   <property name="examples.output.dir" value="${module.examples.basedir}/../out/production/examples"/>
   <property name="examples.testoutput.dir" value="${module.examples.basedir}/../out/test/examples"/>
   
-  <path index="examples.module.bootclasspath">
+  <path id="examples.module.bootclasspath">
     <!-- Paths to be included in compilation bootclasspath -->
   </path>
   
-  <path index="examples.module.production.classpath">
-    <fileset dir="${basedir}/examples/libs">
-      <patternset refid="library.patterns"/>
-    </fileset>
+  <path id="examples.module.production.classpath">
     <pathelement location="${jipmunk.output.dir}"/>
-  </path>
-  
-  <path index="examples.runtime.production.module.classpath">
-    <pathelement location="${examples.output.dir}"/>
     <fileset dir="${basedir}/examples/libs">
       <patternset refid="library.patterns"/>
     </fileset>
+  </path>
+  
+  <path id="examples.runtime.production.module.classpath">
+    <pathelement location="${examples.output.dir}"/>
     <path refid="jipmunk.runtime.production.module.classpath"/>
-  </path>
-  
-  <path index="examples.module.classpath">
-    <pathelement location="${examples.output.dir}"/>
     <fileset dir="${basedir}/examples/libs">
       <patternset refid="library.patterns"/>
     </fileset>
+  </path>
+  
+  <path id="examples.module.classpath">
+    <pathelement location="${examples.output.dir}"/>
     <pathelement location="${jipmunk.testoutput.dir}"/>
     <pathelement location="${jipmunk.output.dir}"/>
-  </path>
-  
-  <path index="examples.runtime.module.classpath">
-    <pathelement location="${examples.testoutput.dir}"/>
-    <pathelement location="${examples.output.dir}"/>
     <fileset dir="${basedir}/examples/libs">
       <patternset refid="library.patterns"/>
     </fileset>
+  </path>
+  
+  <path id="examples.runtime.module.classpath">
+    <pathelement location="${examples.testoutput.dir}"/>
+    <pathelement location="${examples.output.dir}"/>
     <path refid="jipmunk.runtime.module.classpath"/>
+    <fileset dir="${basedir}/examples/libs">
+      <patternset refid="library.patterns"/>
+    </fileset>
   </path>
   
   
-  <patternset index="excluded.from.module.examples">
+  <patternset id="excluded.from.module.examples">
     <patternset refid="ignored.files"/>
   </patternset>
   
-  <patternset index="excluded.from.compilation.examples">
+  <patternset id="excluded.from.compilation.examples">
     <patternset refid="excluded.from.module.examples"/>
   </patternset>
   
-  <path index="examples.module.sourcepath">
+  <path id="examples.module.sourcepath">
     <dirset dir="${module.examples.basedir}">
       <include name="src"/>
     </dirset>
@@ -65,7 +65,7 @@
   
   <target name="compile.module.examples.production" depends="compile.module.jipmunk" description="Compile module examples; production classes">
     <mkdir dir="${examples.output.dir}"/>
-    <javac destdir="${examples.output.dir}" debug="${compiler.debug}" nowarn="${compiler.generate.no.warnings}" memorymaximumsize="${compiler.max.memory}" fork="true" includeantruntime="false">
+    <javac destdir="${examples.output.dir}" debug="${compiler.debug}" nowarn="${compiler.generate.no.warnings}" memorymaximumsize="${compiler.max.memory}" fork="true">
       <compilerarg line="${compiler.args.examples}"/>
       <bootclasspath refid="examples.module.bootclasspath"/>
       <classpath refid="examples.module.production.classpath"/>

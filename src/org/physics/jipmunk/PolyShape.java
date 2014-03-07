@@ -26,7 +26,9 @@ import java.util.Iterator;
 
 import static org.physics.jipmunk.Util.*;
 
-/** @author jobernolte */
+/**
+ * @author jobernolte
+ */
 public class PolyShape extends Shape {
 	float radius;
 	SplittingPlane[] planes;
@@ -37,10 +39,9 @@ public class PolyShape extends Shape {
 
 		Vector2f centroid = Util.centroidForPoly(verts, offset, count);
 		return new MassInfo(mass, Util.momentForPoly(1.0f, verts, offset, count, cpvneg(centroid), radius), centroid,
-							Util.areaForPoly(verts, offset, count, radius));
+				Util.areaForPoly(verts, offset, count, radius));
 
 	}
-
 
 	public PolyShape(Body body, float radius, Vector2f... verts) {
 		this(body, radius, null, verts, 0, verts.length);
@@ -95,9 +96,9 @@ public class PolyShape extends Shape {
 			System.arraycopy(verts, offset, hullVerts, 0, count);
 		}
 
-		/*for (int i = 0; i < count; i++) {
-			System.out.format("SetVerts1: i=%d, v=%s\n", i, hullVerts[offset + i]);
-		}*/
+		/*
+		 * for (int i = 0; i < count; i++) { System.out.format("SetVerts1: i=%d, v=%s\n", i, hullVerts[offset + i]); }
+		 */
 
 		count = ConvexHullUtil.convexHull(hullVerts, hullVerts, count, 0.0f).count;
 
@@ -163,13 +164,11 @@ public class PolyShape extends Shape {
 			Vector2f n = planes[i].n;
 			float an = cpvdot(a, n);
 			float d = an - cpvdot(planes[i].v0, n) - rsum;
-			if (d < 0.0f)
-				continue;
+			if (d < 0.0f) continue;
 
 			float bn = cpvdot(b, n);
 			float t = d / (an - bn);
-			if (t < 0.0f || 1.0f < t)
-				continue;
+			if (t < 0.0f || 1.0f < t) continue;
 
 			Vector2f point = cpvlerp(a, b, t);
 			float dt = cpvcross(n, point);
@@ -211,8 +210,7 @@ public class PolyShape extends Shape {
 
 		for (int i = 0; i < count; i++) {
 			Vector2f v1 = planes[i].v0;
-			if (cpvdot(planes[i].n, cpvsub(p, v1)) > 0.0f)
-				outside = true;
+			if (cpvdot(planes[i].n, cpvsub(p, v1)) > 0.0f) outside = true;
 
 			Vector2f closest = closestPointOnSegment(p, v0, v1);
 
@@ -260,7 +258,7 @@ public class PolyShape extends Shape {
 	}
 
 	static public PolyShape createBox(Body body, BB box, float radius) {
-		Vector2f verts[] = { cpv(box.r, box.b), cpv(box.r, box.t), cpv(box.l, box.t), cpv(box.l, box.b), };
+		Vector2f verts[] = {cpv(box.r, box.b), cpv(box.r, box.t), cpv(box.l, box.t), cpv(box.l, box.b),};
 		return new PolyShape(body, radius, verts);
 	}
 
@@ -269,7 +267,7 @@ public class PolyShape extends Shape {
 
 		Vector2f centroid = centroidForPoly(verts, offset, count);
 		return new MassInfo(mass, momentForPoly(1.0f, verts, offset, count, cpvneg(centroid), radius), centroid,
-							areaForPoly(verts, offset, count, radius));
+				areaForPoly(verts, offset, count, radius));
 	}
 
 	public SplittingPlane[] getPlanes() {

@@ -22,11 +22,13 @@
 
 package org.physics.jipmunk;
 
-/** @author jobernolte */
+/**
+ * @author jobernolte
+ */
 public class Constants {
-	public final static int NO_GROUP = 0;
-	public final static int ALL_LAYERS = ~0;
-	public final static int ALL_CATEGORIES = ~0;
+	public final static Group NO_GROUP = Group.NO_GROUP;
+	public final static Bitmask ALL_LAYERS = Bitmask.ALL;
+	public final static Bitmask ALL_CATEGORIES = Bitmask.ALL;
 	// TODO: Eww. Magic numbers.
 	public final static float MAGIC_EPSILON = 1e-5f;
 

@@ -40,6 +40,14 @@ public class BB {
 
 	}
 
+	/**
+	 * Convenience constructor.
+	 *
+	 * @param l the left edge.
+	 * @param b the bottom edge.
+	 * @param r the right edge.
+	 * @param t the top edge.
+	 */
 	public BB(float l, float b, float r, float t) {
 		this.l = l;
 		this.b = b;
@@ -101,9 +109,21 @@ public class BB {
 		return new BB(Math.min(bb.l, v.x), Math.min(bb.b, v.y), Math.max(bb.r, v.x), Math.max(bb.t, v.y));
 	}
 
+	/// Returns a bounding box that holds both @c bb and @c v.
+	public BB expand(final Vector2f v) {
+		return new BB(Math.min(this.l, v.x), Math.min(this.b, v.y), Math.max(this.r, v.x), Math.max(this.t, v.y));
+	}
+
 	/// Returns the area of the bounding box.
 	public static float area(BB bb) {
 		return (bb.r - bb.l) * (bb.t - bb.b);
+	}
+
+	/**
+	 * @return the area of this bounding box.
+	 */
+	public float area() {
+		return (this.r - this.l) * (this.t - this.b);
 	}
 
 	/// Merges @c a and @c b and returns the area of the merged bounding box.
@@ -112,6 +132,17 @@ public class BB {
 	}
 
 	/**
+	 * Merges this bounding box and {@code b} and returns the area of the merged bounding box.
+	 *
+	 * @param b the other bounding box to merge.
+	 * @return the area of the merged bounding box.
+	 */
+	public float mergedArea(final BB b) {
+		return (Math.max(this.r, b.r) - Math.min(this.l, b.l)) * (Math.max(this.t, b.t) - Math.min(this.b, b.b));
+	}
+
+	/**
+	 * Returns the fraction along the segment query the BB is hit. Returns {@link Float#POSITIVE_INFINITY} if it doesn'alpha hit.
 	 * Returns the fraction along the segment query the BB is hit. Returns {@link Float#POSITIVE_INFINITY} if it
 	 * doesn'alpha hit.
 	 *
@@ -122,15 +153,26 @@ public class BB {
 	 * otherwise.
 	 */
 	public static float segmentQuery(BB bb, Vector2f a, Vector2f b) {
+		return bb.segmentQuery(a, b);
+	}
+
+	/**
+	 * Returns the fraction along the segment query the BB is hit. Returns {@link Float#POSITIVE_INFINITY} if it doesn'alpha hit.
+	 *
+	 * @param a the start of the segment.
+	 * @param b the end of the segment.
+	 * @return the fraction along the segment query if <code>bb</code> is hit, {@link Float#POSITIVE_INFINITY} otherwise.
+	 */
+	public float segmentQuery(Vector2f a, Vector2f b) {
 		float idx = 1.0f / (b.x - a.x);
-		float tx1 = (bb.l == a.x ? Float.NEGATIVE_INFINITY : (bb.l - a.x) * idx);
-		float tx2 = (bb.r == a.x ? Float.POSITIVE_INFINITY : (bb.r - a.x) * idx);
+		float tx1 = (this.l == a.x ? Float.NEGATIVE_INFINITY : (this.l - a.x) * idx);
+		float tx2 = (this.r == a.x ? Float.POSITIVE_INFINITY : (this.r - a.x) * idx);
 		float txmin = Math.min(tx1, tx2);
 		float txmax = Math.max(tx1, tx2);
 
 		float idy = 1.0f / (b.y - a.y);
-		float ty1 = (bb.b == a.y ? Float.NEGATIVE_INFINITY : (bb.b - a.y) * idy);
-		float ty2 = (bb.t == a.y ? Float.POSITIVE_INFINITY : (bb.t - a.y) * idy);
+		float ty1 = (this.b == a.y ? Float.NEGATIVE_INFINITY : (this.b - a.y) * idy);
+		float ty2 = (this.t == a.y ? Float.POSITIVE_INFINITY : (this.t - a.y) * idy);
 		float tymin = Math.min(ty1, ty2);
 		float tymax = Math.max(ty1, ty2);
 
@@ -151,25 +193,40 @@ public class BB {
 		return (segmentQuery(bb, a, b) != Float.POSITIVE_INFINITY);
 	}
 
-	/// Clamp a vector to a bounding box.
-	public static Vector2f clampVect(final BB bb, final Vector2f v) {
-		float x = Math.min(Math.max(bb.l, v.x), bb.r);
-		float y = Math.min(Math.max(bb.b, v.y), bb.t);
+	/// Return true if the bounding box intersects the line segment with ends @c a and @c b.
+	public boolean intersectsSegment(final Vector2f a, final Vector2f b) {
+		return (segmentQuery(a, b) != Float.POSITIVE_INFINITY);
+	}
+
+	/**
+	 * Clamp a vector to this bounding box.
+	 *
+	 * @param vector the vector to clamp.
+	 * @return a new vector instance clamped to this bounding box.
+	 */
+	public Vector2f clampVect(final Vector2f vector) {
+		float x = Math.min(Math.max(this.l, vector.x), this.r);
+		float y = Math.min(Math.max(this.b, vector.y), this.t);
 		return cpv(x, y);
 
 	}
 
-	/// Wrap a vector to a bounding box.
-	public static Vector2f wrapVect(final BB bb, final Vector2f v) {
-		float ix = Math.abs(bb.r - bb.l);
-		float modx = (v.x - bb.l) % ix;
+	/**
+	 * wrap a vector to this bounding box.
+	 *
+	 * @param vector the vector to wrap.
+	 * @return a new vector instance wrapped to this bounding box.
+	 */
+	public Vector2f wrapVect(final Vector2f vector) {
+		float ix = Math.abs(this.r - this.l);
+		float modx = (vector.x - this.l) % ix;
 		float x = (modx > 0.0f) ? modx : modx + ix;
 
-		float iy = Math.abs(bb.t - bb.b);
-		float mody = (v.y - bb.b) % iy;
+		float iy = Math.abs(this.t - this.b);
+		float mody = (vector.y - this.b) % iy;
 		float y = (mody > 0.0f) ? mody : mody + iy;
 
-		return cpv(x + bb.l, y + bb.b);
+		return cpv(x + this.l, y + this.b);
 	}
 
 	/// Constructs a cpBB for a circle with the given position and radius.
